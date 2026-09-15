@@ -1,0 +1,661 @@
+{
+  "general": {
+    "account": {
+      "firstName": "Rohan",
+      "lastName": "Kiroriwal",
+      "email": "tripimetrips@gmail.com",
+      "mobileNumber": "9899644177",
+      "displayNumber": "",
+      "alternativePhone": "",
+      "country": "India",
+      "state": "",
+      "city": "",
+      "address": "Building No-3, FFS-11, First Floor, Ansal Chambers-1, Bhikaji Cama Place, New Delhi - 110066",
+      "pincode": "110066"
+    },
+    "agency": {
+      "domainName": "tripime.com",
+      "agencyName": "Tripime",
+      "whitelabelType": "B2C",
+      "gstNumber": "",
+      "panNumber": "",
+      "domainSupplierName": ""
+    }
+  },
+  "website": {
+    "logos": {
+      "logoUrl": "/brand/tripime_logo.png",
+      "faviconUrl": "/brand/tripime_logo.png",
+      "mobileLogoUrl": "/brand/tripime_logo.png",
+      "footerLogoUrl": "",
+      "desktopBannerUrl": "",
+      "mobileBannerUrl": ""
+    },
+    "theme": {
+      "colorTheme": "#2563eb",
+      "backgroundColor": "#dbeafe",
+      "headerColor": "#101010",
+      "gradientColor": "#101010",
+      "textColor": "#101010",
+      "footerColor": "#101010"
+    },
+    "defaultFlight": {
+      "fromCode": "DEL",
+      "toCode": "BOM"
+    },
+    "recaptcha": {
+      "siteKey": "",
+      "secretKey": ""
+    },
+    "supportMap": {
+      "embedUrl": ""
+    }
+  },
+  "seo": {
+    "home": {
+      "title": "Tripime Trips | Best Travel Agency in India for Flights, Holidays & Tours",
+      "keywords": "Tripime, Tripime travel, travel agency India, flight booking, holidays, tours",
+      "description": "Tripime is a travel agency in India for flights, holiday packages, hotels, and tours. Book smart and travel better with expert support.",
+      "headerScript": "",
+      "bodyScript": "",
+      "footerScript": "",
+      "facebookPixel": ""
+    },
+    "allPages": [
+      {
+        "id": "about",
+        "label": "About",
+        "title": "",
+        "keywords": "",
+        "description": "",
+        "content": ""
+      },
+      {
+        "id": "contact",
+        "label": "Contact",
+        "title": "",
+        "keywords": "",
+        "description": "",
+        "content": ""
+      },
+      {
+        "id": "flights",
+        "label": "Flights",
+        "title": "",
+        "keywords": "",
+        "description": "",
+        "content": ""
+      },
+      {
+        "id": "hotels",
+        "label": "Hotels",
+        "title": "",
+        "keywords": "",
+        "description": "",
+        "content": ""
+      },
+      {
+        "id": "buses",
+        "label": "Buses",
+        "title": "",
+        "keywords": "",
+        "description": "",
+        "content": ""
+      },
+      {
+        "id": "packages",
+        "label": "Packages",
+        "title": "",
+        "keywords": "",
+        "description": "",
+        "content": ""
+      },
+      {
+        "id": "visa",
+        "label": "Visa",
+        "title": "",
+        "keywords": "",
+        "description": "",
+        "content": ""
+      },
+      {
+        "id": "terms",
+        "label": "Terms",
+        "title": "",
+        "keywords": "",
+        "description": "",
+        "content": ""
+      },
+      {
+        "id": "privacy",
+        "label": "Privacy",
+        "title": "",
+        "keywords": "",
+        "description": "",
+        "content": ""
+      }
+    ],
+    "allPagesSelected": "about",
+    "slugPages": [
+      {
+        "id": "holiday-india",
+        "label": "holiday-india",
+        "title": "",
+        "keywords": "",
+        "description": "",
+        "content": ""
+      },
+      {
+        "id": "group-enquiry",
+        "label": "group_enquiry",
+        "title": "",
+        "keywords": "",
+        "description": "",
+        "content": ""
+      }
+    ],
+    "slugPagesSelected": "holiday-india",
+    "routes": {
+      "flight": "flight",
+      "hotel": "hotel",
+      "holiday": "holiday",
+      "activity": "activity",
+      "groupEnquiry": "group_enquiry"
+    }
+  },
+  "seoMore": {
+    "sitemapUrl": "https://tripime.com/sitemap.xml",
+    "robotsTxt": "User-agent: *\nDisallow: /admin/\nDisallow: /login/\nDisallow: /account/\nDisallow: /cart/\nDisallow: /checkout/\nDisallow: /payment/\nDisallow: /thank-you/\nDisallow: /booking-confirmation/\nDisallow: /search\nDisallow: /*?*\nSitemap: https://tripime.com/sitemap.xml\n"
+  },
+  "servicePages": {
+    "pages": []
+  },
+  "about": {
+    "blocks": [
+      {
+        "id": "index",
+        "label": "Home About (Index Page)",
+        "heading": "Home About",
+        "body": "Tripime is a travel platform designed to make flight bookings, hotel stays, and holiday planning simple, transparent, and affordable. Whether you are flying for business, planning a family vacation, or exploring a new destination, Tripime helps you compare options and book with confidence.",
+        "bulletsTitle": "Why Choose Tripime?",
+        "bullets": [
+          "Affordable flight and hotel bookings",
+          "Curated domestic and international holiday packages",
+          "Clear pricing with expert support when you need it",
+          "Easy enquiry flow for groups and custom itineraries"
+        ],
+        "tagline": "Tripime \u2014 Book Smart. Travel Better."
+      },
+      {
+        "id": "hotel",
+        "label": "Home About (Hotel Page)",
+        "heading": "Home About",
+        "body": "Find the perfect stay with Tripime. Browse verified hotels and homestays at competitive prices, with clear inclusions and support when you need to change dates.",
+        "bulletsTitle": "",
+        "bullets": [],
+        "tagline": ""
+      },
+      {
+        "id": "holiday",
+        "label": "Home About (Holiday Page)",
+        "heading": "Home About",
+        "body": "Discover memorable holiday packages for couples, families, and groups. From short getaways to international tours, Tripime curates itineraries you can customise.",
+        "bulletsTitle": "",
+        "bullets": [],
+        "tagline": ""
+      },
+      {
+        "id": "bus",
+        "label": "Home About (Bus Page)",
+        "heading": "Home About",
+        "body": "",
+        "bulletsTitle": "",
+        "bullets": [],
+        "tagline": ""
+      }
+    ]
+  },
+  "banners": {
+    "items": [
+      {
+        "id": "ban_flight_1",
+        "category": "flight",
+        "imageUrl": "https://images.pexels.com/photos/457882/pexels-photo-457882.jpeg?auto=compress&cs=tinysrgb&w=1200",
+        "linkUrl": "/flights",
+        "title": "Zero convenience fee",
+        "active": true
+      },
+      {
+        "id": "ban_flight_2",
+        "category": "flight",
+        "imageUrl": "https://images.pexels.com/photos/2166553/pexels-photo-2166553.jpeg?auto=compress&cs=tinysrgb&w=1200",
+        "linkUrl": "/flights",
+        "title": "Travel now, pay later",
+        "active": false
+      },
+      {
+        "id": "ban_flight_3",
+        "category": "flight",
+        "imageUrl": "https://images.pexels.com/photos/2387866/pexels-photo-2387866.jpeg?auto=compress&cs=tinysrgb&w=1200",
+        "linkUrl": "/flights",
+        "title": "Domestic flight deals",
+        "active": false
+      },
+      {
+        "id": "ban_hotel_1",
+        "category": "hotel",
+        "imageUrl": "https://images.pexels.com/photos/258154/pexels-photo-258154.jpeg?auto=compress&cs=tinysrgb&w=1200",
+        "linkUrl": "/hotels",
+        "title": "Hotel stays",
+        "active": true
+      },
+      {
+        "id": "ban_bus_1",
+        "category": "bus",
+        "imageUrl": "https://images.pexels.com/photos/1178448/pexels-photo-1178448.jpeg?auto=compress&cs=tinysrgb&w=1200",
+        "linkUrl": "/buses",
+        "title": "Bus routes",
+        "active": true
+      },
+      {
+        "id": "ban_holiday_1",
+        "category": "holiday",
+        "imageUrl": "https://images.pexels.com/photos/2166559/pexels-photo-2166559.jpeg?auto=compress&cs=tinysrgb&w=1200",
+        "linkUrl": "/packages",
+        "title": "Holiday packages",
+        "active": true
+      },
+      {
+        "id": "ban_hotel_bg_1",
+        "category": "hotel-background",
+        "imageUrl": "https://images.pexels.com/photos/325193/pexels-photo-325193.jpeg?auto=compress&cs=tinysrgb&w=1200",
+        "linkUrl": "/hotels",
+        "title": "Hotel background",
+        "active": true
+      },
+      {
+        "id": "ban_bus_bg_1",
+        "category": "bus-background",
+        "imageUrl": "https://images.pexels.com/photos/1366919/pexels-photo-1366919.jpeg?auto=compress&cs=tinysrgb&w=1200",
+        "linkUrl": "/buses",
+        "title": "Bus background",
+        "active": true
+      },
+      {
+        "id": "ban_holiday_bg_1",
+        "category": "holiday-background",
+        "imageUrl": "https://images.pexels.com/photos/2166553/pexels-photo-2166553.jpeg?auto=compress&cs=tinysrgb&w=1200",
+        "linkUrl": "/packages",
+        "title": "Holiday background",
+        "active": true
+      }
+    ]
+  },
+  "deals": {
+    "items": [
+      {
+        "id": "deal_flight_1",
+        "category": "flight",
+        "imageUrl": "https://images.pexels.com/photos/457882/pexels-photo-457882.jpeg?auto=compress&cs=tinysrgb&w=1200",
+        "linkUrl": "/flights",
+        "title": "Zero convenience fee \u2014 UPI",
+        "active": true
+      },
+      {
+        "id": "deal_flight_2",
+        "category": "flight",
+        "imageUrl": "https://images.pexels.com/photos/2387866/pexels-photo-2387866.jpeg?auto=compress&cs=tinysrgb&w=1200",
+        "linkUrl": "/flights",
+        "title": "Airline fare offers",
+        "active": true
+      },
+      {
+        "id": "deal_hotel_1",
+        "category": "hotel",
+        "imageUrl": "https://images.pexels.com/photos/258154/pexels-photo-258154.jpeg?auto=compress&cs=tinysrgb&w=1200",
+        "linkUrl": "/hotels",
+        "title": "Stay offers",
+        "active": true
+      },
+      {
+        "id": "deal_popup_1",
+        "category": "popup",
+        "imageUrl": "https://images.pexels.com/photos/325193/pexels-photo-325193.jpeg?auto=compress&cs=tinysrgb&w=1200",
+        "linkUrl": "/",
+        "title": "Homepage popup",
+        "active": false
+      }
+    ]
+  },
+  "visa": {
+    "types": []
+  },
+  "testimonials": {
+    "items": [
+      {
+        "id": "tst_1",
+        "imageUrl": "https://images.pexels.com/photos/2379004/pexels-photo-2379004.jpeg?auto=compress&cs=tinysrgb&w=200",
+        "name": "Anshul Das",
+        "rating": 5,
+        "content": "Booked a Dubai trip with Tripime and the whole process was smooth. Clear pricing, quick tickets, and a real person when I had a question.",
+        "status": "Active"
+      },
+      {
+        "id": "tst_2",
+        "imageUrl": "https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg?auto=compress&cs=tinysrgb&w=200",
+        "name": "Vishwas Adhikari",
+        "rating": 5,
+        "content": "Udaipur and Ranthambore package was well planned. Hotels matched what was promised and the team helped us adjust one night without hassle.",
+        "status": "Active"
+      },
+      {
+        "id": "tst_3",
+        "imageUrl": "https://images.pexels.com/photos/415829/pexels-photo-415829.jpeg?auto=compress&cs=tinysrgb&w=200",
+        "name": "Priya Sharma",
+        "rating": 5,
+        "content": "Delhi to Mumbai in under five minutes. E-ticket landed instantly, and a real person picked up when I had a date question.",
+        "status": "Active"
+      },
+      {
+        "id": "tst_4",
+        "imageUrl": "https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=200",
+        "name": "Sneha Patel",
+        "rating": 5,
+        "content": "Goa holiday enquiry turned into a custom itinerary the same day. Honest pricing and WhatsApp support that actually replies.",
+        "status": "Active"
+      }
+    ]
+  },
+  "blogs": {
+    "items": [
+      {
+        "id": "blog_1",
+        "imageUrl": "https://images.pexels.com/photos/590016/pexels-photo-590016.jpeg?auto=compress&cs=tinysrgb&w=1200",
+        "heading": "Explore India for Less: Cheap Flights and the Best Holiday Packages on Tripime",
+        "videoUrl": "",
+        "excerpt": "How to find value fares and packages without surprise fees.",
+        "content": "",
+        "status": "Active"
+      },
+      {
+        "id": "blog_2",
+        "imageUrl": "https://images.pexels.com/photos/2166553/pexels-photo-2166553.jpeg?auto=compress&cs=tinysrgb&w=1200",
+        "heading": "3-Day Jaipur Itinerary: Explore the Pink City with Tripime",
+        "videoUrl": "",
+        "excerpt": "A practical three-day plan for palaces, food, and day trips.",
+        "content": "",
+        "status": "Active"
+      },
+      {
+        "id": "blog_3",
+        "imageUrl": "https://images.pexels.com/photos/258154/pexels-photo-258154.jpeg?auto=compress&cs=tinysrgb&w=1200",
+        "heading": "Top 10 Romantic Resorts Near Delhi for Couples",
+        "videoUrl": "",
+        "excerpt": "Weekend stays within driving distance of the capital.",
+        "content": "",
+        "status": "Active"
+      }
+    ]
+  },
+  "videoBlogs": {
+    "items": []
+  },
+  "marquees": {
+    "items": [
+      {
+        "id": "mq_1",
+        "category": "Flight",
+        "contents": "Zero Convenience fee on every flight booking through UPI",
+        "status": "Active"
+      },
+      {
+        "id": "mq_2",
+        "category": "Hotel",
+        "contents": "Zero Convenience fee on every flight booking through UPI",
+        "status": "Active"
+      },
+      {
+        "id": "mq_3",
+        "category": "Holiday",
+        "contents": "Zero Convenience fee on every flight booking through UPI",
+        "status": "Active"
+      }
+    ]
+  },
+  "destinations": {
+    "items": [
+      {
+        "id": "dest_1",
+        "imageUrl": "https://images.pexels.com/photos/457882/pexels-photo-457882.jpeg?auto=compress&cs=tinysrgb&w=1200",
+        "city": "Andaman",
+        "status": "Active"
+      },
+      {
+        "id": "dest_2",
+        "imageUrl": "https://images.pexels.com/photos/2166559/pexels-photo-2166559.jpeg?auto=compress&cs=tinysrgb&w=1200",
+        "city": "Thailand",
+        "status": "Active"
+      },
+      {
+        "id": "dest_3",
+        "imageUrl": "https://images.pexels.com/photos/2166553/pexels-photo-2166553.jpeg?auto=compress&cs=tinysrgb&w=1200",
+        "city": "Bali",
+        "status": "Active"
+      },
+      {
+        "id": "dest_4",
+        "imageUrl": "https://images.pexels.com/photos/325193/pexels-photo-325193.jpeg?auto=compress&cs=tinysrgb&w=1200",
+        "city": "Dubai",
+        "status": "Active"
+      },
+      {
+        "id": "dest_5",
+        "imageUrl": "https://images.pexels.com/photos/1366919/pexels-photo-1366919.jpeg?auto=compress&cs=tinysrgb&w=1200",
+        "city": "Shimla",
+        "status": "Active"
+      }
+    ]
+  },
+  "why": {
+    "items": [
+      {
+        "id": "why_1",
+        "iconUrl": "",
+        "heading": "Fast Booking",
+        "category": "Flight",
+        "contents": "Quick search, competitive prices, and a smooth booking experience from start to finish.",
+        "status": "Active"
+      },
+      {
+        "id": "why_2",
+        "iconUrl": "",
+        "heading": "Exciting Deals",
+        "category": "Flight",
+        "contents": "Exclusive offers on flights across trusted airlines, domestic and international routes.",
+        "status": "Active"
+      },
+      {
+        "id": "why_3",
+        "iconUrl": "",
+        "heading": "24/7 Support",
+        "category": "Flight",
+        "contents": "Get assistance anytime for travel queries. Our team is here to help you fly worry-free.",
+        "status": "Active"
+      }
+    ]
+  },
+  "faqs": {
+    "items": [
+      {
+        "id": "faq_f1",
+        "category": "flight",
+        "question": "How do I book a flight through your website?",
+        "answer": "You can search for flights by entering your departure city, destination, travel dates, and number of passengers. Compare multiple airline options and complete your booking securely online in just a few clicks.",
+        "status": "Active"
+      },
+      {
+        "id": "faq_f2",
+        "category": "flight",
+        "question": "Do you offer both domestic and international flight bookings?",
+        "answer": "Yes, we offer flight bookings for both domestic and international destinations, covering major airlines and routes worldwide.",
+        "status": "Active"
+      },
+      {
+        "id": "faq_f3",
+        "category": "flight",
+        "question": "Will I get the cheapest airfare?",
+        "answer": "We compare fares from multiple airlines and travel partners to provide competitive prices and the best available deals at the time of booking. Prices may vary based on demand and availability.",
+        "status": "Active"
+      },
+      {
+        "id": "faq_f4",
+        "category": "flight",
+        "question": "Are flight tickets refundable?",
+        "answer": "Refundability depends on the airline's fare rules. Some tickets are fully refundable, while others may be partially refundable or non-refundable.",
+        "status": "Active"
+      },
+      {
+        "id": "faq_f5",
+        "category": "flight",
+        "question": "Can I reschedule or cancel my flight ticket?",
+        "answer": "Yes, flight rescheduling or cancellation is possible as per the airline's policy. Change fees and fare differences may apply.",
+        "status": "Active"
+      },
+      {
+        "id": "faq_h1",
+        "category": "hotel",
+        "question": "Can I book hotels on Tripime?",
+        "answer": "Hotel booking is coming soon. You can enquire with our team for stays bundled with flights or holiday packages.",
+        "status": "Active"
+      }
+    ]
+  },
+  "flightRoutes": {
+    "items": [
+      {
+        "id": "rt_1",
+        "fromCity": "Mumbai",
+        "fromCode": "BOM",
+        "toCity": "Bangkok",
+        "toCode": "BKK",
+        "price": 10299.0,
+        "airlineName": "IndiGo",
+        "airlineLogoUrl": "",
+        "status": "Active"
+      },
+      {
+        "id": "rt_2",
+        "fromCity": "Delhi",
+        "fromCode": "DEL",
+        "toCity": "New York",
+        "toCode": "JFK",
+        "price": 39999.0,
+        "airlineName": "Air India",
+        "airlineLogoUrl": "",
+        "status": "Active"
+      },
+      {
+        "id": "rt_3",
+        "fromCity": "Chennai",
+        "fromCode": "MAA",
+        "toCity": "Dubai",
+        "toCode": "DXB",
+        "price": 18499.0,
+        "airlineName": "Emirates",
+        "airlineLogoUrl": "",
+        "status": "Active"
+      },
+      {
+        "id": "rt_4",
+        "fromCity": "Delhi",
+        "fromCode": "DEL",
+        "toCity": "Mumbai",
+        "toCode": "BOM",
+        "price": 4299.0,
+        "airlineName": "IndiGo",
+        "airlineLogoUrl": "",
+        "status": "Active"
+      },
+      {
+        "id": "rt_5",
+        "fromCity": "Delhi",
+        "fromCode": "DEL",
+        "toCity": "Bangalore",
+        "toCode": "BLR",
+        "price": 4899.0,
+        "airlineName": "Air India",
+        "airlineLogoUrl": "",
+        "status": "Active"
+      },
+      {
+        "id": "rt_6",
+        "fromCity": "Mumbai",
+        "fromCode": "BOM",
+        "toCity": "Delhi",
+        "toCode": "DEL",
+        "price": 4499.0,
+        "airlineName": "Vistara",
+        "airlineLogoUrl": "",
+        "status": "Active"
+      }
+    ]
+  },
+  "airlines": {
+    "items": [
+      {
+        "id": "al_6e",
+        "logoUrl": "https://images.kiwi.com/airlines/64/6E.png",
+        "name": "IndiGo",
+        "code": "6E",
+        "status": "Active"
+      },
+      {
+        "id": "al_qp",
+        "logoUrl": "https://images.kiwi.com/airlines/64/QP.png",
+        "name": "Akasa Air",
+        "code": "QP",
+        "status": "Active"
+      },
+      {
+        "id": "al_sg",
+        "logoUrl": "https://images.kiwi.com/airlines/64/SG.png",
+        "name": "SpiceJet",
+        "code": "SG",
+        "status": "Active"
+      },
+      {
+        "id": "al_ek",
+        "logoUrl": "https://images.kiwi.com/airlines/64/EK.png",
+        "name": "Emirates Airlines",
+        "code": "EK",
+        "status": "Active"
+      },
+      {
+        "id": "al_qr",
+        "logoUrl": "https://images.kiwi.com/airlines/64/QR.png",
+        "name": "Qatar Airways",
+        "code": "QR",
+        "status": "Active"
+      },
+      {
+        "id": "al_ai",
+        "logoUrl": "https://images.kiwi.com/airlines/64/AI.png",
+        "name": "Air India",
+        "code": "AI",
+        "status": "Active"
+      }
+    ]
+  },
+  "busRoutes": {
+    "items": []
+  },
+  "social": {
+    "facebook": "https://www.facebook.com/p/Tripime-trips-61572517748551/",
+    "instagram": "https://www.instagram.com/tripimetrips/",
+    "linkedin": "https://www.linkedin.com/company/tripime-trips/",
+    "youtube": "",
+    "twitter": "",
+    "whatsapp": "9899644177"
+  },
+  "updatedAt": "2026-08-29T12:36:39.203980+00:00"
+}

@@ -1,0 +1,86 @@
+[
+  {
+    "name": "International Holidays",
+    "active": true,
+    "sortOrder": 1,
+    "id": "theme_intl",
+    "createdAt": "2024-11-21T12:25:22+00:00"
+  },
+  {
+    "name": "Indian Holidays",
+    "active": true,
+    "sortOrder": 2,
+    "id": "theme_indian",
+    "createdAt": "2024-11-21T12:25:22+00:00"
+  },
+  {
+    "name": "Budget Friendly",
+    "active": true,
+    "sortOrder": 3,
+    "id": "theme_budget",
+    "createdAt": "2024-11-21T12:25:22+00:00"
+  },
+  {
+    "name": "Group Tour",
+    "active": true,
+    "sortOrder": 4,
+    "id": "theme_group",
+    "createdAt": "2024-11-21T12:25:22+00:00"
+  },
+  {
+    "name": "Family Holidays",
+    "active": true,
+    "sortOrder": 5,
+    "id": "theme_family",
+    "createdAt": "2024-11-21T12:25:22+00:00"
+  },
+  {
+    "name": "Adventure Holidays",
+    "active": true,
+    "sortOrder": 6,
+    "id": "theme_adventure",
+    "createdAt": "2024-11-21T12:25:22+00:00"
+  },
+  {
+    "name": "Bali",
+    "active": true,
+    "sortOrder": 7,
+    "id": "theme_bali",
+    "createdAt": "2024-12-04T12:18:46+00:00"
+  },
+  {
+    "name": "Dubai",
+    "active": true,
+    "sortOrder": 8,
+    "id": "theme_dubai",
+    "createdAt": "2024-12-04T12:19:07+00:00"
+  },
+  {
+    "name": "Shimla",
+    "active": true,
+    "sortOrder": 9,
+    "id": "theme_shimla",
+    "createdAt": "2024-12-04T12:19:22+00:00"
+  },
+  {
+    "name": "Thailand",
+    "active": true,
+    "sortOrder": 10,
+    "id": "theme_thailand",
+    "createdAt": "2024-12-04T12:19:36+00:00"
+  },
+  {
+    "name": "Andaman",
+    "active": true,
+    "sortOrder": 11,
+    "id": "theme_andaman",
+    "createdAt": "2024-12-04T12:19:51+00:00"
+  },
+  {
+    "name": "Kerala",
+    "active": true,
+    "sortOrder": 12,
+    "id": "theme_kerala",
+    "createdAt": "2024-12-04T12:20:09+00:00"
+  }
+]

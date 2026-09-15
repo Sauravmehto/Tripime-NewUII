@@ -1,0 +1,795 @@
+[
+  {
+    "bookingId": "BK-20260803-10001",
+    "pnr": "3D76HI",
+    "status": "CONFIRMED",
+    "createdAt": "2026-08-03T22:47:03.794929+00:00",
+    "confirmedAt": "2026-08-03T22:47:03.794929+00:00",
+    "flight": {
+      "id": "FL-20260820-DEL-BOM-001",
+      "airline": {
+        "name": "Air India",
+        "code": "AI"
+      },
+      "flightNumber": "AI 116",
+      "origin": {
+        "city": "Delhi",
+        "airport": "Indira Gandhi International Airport",
+        "code": "DEL"
+      },
+      "destination": {
+        "city": "Mumbai",
+        "airport": "Chhatrapati Shivaji Maharaj International Airport",
+        "code": "BOM"
+      },
+      "departureDate": "2026-08-20",
+      "departureTime": "06:10",
+      "arrivalDate": "2026-08-20",
+      "arrivalTime": "08:15",
+      "durationMinutes": 125,
+      "aircraft": "Airbus A320",
+      "cabinClass": "Economy",
+      "fare": {
+        "baseFare": 5550,
+        "taxes": 1100,
+        "totalFare": 6650,
+        "currency": "INR"
+      },
+      "availableSeats": 44,
+      "baggage": {
+        "cabin": "7 KG",
+        "checkIn": "20 KG"
+      },
+      "refundable": true,
+      "status": "AVAILABLE"
+    },
+    "passengers": [
+      {
+        "title": "Mr",
+        "firstName": "Aarav",
+        "lastName": "Shah",
+        "gender": "Male",
+        "dateOfBirth": "1994-01-10",
+        "seatNumber": "3A"
+      },
+      {
+        "title": "Ms",
+        "firstName": "Riya",
+        "lastName": "Shah",
+        "gender": "Female",
+        "dateOfBirth": "1996-05-12",
+        "seatNumber": "3B"
+      }
+    ],
+    "contact": {
+      "email": "aarav@example.com",
+      "phone": "9000012345"
+    },
+    "passengerCount": 2,
+    "seats": [
+      {
+        "passengerIndex": 0,
+        "seatNumber": "3A",
+        "seatType": "window",
+        "price": 199
+      },
+      {
+        "passengerIndex": 1,
+        "seatNumber": "3B",
+        "seatType": "preferred",
+        "price": 299
+      }
+    ],
+    "fare": {
+      "baseFare": 11100,
+      "taxes": 2200,
+      "totalFare": 13300,
+      "currency": "INR"
+    },
+    "seatCharges": 498,
+    "totalAmount": 13798,
+    "payment": {
+      "paymentId": "PAY-B11C177639DA",
+      "transactionId": "TXN-C981631E68",
+      "method": "upi",
+      "amount": 13798,
+      "currency": "INR",
+      "status": "SUCCESS",
+      "paidAt": "2026-08-03T22:47:03.763907+00:00"
+    }
+  },
+  {
+    "bookingId": "BK-20260803-10002",
+    "pnr": "OC0NAF",
+    "status": "CONFIRMED",
+    "createdAt": "2026-08-03T22:54:51.014957+00:00",
+    "confirmedAt": "2026-08-03T22:54:51.014957+00:00",
+    "flight": {
+      "id": "FL-20260808-DEL-BOM-001",
+      "airline": {
+        "name": "Air India Express",
+        "code": "IX"
+      },
+      "flightNumber": "IX 104",
+      "origin": {
+        "city": "Delhi",
+        "airport": "Indira Gandhi International Airport",
+        "code": "DEL"
+      },
+      "destination": {
+        "city": "Mumbai",
+        "airport": "Chhatrapati Shivaji Maharaj International Airport",
+        "code": "BOM"
+      },
+      "departureDate": "2026-08-08",
+      "departureTime": "05:50",
+      "arrivalDate": "2026-08-08",
+      "arrivalTime": "08:00",
+      "durationMinutes": 130,
+      "aircraft": "Boeing 737-800",
+      "cabinClass": "Economy",
+      "fare": {
+        "baseFare": 4750,
+        "taxes": 1020,
+        "totalFare": 5770,
+        "currency": "INR"
+      },
+      "availableSeats": 29,
+      "baggage": {
+        "cabin": "7 KG",
+        "checkIn": "15 KG"
+      },
+      "refundable": false,
+      "status": "AVAILABLE"
+    },
+    "passengers": [
+      {
+        "title": "Mr",
+        "firstName": "Saurav",
+        "lastName": "Mehto",
+        "gender": "Male",
+        "dateOfBirth": "1998-02-23",
+        "seatNumber": "11E"
+      }
+    ],
+    "contact": {
+      "email": "chikkisaurav@gmail.com",
+      "phone": "870013972"
+    },
+    "passengerCount": 1,
+    "seats": [
+      {
+        "passengerIndex": 0,
+        "seatNumber": "11E",
+        "seatType": "standard",
+        "price": 0
+      }
+    ],
+    "fare": {
+      "baseFare": 4750,
+      "taxes": 1020,
+      "totalFare": 5770,
+      "currency": "INR"
+    },
+    "seatCharges": 0,
+    "totalAmount": 5770,
+    "payment": {
+      "paymentId": "PAY-8C1A22992FAC",
+      "transactionId": "TXN-90E2528CFB",
+      "method": "upi",
+      "amount": 5770,
+      "currency": "INR",
+      "status": "SUCCESS",
+      "paidAt": "2026-08-03T22:54:50.985112+00:00"
+    }
+  },
+  {
+    "bookingId": "BK-20260803-10003",
+    "pnr": "C6SN34",
+    "status": "CONFIRMED",
+    "createdAt": "2026-08-03T23:06:14.285498+00:00",
+    "confirmedAt": "2026-08-03T23:06:14.285498+00:00",
+    "flight": {
+      "id": "FL-20260810-DEL-BOM-001",
+      "airline": {
+        "name": "Air India",
+        "code": "AI"
+      },
+      "flightNumber": "AI 106",
+      "origin": {
+        "city": "Delhi",
+        "airport": "Indira Gandhi International Airport",
+        "code": "DEL"
+      },
+      "destination": {
+        "city": "Mumbai",
+        "airport": "Chhatrapati Shivaji Maharaj International Airport",
+        "code": "BOM"
+      },
+      "departureDate": "2026-08-10",
+      "departureTime": "05:55",
+      "arrivalDate": "2026-08-10",
+      "arrivalTime": "08:00",
+      "durationMinutes": 125,
+      "aircraft": "Airbus A320",
+      "cabinClass": "Economy",
+      "fare": {
+        "baseFare": 5750,
+        "taxes": 1150,
+        "totalFare": 6900,
+        "currency": "INR"
+      },
+      "availableSeats": 11,
+      "baggage": {
+        "cabin": "7 KG",
+        "checkIn": "20 KG"
+      },
+      "refundable": true,
+      "status": "AVAILABLE"
+    },
+    "passengers": [
+      {
+        "title": "Mr",
+        "firstName": "Test",
+        "lastName": "User",
+        "gender": "Male",
+        "dateOfBirth": "1990-01-01",
+        "seatNumber": "12A"
+      }
+    ],
+    "contact": {
+      "email": "test@example.com",
+      "phone": "9999999999"
+    },
+    "passengerCount": 1,
+    "seats": [
+      {
+        "passengerIndex": 0,
+        "seatNumber": "12A",
+        "seatType": "window",
+        "price": 199
+      }
+    ],
+    "fare": {
+      "baseFare": 5750,
+      "taxes": 1150,
+      "totalFare": 6900,
+      "currency": "INR"
+    },
+    "seatCharges": 199,
+    "totalAmount": 7099,
+    "payment": {
+      "paymentId": "PAY-E724D8A3EF2C",
+      "transactionId": "TXN-2A5FAD0A19",
+      "method": "upi",
+      "amount": 7099,
+      "currency": "INR",
+      "status": "SUCCESS",
+      "paidAt": "2026-08-03T23:06:14.262839+00:00"
+    }
+  },
+  {
+    "bookingId": "BK-20260803-10004",
+    "pnr": "FFEGZQ",
+    "status": "CONFIRMED",
+    "createdAt": "2026-08-03T23:28:00.076461+00:00",
+    "confirmedAt": "2026-08-03T23:28:00.076461+00:00",
+    "flight": {
+      "id": "FL-20260820-DEL-BOM-004",
+      "airline": {
+        "name": "Air India Express",
+        "code": "IX"
+      },
+      "flightNumber": "IX 425",
+      "origin": {
+        "city": "Delhi",
+        "airport": "Indira Gandhi International Airport",
+        "code": "DEL"
+      },
+      "destination": {
+        "city": "Mumbai",
+        "airport": "Chhatrapati Shivaji Maharaj International Airport",
+        "code": "BOM"
+      },
+      "departureDate": "2026-08-20",
+      "departureTime": "14:40",
+      "arrivalDate": "2026-08-20",
+      "arrivalTime": "16:40",
+      "durationMinutes": 120,
+      "aircraft": "Boeing 737-800",
+      "cabinClass": "Economy",
+      "fare": {
+        "baseFare": 3950,
+        "taxes": 730,
+        "totalFare": 4680,
+        "currency": "INR"
+      },
+      "availableSeats": 29,
+      "baggage": {
+        "cabin": "7 KG",
+        "checkIn": "20 KG"
+      },
+      "refundable": false,
+      "status": "AVAILABLE"
+    },
+    "passengers": [
+      {
+        "title": "Mr",
+        "firstName": "Saurav",
+        "lastName": "Mehto",
+        "gender": "Male",
+        "dateOfBirth": "1998-02-23",
+        "seatNumber": "3F"
+      }
+    ],
+    "contact": {
+      "email": "chikkisaurav@gmail.com",
+      "phone": "870013972"
+    },
+    "passengerCount": 1,
+    "seats": [
+      {
+        "passengerIndex": 0,
+        "seatNumber": "3F",
+        "seatType": "preferred",
+        "price": 299
+      }
+    ],
+    "fare": {
+      "baseFare": 3950,
+      "taxes": 730,
+      "totalFare": 4680,
+      "currency": "INR"
+    },
+    "seatCharges": 299,
+    "totalAmount": 4979,
+    "payment": {
+      "paymentId": "PAY-726957AE08BF",
+      "transactionId": "TXN-5DACF550B7",
+      "method": "upi",
+      "amount": 4979,
+      "currency": "INR",
+      "status": "SUCCESS",
+      "paidAt": "2026-08-03T23:28:00.042609+00:00"
+    }
+  },
+  {
+    "bookingId": "BK-20260803-10005",
+    "pnr": "QH93T7",
+    "status": "CONFIRMED",
+    "createdAt": "2026-08-03T23:45:11.028234+00:00",
+    "confirmedAt": "2026-08-03T23:45:11.028234+00:00",
+    "flight": {
+      "id": "FL-20260815-DEL-BOM-001",
+      "airline": {
+        "name": "IndiGo",
+        "code": "6E"
+      },
+      "flightNumber": "6E 111",
+      "origin": {
+        "city": "Delhi",
+        "airport": "Indira Gandhi International Airport",
+        "code": "DEL"
+      },
+      "destination": {
+        "city": "Mumbai",
+        "airport": "Chhatrapati Shivaji Maharaj International Airport",
+        "code": "BOM"
+      },
+      "departureDate": "2026-08-15",
+      "departureTime": "06:15",
+      "arrivalDate": "2026-08-15",
+      "arrivalTime": "08:15",
+      "durationMinutes": 120,
+      "aircraft": "Airbus A321neo",
+      "cabinClass": "Economy",
+      "fare": {
+        "baseFare": 5550,
+        "taxes": 1170,
+        "totalFare": 6720,
+        "currency": "INR"
+      },
+      "availableSeats": 27,
+      "baggage": {
+        "cabin": "7 KG",
+        "checkIn": "20 KG"
+      },
+      "refundable": false,
+      "status": "AVAILABLE"
+    },
+    "passengers": [
+      {
+        "title": "Ms",
+        "firstName": "Email",
+        "lastName": "Test",
+        "gender": "Female",
+        "dateOfBirth": "1995-05-05",
+        "seatNumber": "14C"
+      }
+    ],
+    "contact": {
+      "email": "emailtest@example.com",
+      "phone": "9876543210"
+    },
+    "passengerCount": 1,
+    "seats": [
+      {
+        "passengerIndex": 0,
+        "seatNumber": "14C",
+        "seatType": "window",
+        "price": 199
+      }
+    ],
+    "fare": {
+      "baseFare": 5550,
+      "taxes": 1170,
+      "totalFare": 6720,
+      "currency": "INR"
+    },
+    "seatCharges": 199,
+    "totalAmount": 6919,
+    "payment": {
+      "paymentId": "PAY-1D7BA485B547",
+      "transactionId": "TXN-7385AE26AE",
+      "method": "upi",
+      "amount": 6919,
+      "currency": "INR",
+      "status": "SUCCESS",
+      "paidAt": "2026-08-03T23:45:11.005795+00:00"
+    }
+  },
+  {
+    "bookingId": "BK-20260803-10006",
+    "pnr": "BXFOQM",
+    "status": "CONFIRMED",
+    "createdAt": "2026-08-03T23:50:58.116547+00:00",
+    "confirmedAt": "2026-08-03T23:50:58.116547+00:00",
+    "flight": {
+      "id": "FL-20260828-DEL-BLR-001",
+      "airline": {
+        "name": "Air India Express",
+        "code": "IX"
+      },
+      "flightNumber": "IX 124",
+      "origin": {
+        "city": "Delhi",
+        "airport": "Indira Gandhi International Airport",
+        "code": "DEL"
+      },
+      "destination": {
+        "city": "Bangalore",
+        "airport": "Kempegowda International Airport",
+        "code": "BLR"
+      },
+      "departureDate": "2026-08-28",
+      "departureTime": "06:00",
+      "arrivalDate": "2026-08-28",
+      "arrivalTime": "08:40",
+      "durationMinutes": 160,
+      "aircraft": "Boeing 737 MAX 8",
+      "cabinClass": "Economy",
+      "fare": {
+        "baseFare": 4200,
+        "taxes": 760,
+        "totalFare": 4960,
+        "currency": "INR"
+      },
+      "availableSeats": 24,
+      "baggage": {
+        "cabin": "7 KG",
+        "checkIn": "20 KG"
+      },
+      "refundable": false,
+      "status": "AVAILABLE"
+    },
+    "passengers": [
+      {
+        "title": "Mr",
+        "firstName": "Saurav",
+        "lastName": "Mehto",
+        "gender": "Male",
+        "dateOfBirth": "1998-02-22",
+        "seatNumber": "6E"
+      }
+    ],
+    "contact": {
+      "email": "chikkisaurav@gmail.com",
+      "phone": "870013972"
+    },
+    "passengerCount": 1,
+    "seats": [
+      {
+        "passengerIndex": 0,
+        "seatNumber": "6E",
+        "seatType": "standard",
+        "price": 0
+      }
+    ],
+    "fare": {
+      "baseFare": 4200,
+      "taxes": 760,
+      "totalFare": 4960,
+      "currency": "INR"
+    },
+    "seatCharges": 0,
+    "totalAmount": 4960,
+    "payment": {
+      "paymentId": "PAY-D87A36C11214",
+      "transactionId": "TXN-235F9A1290",
+      "method": "upi",
+      "amount": 4960,
+      "currency": "INR",
+      "status": "SUCCESS",
+      "paidAt": "2026-08-03T23:50:58.068902+00:00"
+    }
+  },
+  {
+    "bookingId": "BK-20260804-10007",
+    "pnr": "A3XS13",
+    "status": "CONFIRMED",
+    "createdAt": "2026-08-04T00:02:59.331278+00:00",
+    "confirmedAt": "2026-08-04T00:02:59.355214+00:00",
+    "flight": {
+      "id": "FL-20260818-DEL-BOM-001",
+      "airline": {
+        "name": "IndiGo",
+        "code": "6E"
+      },
+      "flightNumber": "6E 114",
+      "origin": {
+        "city": "Delhi",
+        "airport": "Indira Gandhi International Airport",
+        "code": "DEL"
+      },
+      "destination": {
+        "city": "Mumbai",
+        "airport": "Chhatrapati Shivaji Maharaj International Airport",
+        "code": "BOM"
+      },
+      "departureDate": "2026-08-18",
+      "departureTime": "06:05",
+      "arrivalDate": "2026-08-18",
+      "arrivalTime": "08:25",
+      "durationMinutes": 140,
+      "aircraft": "Airbus A321neo",
+      "cabinClass": "Economy",
+      "fare": {
+        "baseFare": 4150,
+        "taxes": 770,
+        "totalFare": 4920,
+        "currency": "INR"
+      },
+      "availableSeats": 13,
+      "baggage": {
+        "cabin": "7 KG",
+        "checkIn": "15 KG"
+      },
+      "refundable": false,
+      "status": "AVAILABLE"
+    },
+    "passengers": [
+      {
+        "title": "Mr",
+        "firstName": "Admin",
+        "lastName": "Confirm",
+        "gender": "Male",
+        "dateOfBirth": "1990-01-01",
+        "seatNumber": "10A"
+      }
+    ],
+    "contact": {
+      "email": "adminconfirm@example.com",
+      "phone": "9988776655"
+    },
+    "passengerCount": 1,
+    "seats": [
+      {
+        "passengerIndex": 0,
+        "seatNumber": "10A",
+        "seatType": "window",
+        "price": 199
+      }
+    ],
+    "fare": {
+      "baseFare": 4150,
+      "taxes": 770,
+      "totalFare": 4920,
+      "currency": "INR"
+    },
+    "seatCharges": 199,
+    "totalAmount": 5119,
+    "payment": {
+      "paymentId": "PAY-461B1A7DDF6C",
+      "transactionId": "TXN-27D54FB238",
+      "method": "upi",
+      "amount": 5119,
+      "currency": "INR",
+      "status": "SUCCESS",
+      "paidAt": "2026-08-04T00:02:59.303501+00:00"
+    }
+  },
+  {
+    "bookingId": "BK-20260804-10008",
+    "pnr": "BHREMN",
+    "status": "CONFIRMED",
+    "createdAt": "2026-08-04T00:06:27.606441+00:00",
+    "confirmedAt": "2026-08-04T00:06:48.531205+00:00",
+    "flight": {
+      "id": "FL-20260808-DEL-BOM-002",
+      "airline": {
+        "name": "IndiGo",
+        "code": "6E"
+      },
+      "flightNumber": "6E 207",
+      "origin": {
+        "city": "Delhi",
+        "airport": "Indira Gandhi International Airport",
+        "code": "DEL"
+      },
+      "destination": {
+        "city": "Mumbai",
+        "airport": "Chhatrapati Shivaji Maharaj International Airport",
+        "code": "BOM"
+      },
+      "departureDate": "2026-08-08",
+      "departureTime": "07:45",
+      "arrivalDate": "2026-08-08",
+      "arrivalTime": "09:45",
+      "durationMinutes": 120,
+      "aircraft": "Airbus A321neo",
+      "cabinClass": "Economy",
+      "fare": {
+        "baseFare": 6050,
+        "taxes": 1170,
+        "totalFare": 7220,
+        "currency": "INR"
+      },
+      "availableSeats": 45,
+      "baggage": {
+        "cabin": "7 KG",
+        "checkIn": "15 KG"
+      },
+      "refundable": false,
+      "status": "AVAILABLE"
+    },
+    "passengers": [
+      {
+        "title": "Mr",
+        "firstName": "Gaurav",
+        "lastName": "Mehto",
+        "gender": "Male",
+        "dateOfBirth": "1997-04-23",
+        "seatNumber": "6E"
+      },
+      {
+        "title": "Mr",
+        "firstName": "Rohan",
+        "lastName": "kumar",
+        "gender": "Male",
+        "dateOfBirth": "1999-03-02",
+        "seatNumber": "6D"
+      }
+    ],
+    "contact": {
+      "email": "chikkisaurav@gmail.com",
+      "phone": "09643932859"
+    },
+    "passengerCount": 2,
+    "seats": [
+      {
+        "passengerIndex": 0,
+        "seatNumber": "6E",
+        "seatType": "standard",
+        "price": 0
+      },
+      {
+        "passengerIndex": 1,
+        "seatNumber": "6D",
+        "seatType": "standard",
+        "price": 0
+      }
+    ],
+    "fare": {
+      "baseFare": 12100,
+      "taxes": 2340,
+      "totalFare": 14440,
+      "currency": "INR"
+    },
+    "seatCharges": 0,
+    "totalAmount": 14440,
+    "payment": {
+      "paymentId": "PAY-3B7C598968D3",
+      "transactionId": "TXN-F4E0C0F749",
+      "method": "upi",
+      "amount": 14440,
+      "currency": "INR",
+      "status": "SUCCESS",
+      "paidAt": "2026-08-04T00:06:27.576679+00:00"
+    }
+  },
+  {
+    "bookingId": "BK-20260808-10009",
+    "pnr": "A82O08",
+    "status": "CONFIRMED",
+    "createdAt": "2026-08-08T11:42:31.828308+00:00",
+    "confirmedAt": "2026-08-08T11:42:51.740685+00:00",
+    "flight": {
+      "id": "FL-20260820-DEL-BLR-001",
+      "airline": {
+        "name": "IndiGo",
+        "code": "6E"
+      },
+      "flightNumber": "6E 116",
+      "origin": {
+        "city": "Delhi",
+        "airport": "Indira Gandhi International Airport",
+        "code": "DEL"
+      },
+      "destination": {
+        "city": "Bangalore",
+        "airport": "Kempegowda International Airport",
+        "code": "BLR"
+      },
+      "departureDate": "2026-08-20",
+      "departureTime": "06:10",
+      "arrivalDate": "2026-08-20",
+      "arrivalTime": "08:50",
+      "durationMinutes": 160,
+      "aircraft": "Airbus A321neo",
+      "cabinClass": "Economy",
+      "fare": {
+        "baseFare": 5100,
+        "taxes": 950,
+        "totalFare": 6050,
+        "currency": "INR"
+      },
+      "availableSeats": 12,
+      "baggage": {
+        "cabin": "7 KG",
+        "checkIn": "15 KG"
+      },
+      "refundable": false,
+      "status": "AVAILABLE"
+    },
+    "passengers": [
+      {
+        "title": "Mr",
+        "firstName": "Saurav",
+        "lastName": "Mehto",
+        "gender": "Male",
+        "dateOfBirth": "1998-02-23",
+        "seatNumber": "8D"
+      }
+    ],
+    "contact": {
+      "email": "sauravmehto.98@gmail.com",
+      "phone": "+919643932859"
+    },
+    "passengerCount": 1,
+    "seats": [
+      {
+        "passengerIndex": 0,
+        "seatNumber": "8D",
+        "seatType": "standard",
+        "price": 0
+      }
+    ],
+    "fare": {
+      "baseFare": 5100,
+      "taxes": 950,
+      "totalFare": 6050,
+      "currency": "INR"
+    },
+    "seatCharges": 0,
+    "totalAmount": 6050,
+    "payment": {
+      "paymentId": "PAY-E5EE8DE59A27",
+      "transactionId": "TXN-6FB9BE21E7",
+      "method": "upi",
+      "amount": 6050,
+      "currency": "INR",
+      "status": "SUCCESS",
+      "paidAt": "2026-08-08T11:42:31.802414+00:00"
+    }
+  }
+]
