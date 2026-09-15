@@ -1,0 +1,40 @@
+# =============================================================================
+# Render Dashboard fixes (Tripime-1 failed because of Python 3.14 + old pydantic)
+# =============================================================================
+#
+# Your last log showed:
+#   Using Python version 3.14.3 (default)
+#   Running build command 'pip install -r requirements.txt'
+#   pydantic-core==2.33.2 built from source → maturin / read-only FS → FAIL
+#
+# Do ALL of the following on https://dashboard.render.com → Tripime-1:
+#
+# 1) Settings → Build & Deploy
+#    Root Directory:  backend
+#    Build Command:   python scripts/render_build.py
+#      (or: pip install -r requirements.txt)
+#    Start Command:   uvicorn app.main:app --host 0.0.0.0 --port $PORT
+#    Health Check Path: /api/health
+#
+# 2) Environment → Add (recommended):
+#    PYTHON_VERSION=3.11.9
+#    ADMIN_USERNAME=...
+#    ADMIN_PASSWORD=...
+#    ADMIN_JWT_SECRET=...long-random...
+#    CORS_ORIGINS=https://YOUR-SITE.netlify.app
+#
+# 3) Netlify must set (frontend build):
+#    NEXT_PUBLIC_API_BASE_URL=https://YOUR-SERVICE.onrender.com
+#
+# 3) Push updated backend/requirements.txt to GitHub (pydantic 2.13+ has 3.14 wheels).
+#    Dotfile .python-version often does NOT upload via GitHub web UI — set PYTHON_VERSION
+#    in the dashboard instead.
+#
+# 4) Manual Deploy → Clear build cache & deploy
+#
+# Success looks like either:
+#   Using Python version 3.11.9
+# or (if you skip PYTHON_VERSION):
+#   Using Python version 3.14.x + pip installs pydantic-core wheel (no maturin error)
+#
+PYTHON_VERSION=3.11.9
