@@ -1,0 +1,18 @@
+# Netlify — Tripime Next.js (App Router)
+#
+# Dashboard:
+#   Base directory = frontend
+#   Env (required): NEXT_PUBLIC_API_BASE_URL = https://YOUR-API.onrender.com
+#   (no trailing slash; rebuild after changing it)
+
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[build.environment]
+  NODE_VERSION = "20"
+  # Do NOT put the API URL here — set it in the Netlify UI so secrets stay out of git.
+  # NEXT_PUBLIC_API_BASE_URL is required at build time (see next.config.ts).
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
