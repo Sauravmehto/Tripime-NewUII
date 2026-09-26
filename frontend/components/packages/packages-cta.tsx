@@ -40,14 +40,14 @@ export function PackagesCta() {
                 <Button
                   variant="outline"
                   size="lg"
-                  className="border-white/30 text-white hover:bg-white/10"
+                  className="border-white/30 bg-ink text-white hover:bg-neutral-800"
                 >
                   <MessageCircle className="size-4" aria-hidden />
                   WhatsApp
                 </Button>
               </a>
               <Link href="/flights?origin=DEL&destination=BOM&date=2026-08-20&passengers=1">
-                <Button variant="ghost" size="lg" className="text-white/90 hover:bg-white/10">
+                <Button variant="accent" size="lg">
                   Search flights
                 </Button>
               </Link>

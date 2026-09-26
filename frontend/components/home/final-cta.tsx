@@ -38,7 +38,7 @@ export function FinalCta() {
                 </Button>
               </Link>
               <a href={telLink()}>
-                <Button variant="outline" size="lg" className="border-white/25 text-white hover:bg-white/10">
+                <Button variant="secondary" size="lg">
                   <Phone className="size-4" />
                   Call expert
                 </Button>

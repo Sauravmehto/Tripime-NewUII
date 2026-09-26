@@ -14,28 +14,28 @@ import { MAP_DESTINATIONS, MAP_ROUTE } from "@/lib/home/home-data";
 
 const AUTO_MS = 4200;
 const PLANE_MS = 28000;
-const DUBAI_T = 0.350219;
-const ISTANBUL_T = 0.681742;
+const BALI_T = 0.372234;
+const THAILAND_T = 0.685988;
 
 type PlaneKeyframe = { t: number; pos: number; spin: number; city: string };
 
 /**
- * Round trip keyed to path length: Delhi → Paris (180°), Paris → Delhi (180°).
+ * Round trip keyed to path length: Delhi → Vietnam (180°), Vietnam → Delhi (180°).
  * Holds keep pos/spin still; moves and turns use ease-in-out.
  */
 const PLANE_KEYS: PlaneKeyframe[] = [
   { t: 0, pos: 0, spin: 0, city: "delhi" },
   { t: 0.05, pos: 0, spin: 0, city: "delhi" },
-  { t: 0.15, pos: DUBAI_T, spin: 0, city: "dubai" },
-  { t: 0.19, pos: DUBAI_T, spin: 0, city: "dubai" },
-  { t: 0.29, pos: ISTANBUL_T, spin: 0, city: "istanbul" },
-  { t: 0.33, pos: ISTANBUL_T, spin: 0, city: "istanbul" },
-  { t: 0.43, pos: 1, spin: 0, city: "paris" },
-  { t: 0.52, pos: 1, spin: 180, city: "paris" },
-  { t: 0.62, pos: ISTANBUL_T, spin: 180, city: "istanbul" },
-  { t: 0.66, pos: ISTANBUL_T, spin: 180, city: "istanbul" },
-  { t: 0.76, pos: DUBAI_T, spin: 180, city: "dubai" },
-  { t: 0.8, pos: DUBAI_T, spin: 180, city: "dubai" },
+  { t: 0.15, pos: BALI_T, spin: 0, city: "bali" },
+  { t: 0.19, pos: BALI_T, spin: 0, city: "bali" },
+  { t: 0.29, pos: THAILAND_T, spin: 0, city: "thailand" },
+  { t: 0.33, pos: THAILAND_T, spin: 0, city: "thailand" },
+  { t: 0.43, pos: 1, spin: 0, city: "vietnam" },
+  { t: 0.52, pos: 1, spin: 180, city: "vietnam" },
+  { t: 0.62, pos: THAILAND_T, spin: 180, city: "thailand" },
+  { t: 0.66, pos: THAILAND_T, spin: 180, city: "thailand" },
+  { t: 0.76, pos: BALI_T, spin: 180, city: "bali" },
+  { t: 0.8, pos: BALI_T, spin: 180, city: "bali" },
   { t: 0.9, pos: 0, spin: 180, city: "delhi" },
   { t: 1, pos: 0, spin: 360, city: "delhi" },
 ];
@@ -150,7 +150,7 @@ export function TravelMap() {
           <SectionHeading
             eyebrow="Featured route"
             title="Follow the journey"
-            subtitle="Delhi → Dubai → Istanbul → Paris — tap a stop to explore packages and flights."
+            subtitle="Delhi → Bali → Thailand → Vietnam — tap a stop to explore packages and flights."
           />
         </Reveal>
 
@@ -204,7 +204,7 @@ export function TravelMap() {
                 viewBox="0 0 100 64"
                 className="mx-auto block w-full"
                 role="img"
-                aria-label="Interactive travel route from Delhi to Paris"
+                aria-label="Interactive travel route from Delhi to Vietnam"
               >
                 <defs>
                   <linearGradient id="tpRouteGrad" x1="0%" y1="0%" x2="100%" y2="0%">

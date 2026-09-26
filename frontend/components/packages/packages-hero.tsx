@@ -61,15 +61,16 @@ export function PackagesHero({ onSearch }: PackagesHeroProps) {
             {...fade(0.1)}
             className="mt-3 text-2xl font-bold tracking-tight text-white sm:text-3xl lg:text-4xl lg:leading-[1.1]"
           >
-            Holidays planned by people,{" "}
-            <span className="text-accent">not by a booking engine</span>
+            Tell us where. Tell us your budget.{" "}
+            <span className="text-accent">We&apos;ll make it unforgettable.</span>
           </motion.h1>
           <motion.p
             {...fade(0.16)}
             className="mt-2.5 max-w-lg text-sm leading-relaxed text-white/80"
           >
-            Tell us where you want to go. A Tripime expert builds the itinerary, confirms stays
-            and transfers, and stays on call for the whole trip.
+            No endless searching. No confusing packages. Just tell us what you want from your
+            holiday, and we&apos;ll find the right stays, experiences and transfers to create a
+            trip you&apos;ll actually remember.
           </motion.p>
           <motion.div
             {...fade(0.22)}

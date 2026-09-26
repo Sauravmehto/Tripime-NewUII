@@ -76,7 +76,7 @@ export function HomeHero() {
         <div className="pointer-events-none absolute right-[18%] top-8 size-[12rem] rounded-full bg-accent/12 blur-3xl animate-orb-float" />
       </div>
       <Container className="relative py-8 sm:py-10 lg:py-12">
-        <div className="grid items-center gap-8 lg:grid-cols-[1.05fr_0.95fr] lg:gap-10">
+        <div className="grid items-center gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:gap-10">
           <div>
             <div className="max-w-xl">
               <motion.div {...fade(0.05)}>
@@ -122,9 +122,9 @@ export function HomeHero() {
 
           <motion.div
             {...fade(0.18)}
-            className="relative mx-auto w-full max-w-md lg:max-w-none"
+            className="relative mx-auto w-full max-w-xl lg:max-w-none"
           >
-            <div className="relative aspect-[4/5] max-h-[min(68vh,520px)] overflow-hidden rounded-2xl shadow-elevated sm:aspect-[5/6]">
+            <div className="relative aspect-[4/5] max-h-[min(76vh,640px)] overflow-hidden rounded-2xl shadow-elevated sm:aspect-[5/6]">
               <AnimatePresence mode="sync" initial={false}>
                 <motion.div
                   key={active.id}
@@ -139,7 +139,7 @@ export function HomeHero() {
                     alt={`${active.destination}, ${active.country}`}
                     fill
                     priority={index === 0}
-                    sizes="(max-width: 1024px) 90vw, 45vw"
+                    sizes="(max-width: 1024px) 90vw, 55vw"
                     className="object-cover"
                   />
                 </motion.div>

@@ -15,8 +15,9 @@ import { PackagesGrid } from "@/components/packages/packages-grid";
 import { PackagesSpecialOffers } from "@/components/packages/packages-special-offers";
 import { PackagesPromoBanner } from "@/components/packages/packages-promo-banner";
 import { PackagesCta } from "@/components/packages/packages-cta";
-import { LeadEnquiryForm } from "@/components/enquiries/lead-enquiry-form";
-import { Card } from "@/components/ui/card";
+import { InfluencerTrips } from "@/components/packages/influencer-trips";
+// import { LeadEnquiryForm } from "@/components/enquiries/lead-enquiry-form";
+// import { Card } from "@/components/ui/card";
 import type { PackageTheme, TravelPackage } from "@/types";
 
 const DOMESTIC_PATTERN =
@@ -112,6 +113,13 @@ export function PackagesPageView() {
     explore("Rajasthan");
   }, [explore]);
 
+  const handleExploreState = useCallback(
+    (state: string) => {
+      explore(state);
+    },
+    [explore],
+  );
+
   const themeNames = useMemo(
     () => Object.fromEntries(themes.map((t) => [t.id, t.name])),
     [themes],
@@ -135,7 +143,7 @@ export function PackagesPageView() {
             onViewAllOffers={handleViewAllOffers}
             onExploreRajasthan={handleExploreRajasthan}
           />
-          <PackagesPromoBanner onExploreRajasthan={handleExploreRajasthan} />
+          <PackagesPromoBanner onExploreState={handleExploreState} />
         </>
       )}
 
@@ -165,6 +173,9 @@ export function PackagesPageView() {
           themeNames={themeNames}
         />
 
+        <InfluencerTrips />
+
+        {/* Temporarily hidden: group trip / custom itinerary enquiry forms
         <section className="border-t border-neutral-200 py-8">
           <div className="grid gap-4 lg:grid-cols-2">
             <Card>
@@ -185,6 +196,7 @@ export function PackagesPageView() {
             </Card>
           </div>
         </section>
+        */}
       </Container>
 
       <PackagesCta />
