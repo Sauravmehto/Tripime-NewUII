@@ -96,6 +96,14 @@
       "currency": "INR",
       "status": "SUCCESS",
       "paidAt": "2026-08-03T22:47:03.763907+00:00"
+    },
+    "invoice": {
+      "notes": "",
+      "discountLabel": "",
+      "discountAmount": 0,
+      "extraCharges": [],
+      "sentAt": null,
+      "sentTo": null
     }
   },
   {
@@ -181,6 +189,14 @@
       "currency": "INR",
       "status": "SUCCESS",
       "paidAt": "2026-08-03T22:54:50.985112+00:00"
+    },
+    "invoice": {
+      "notes": "",
+      "discountLabel": "",
+      "discountAmount": 0,
+      "extraCharges": [],
+      "sentAt": null,
+      "sentTo": null
     }
   },
   {
@@ -266,6 +282,14 @@
       "currency": "INR",
       "status": "SUCCESS",
       "paidAt": "2026-08-03T23:06:14.262839+00:00"
+    },
+    "invoice": {
+      "notes": "",
+      "discountLabel": "",
+      "discountAmount": 0,
+      "extraCharges": [],
+      "sentAt": null,
+      "sentTo": null
     }
   },
   {
@@ -351,6 +375,14 @@
       "currency": "INR",
       "status": "SUCCESS",
       "paidAt": "2026-08-03T23:28:00.042609+00:00"
+    },
+    "invoice": {
+      "notes": "",
+      "discountLabel": "",
+      "discountAmount": 0,
+      "extraCharges": [],
+      "sentAt": null,
+      "sentTo": null
     }
   },
   {
@@ -436,6 +468,14 @@
       "currency": "INR",
       "status": "SUCCESS",
       "paidAt": "2026-08-03T23:45:11.005795+00:00"
+    },
+    "invoice": {
+      "notes": "",
+      "discountLabel": "",
+      "discountAmount": 0,
+      "extraCharges": [],
+      "sentAt": null,
+      "sentTo": null
     }
   },
   {
@@ -521,6 +561,14 @@
       "currency": "INR",
       "status": "SUCCESS",
       "paidAt": "2026-08-03T23:50:58.068902+00:00"
+    },
+    "invoice": {
+      "notes": "",
+      "discountLabel": "",
+      "discountAmount": 0,
+      "extraCharges": [],
+      "sentAt": null,
+      "sentTo": null
     }
   },
   {
@@ -606,6 +654,14 @@
       "currency": "INR",
       "status": "SUCCESS",
       "paidAt": "2026-08-04T00:02:59.303501+00:00"
+    },
+    "invoice": {
+      "notes": "",
+      "discountLabel": "",
+      "discountAmount": 0,
+      "extraCharges": [],
+      "sentAt": null,
+      "sentTo": null
     }
   },
   {
@@ -705,6 +761,14 @@
       "currency": "INR",
       "status": "SUCCESS",
       "paidAt": "2026-08-04T00:06:27.576679+00:00"
+    },
+    "invoice": {
+      "notes": "",
+      "discountLabel": "",
+      "discountAmount": 0,
+      "extraCharges": [],
+      "sentAt": null,
+      "sentTo": null
     }
   },
   {
@@ -790,6 +854,14 @@
       "currency": "INR",
       "status": "SUCCESS",
       "paidAt": "2026-08-08T11:42:31.802414+00:00"
+    },
+    "invoice": {
+      "notes": "",
+      "discountLabel": "",
+      "discountAmount": 0,
+      "extraCharges": [],
+      "sentAt": null,
+      "sentTo": null
     }
   }
 ]
