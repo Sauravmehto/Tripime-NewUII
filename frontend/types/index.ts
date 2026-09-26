@@ -97,6 +97,22 @@ export interface BookingPassenger extends PassengerForm {
   seatNumber?: string;
 }
 
+export interface InvoiceExtraCharge {
+  label: string;
+  amount: number;
+}
+
+export interface InvoiceDetails {
+  notes: string;
+  discountLabel: string;
+  discountAmount: number;
+  extraCharges: InvoiceExtraCharge[];
+  sentAt?: string | null;
+  sentTo?: string | null;
+}
+
+export type InvoiceUpdateInput = Omit<InvoiceDetails, "sentAt" | "sentTo">;
+
 export interface Booking {
   bookingId: string;
   pnr: string;
@@ -112,6 +128,7 @@ export interface Booking {
   seatCharges: number;
   totalAmount: number;
   payment: PaymentMeta;
+  invoice: InvoiceDetails;
 }
 
 export interface BookingCreatePayload {
