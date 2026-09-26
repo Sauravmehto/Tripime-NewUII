@@ -278,46 +278,46 @@ export const MAP_DESTINATIONS: MapDestination[] = [
     flightHref: "/flights?origin=DEL&destination=BOM&date=2026-08-20&passengers=1",
   },
   {
-    id: "dubai",
-    name: "Dubai",
-    country: "UAE",
-    x: 62,
-    y: 46,
-    blurb: "Desert luxury, skyline views, and family adventures.",
-    priceFrom: "₹45,999",
+    id: "bali",
+    name: "Bali",
+    country: "Indonesia",
+    x: 60,
+    y: 54,
+    blurb: "Rice terraces, temples, and private villa escapes.",
+    priceFrom: "₹52,999",
     image:
-      "https://images.pexels.com/photos/325193/pexels-photo-325193.jpeg?auto=compress&cs=tinysrgb&w=800",
-    flightHref: "/flights?origin=DEL&destination=DXB&date=2026-08-20&passengers=1",
+      "https://images.pexels.com/photos/2166553/pexels-photo-2166553.jpeg?auto=compress&cs=tinysrgb&w=800",
+    flightHref: "/flights?origin=DEL&destination=DPS&date=2026-08-20&passengers=1",
   },
   {
-    id: "istanbul",
-    name: "Istanbul",
-    country: "Turkey",
-    x: 48,
-    y: 32,
-    blurb: "Where continents meet — culture, bazaars, and Bosphorus.",
-    priceFrom: "₹68,999",
+    id: "thailand",
+    name: "Thailand",
+    country: "Thailand",
+    x: 46,
+    y: 40,
+    blurb: "Island beaches, street food, and buzzing night markets.",
+    priceFrom: "₹42,999",
     image:
-      "https://images.pexels.com/photos/161815/pexels-photo-161815.jpeg?auto=compress&cs=tinysrgb&w=800",
-    flightHref: "/flights?origin=DEL&destination=IST&date=2026-08-20&passengers=1",
+      "https://images.pexels.com/photos/3601425/pexels-photo-3601425.jpeg?auto=compress&cs=tinysrgb&w=800",
+    flightHref: "/flights?origin=DEL&destination=BKK&date=2026-08-20&passengers=1",
   },
   {
-    id: "paris",
-    name: "Paris",
-    country: "France",
-    x: 32,
-    y: 24,
-    blurb: "Romantic city breaks and European extensions.",
-    priceFrom: "₹89,999",
+    id: "vietnam",
+    name: "Vietnam",
+    country: "Southeast Asia",
+    x: 30,
+    y: 28,
+    blurb: "Emerald bays, ancient towns, and vibrant street life.",
+    priceFrom: "₹39,999",
     image:
-      "https://images.pexels.com/photos/338515/pexels-photo-338515.jpeg?auto=compress&cs=tinysrgb&w=800",
-    flightHref: "/flights?origin=DEL&destination=CDG&date=2026-08-20&passengers=1",
+      "https://images.pexels.com/photos/2387866/pexels-photo-2387866.jpeg?auto=compress&cs=tinysrgb&w=800",
+    flightHref: "/flights?origin=DEL&destination=SGN&date=2026-08-20&passengers=1",
   },
 ];
 
-/** Curved Delhi → Dubai → Istanbul → Paris arc */
+/** Curved Delhi → Bali → Thailand → Vietnam arc */
 export const MAP_ROUTE =
-  "M 78 42 C 72 52, 68 52, 62 46 S 54 38, 48 32 S 38 22, 32 24";
+  "M 78 42 C 72 54, 66 56, 60 54 S 50 46, 46 40 S 36 32, 30 28";
 
 export const VIBE_OPTIONS = [
   "Romantic",

@@ -8,6 +8,7 @@ import type {
   EnquirySource,
   EnquiryStats,
   EnquiryStatus,
+  InvoiceUpdateInput,
   PackageCatalog,
   PackageInput,
   PackageTheme,
@@ -80,6 +81,35 @@ export async function confirmAdminBooking(bookingId: string): Promise<Booking> {
     {},
     { headers: authHeaders() },
   );
+  return data;
+}
+
+export async function updateAdminInvoice(
+  bookingId: string,
+  payload: InvoiceUpdateInput,
+): Promise<Booking> {
+  const { data } = await apiClient.put<Booking>(
+    `/api/admin/bookings/${bookingId}/invoice`,
+    payload,
+    { headers: authHeaders() },
+  );
+  return data;
+}
+
+export async function sendAdminInvoice(bookingId: string): Promise<Booking> {
+  const { data } = await apiClient.post<Booking>(
+    `/api/admin/bookings/${bookingId}/invoice/send`,
+    {},
+    { headers: authHeaders() },
+  );
+  return data;
+}
+
+export async function downloadAdminInvoice(bookingId: string): Promise<Blob> {
+  const { data } = await apiClient.get<Blob>(`/api/admin/bookings/${bookingId}/invoice`, {
+    headers: authHeaders(),
+    responseType: "blob",
+  });
   return data;
 }
 
