@@ -20,7 +20,7 @@ export function PackagesFeatured({ packages, themeNames = {} }: PackagesFeatured
   if (list.length === 0) return null;
 
   return (
-    <section className="border-b border-neutral-200 bg-white py-7 sm:py-9">
+    <section className="border-b border-neutral-200 py-2 sm:py-4">
       <Reveal>
         <SectionHeading
           eyebrow="Handpicked"

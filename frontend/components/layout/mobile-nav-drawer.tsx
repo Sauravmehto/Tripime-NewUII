@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, type ComponentType } from "react";
+import { createPortal } from "react-dom";
 import { Phone, X, type LucideProps } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { telLink } from "@/lib/contact";
@@ -59,8 +60,10 @@ export function MobileNavDrawer({ open, onClose, items, isActive }: MobileNavDra
 
   if (!open) return null;
 
-  return (
-    <div className="fixed inset-0 z-50 lg:hidden" aria-label="Mobile navigation">
+  // Portalled to <body>: the sticky header gains a backdrop-filter once the
+  // page scrolls, which would otherwise trap this fixed overlay inside it.
+  return createPortal(
+    <div className="fixed inset-0 z-[100] lg:hidden" aria-label="Mobile navigation">
       <button
         type="button"
         className="absolute inset-0 animate-overlay-in bg-ink/50"
@@ -124,6 +127,7 @@ export function MobileNavDrawer({ open, onClose, items, isActive }: MobileNavDra
           </a>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

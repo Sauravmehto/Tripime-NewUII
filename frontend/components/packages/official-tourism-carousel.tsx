@@ -414,7 +414,7 @@ function CoverflowCarousel({
           onKeyDown={handleKeyDown}
           onMouseEnter={handleMouseEnter}
           onMouseLeave={handleMouseLeave}
-          className="relative overflow-hidden rounded-2xl px-1 pb-5 pt-3 outline-none focus-visible:ring-2 focus-visible:ring-primary-400 focus-visible:ring-offset-2 sm:px-3 sm:pb-6 sm:pt-4"
+          className="relative isolate overflow-hidden rounded-2xl px-1 pb-5 pt-3 outline-none focus-visible:ring-2 focus-visible:ring-primary-400 focus-visible:ring-offset-2 sm:px-3 sm:pb-6 sm:pt-4"
         >
           <div
             ref={viewportRef}

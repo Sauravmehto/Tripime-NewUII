@@ -208,7 +208,7 @@ export function PackagesSpecialOffers({
   return (
     <section
       aria-label="Special offers"
-      className="border-b border-neutral-200 bg-white py-7 sm:py-9"
+      className="border-b border-neutral-200 py-2 sm:py-4"
     >
       <Container>
         <div className="flex items-center justify-between gap-3">
