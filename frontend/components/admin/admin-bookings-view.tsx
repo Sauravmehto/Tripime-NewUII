@@ -1,15 +1,30 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { confirmAdminBooking, listAdminBookings } from "@/lib/api/admin";
+import { Plus, Trash2 } from "lucide-react";
+import {
+  confirmAdminBooking,
+  downloadAdminInvoice,
+  listAdminBookings,
+  sendAdminInvoice,
+  updateAdminInvoice,
+} from "@/lib/api/admin";
 import { getErrorMessage } from "@/lib/api/client";
 import { formatDateTime, formatINR } from "@/lib/format";
 import { useAdminAuthError } from "./use-admin-auth-error";
 import { AdminPageHeader } from "./admin-page-header";
 import { Badge, Card, Skeleton } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input, Textarea } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
-import type { Booking } from "@/types";
+import type { Booking, InvoiceUpdateInput } from "@/types";
+
+const EMPTY_INVOICE_FORM: InvoiceUpdateInput = {
+  notes: "",
+  discountLabel: "",
+  discountAmount: 0,
+  extraCharges: [],
+};
 
 export function AdminBookingsView() {
   const handleAuthError = useAdminAuthError();
@@ -17,6 +32,12 @@ export function AdminBookingsView() {
   const [selected, setSelected] = useState<Booking | null>(null);
   const [confirmTarget, setConfirmTarget] = useState<Booking | null>(null);
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
+  const [invoiceTarget, setInvoiceTarget] = useState<Booking | null>(null);
+  const [invoiceForm, setInvoiceForm] = useState<InvoiceUpdateInput>(EMPTY_INVOICE_FORM);
+  const [savingInvoice, setSavingInvoice] = useState(false);
+  const [sendingInvoice, setSendingInvoice] = useState(false);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [invoiceError, setInvoiceError] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(true);
@@ -42,6 +63,12 @@ export function AdminBookingsView() {
     };
   }, [handleAuthError]);
 
+  function applyBookingUpdate(updated: Booking) {
+    setBookings((prev) => prev.map((b) => (b.bookingId === updated.bookingId ? updated : b)));
+    if (selected?.bookingId === updated.bookingId) setSelected(updated);
+    if (invoiceTarget?.bookingId === updated.bookingId) setInvoiceTarget(updated);
+  }
+
   async function handleConfirm() {
     if (!confirmTarget) return;
     const booking = confirmTarget;
@@ -50,10 +77,7 @@ export function AdminBookingsView() {
     setSuccess("");
     try {
       const updated = await confirmAdminBooking(booking.bookingId);
-      setBookings((prev) =>
-        prev.map((b) => (b.bookingId === updated.bookingId ? updated : b)),
-      );
-      if (selected?.bookingId === updated.bookingId) setSelected(updated);
+      applyBookingUpdate(updated);
       setSuccess(`Ticket confirmed · email queued for ${updated.contact.email}`);
     } catch (err) {
       if (handleAuthError(err)) return;
@@ -62,6 +86,103 @@ export function AdminBookingsView() {
       setConfirmingId(null);
     }
   }
+
+  function openInvoiceEditor(booking: Booking) {
+    setInvoiceTarget(booking);
+    setInvoiceForm({
+      notes: booking.invoice.notes,
+      discountLabel: booking.invoice.discountLabel,
+      discountAmount: booking.invoice.discountAmount,
+      extraCharges: booking.invoice.extraCharges,
+    });
+    setInvoiceError("");
+  }
+
+  function addExtraCharge() {
+    setInvoiceForm((prev) => ({
+      ...prev,
+      extraCharges: [...prev.extraCharges, { label: "", amount: 0 }],
+    }));
+  }
+
+  function updateExtraCharge(index: number, patch: Partial<{ label: string; amount: number }>) {
+    setInvoiceForm((prev) => ({
+      ...prev,
+      extraCharges: prev.extraCharges.map((charge, i) =>
+        i === index ? { ...charge, ...patch } : charge,
+      ),
+    }));
+  }
+
+  function removeExtraCharge(index: number) {
+    setInvoiceForm((prev) => ({
+      ...prev,
+      extraCharges: prev.extraCharges.filter((_, i) => i !== index),
+    }));
+  }
+
+  async function handleSaveInvoice() {
+    if (!invoiceTarget) return;
+    setSavingInvoice(true);
+    setInvoiceError("");
+    try {
+      const updated = await updateAdminInvoice(invoiceTarget.bookingId, invoiceForm);
+      applyBookingUpdate(updated);
+      return updated;
+    } catch (err) {
+      if (handleAuthError(err)) return null;
+      setInvoiceError(getErrorMessage(err));
+      return null;
+    } finally {
+      setSavingInvoice(false);
+    }
+  }
+
+  async function handleSendInvoice() {
+    if (!invoiceTarget) return;
+    setSendingInvoice(true);
+    setInvoiceError("");
+    try {
+      const saved = await updateAdminInvoice(invoiceTarget.bookingId, invoiceForm);
+      applyBookingUpdate(saved);
+      const sent = await sendAdminInvoice(invoiceTarget.bookingId);
+      applyBookingUpdate(sent);
+      setInvoiceTarget(null);
+      setSuccess(`Invoice emailed to ${sent.contact.email}`);
+    } catch (err) {
+      if (handleAuthError(err)) return;
+      setInvoiceError(getErrorMessage(err));
+    } finally {
+      setSendingInvoice(false);
+    }
+  }
+
+  async function handleDownloadInvoice(booking: Booking) {
+    setDownloadingId(booking.bookingId);
+    setError("");
+    try {
+      const blob = await downloadAdminInvoice(booking.bookingId);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `Invoice-${booking.bookingId}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      if (handleAuthError(err)) return;
+      setError(getErrorMessage(err));
+    } finally {
+      setDownloadingId(null);
+    }
+  }
+
+  const invoiceTotal = invoiceTarget
+    ? invoiceTarget.totalAmount -
+      invoiceForm.discountAmount +
+      invoiceForm.extraCharges.reduce((sum, charge) => sum + (charge.amount || 0), 0)
+    : 0;
 
   if (loading) {
     return (
@@ -137,6 +258,9 @@ export function AdminBookingsView() {
                         <Button size="sm" variant="ghost" onClick={() => setSelected(b)}>
                           Details
                         </Button>
+                        <Button size="sm" variant="ghost" onClick={() => openInvoiceEditor(b)}>
+                          Invoice
+                        </Button>
                         {b.status === "PROCESSING" && (
                           <Button
                             size="sm"
@@ -195,15 +319,38 @@ export function AdminBookingsView() {
                   ))}
                 </ul>
               </div>
-              {selected.status === "PROCESSING" && (
-                <Button
-                  className="w-full"
-                  onClick={() => setConfirmTarget(selected)}
-                  disabled={confirmingId === selected.bookingId}
-                >
-                  Confirm ticket
-                </Button>
+              {selected.invoice.sentAt && (
+                <p className="text-[11px] text-ink-subtle">
+                  Invoice last emailed {formatDateTime(selected.invoice.sentAt)} to{" "}
+                  {selected.invoice.sentTo}
+                </p>
               )}
+              <div className="flex flex-wrap gap-2">
+                {selected.status === "PROCESSING" && (
+                  <Button
+                    className="flex-1"
+                    onClick={() => setConfirmTarget(selected)}
+                    disabled={confirmingId === selected.bookingId}
+                  >
+                    Confirm ticket
+                  </Button>
+                )}
+                <Button
+                  className="flex-1"
+                  variant="outline"
+                  onClick={() => openInvoiceEditor(selected)}
+                >
+                  Edit invoice
+                </Button>
+                <Button
+                  className="flex-1"
+                  variant="outline"
+                  onClick={() => void handleDownloadInvoice(selected)}
+                  disabled={downloadingId === selected.bookingId}
+                >
+                  {downloadingId === selected.bookingId ? "…" : "Download PDF"}
+                </Button>
+              </div>
             </div>
           ) : (
             <p className="text-sm text-ink-muted">Select a booking to view details.</p>
@@ -229,6 +376,135 @@ export function AdminBookingsView() {
                 Cancel
               </Button>
               <Button onClick={() => void handleConfirm()}>Confirm ticket</Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      <Modal
+        open={Boolean(invoiceTarget)}
+        onClose={() => setInvoiceTarget(null)}
+        title="Edit invoice"
+        className="sm:max-w-lg"
+      >
+        {invoiceTarget && (
+          <div className="space-y-4">
+            <p className="text-sm text-ink-muted">
+              {invoiceTarget.bookingId} · PNR {invoiceTarget.pnr} · fare{" "}
+              {formatINR(invoiceTarget.totalAmount)}
+            </p>
+
+            {invoiceError && (
+              <p role="alert" className="rounded-lg bg-danger-50 px-3 py-2 text-sm text-danger-700">
+                {invoiceError}
+              </p>
+            )}
+
+            <div>
+              <p className="mb-1.5 text-[11px] font-bold uppercase tracking-wide text-ink-subtle">
+                Extra charges
+              </p>
+              <div className="space-y-2">
+                {invoiceForm.extraCharges.map((charge, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <Input
+                      placeholder="Label (e.g. Service fee)"
+                      value={charge.label}
+                      onChange={(e) => updateExtraCharge(i, { label: e.target.value })}
+                      className="flex-1"
+                    />
+                    <Input
+                      type="number"
+                      min={0}
+                      placeholder="Amount"
+                      value={charge.amount || ""}
+                      onChange={(e) =>
+                        updateExtraCharge(i, { amount: Number(e.target.value) || 0 })
+                      }
+                      className="w-28"
+                    />
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      aria-label="Remove charge"
+                      onClick={() => removeExtraCharge(i)}
+                    >
+                      <Trash2 className="size-4 text-danger-600" />
+                    </Button>
+                  </div>
+                ))}
+                <Button type="button" size="sm" variant="outline" onClick={addExtraCharge}>
+                  <Plus className="size-3.5" />
+                  Add charge
+                </Button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="mb-1 block text-[11px] font-bold uppercase tracking-wide text-ink-subtle">
+                  Discount label
+                </label>
+                <Input
+                  placeholder="e.g. Loyalty discount"
+                  value={invoiceForm.discountLabel}
+                  onChange={(e) =>
+                    setInvoiceForm((prev) => ({ ...prev, discountLabel: e.target.value }))
+                  }
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-[11px] font-bold uppercase tracking-wide text-ink-subtle">
+                  Discount amount
+                </label>
+                <Input
+                  type="number"
+                  min={0}
+                  value={invoiceForm.discountAmount || ""}
+                  onChange={(e) =>
+                    setInvoiceForm((prev) => ({
+                      ...prev,
+                      discountAmount: Number(e.target.value) || 0,
+                    }))
+                  }
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="mb-1 block text-[11px] font-bold uppercase tracking-wide text-ink-subtle">
+                Notes (printed on the PDF)
+              </label>
+              <Textarea
+                value={invoiceForm.notes}
+                onChange={(e) => setInvoiceForm((prev) => ({ ...prev, notes: e.target.value }))}
+                placeholder="Optional note for the customer…"
+              />
+            </div>
+
+            <p className="rounded-lg bg-neutral-50 px-3 py-2 text-sm">
+              <span className="text-ink-muted">Adjusted total: </span>
+              <strong className="text-ink">{formatINR(invoiceTotal)}</strong>
+            </p>
+
+            <div className="flex flex-wrap justify-end gap-2">
+              <Button variant="outline" onClick={() => setInvoiceTarget(null)}>
+                Cancel
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() => void handleSaveInvoice()}
+                disabled={savingInvoice || sendingInvoice}
+              >
+                {savingInvoice ? "Saving…" : "Save changes"}
+              </Button>
+              <Button
+                onClick={() => void handleSendInvoice()}
+                disabled={savingInvoice || sendingInvoice}
+              >
+                {sendingInvoice ? "Sending…" : `Send to ${invoiceTarget.contact.email}`}
+              </Button>
             </div>
           </div>
         )}
