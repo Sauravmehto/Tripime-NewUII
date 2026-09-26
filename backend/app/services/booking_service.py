@@ -17,6 +17,8 @@ from app.models.booking import (
     BookingPassenger,
     BookingPayment,
     BookingSeat,
+    InvoiceDetails,
+    InvoiceUpdateRequest,
 )
 from app.providers.base import FlightProvider
 from app.services.flight_service import get_flight_provider
@@ -201,15 +203,42 @@ class BookingService:
 
         now = datetime.now(timezone.utc).isoformat()
         confirmed = booking.model_copy(update={"status": "CONFIRMED", "confirmedAt": now})
+        self._replace(confirmed)
+        return confirmed, True
 
+    def update_invoice(self, booking_id: str, payload: InvoiceUpdateRequest) -> Booking:
+        """Save admin edits (notes, discount, extra charges) onto a booking's
+        invoice. These are layered onto the PDF at generation time — the
+        underlying booking/payment record itself is never altered."""
+        booking = self.get_booking(booking_id)
+        if booking is None:
+            raise HTTPException(status_code=404, detail=f"Booking '{booking_id}' not found.")
+
+        current_sent = booking.invoice.model_dump(include={"sentAt", "sentTo"})
+        invoice = InvoiceDetails(**payload.model_dump(), **current_sent)
+        updated = booking.model_copy(update={"invoice": invoice})
+        self._replace(updated)
+        return updated
+
+    def mark_invoice_sent(self, booking_id: str, sent_to: str) -> Booking:
+        booking = self.get_booking(booking_id)
+        if booking is None:
+            raise HTTPException(status_code=404, detail=f"Booking '{booking_id}' not found.")
+
+        now = datetime.now(timezone.utc).isoformat()
+        invoice = booking.invoice.model_copy(update={"sentAt": now, "sentTo": sent_to})
+        updated = booking.model_copy(update={"invoice": invoice})
+        self._replace(updated)
+        return updated
+
+    def _replace(self, updated: Booking) -> None:
         with self._lock:
             for index, existing in enumerate(self._bookings):
-                if existing.bookingId == booking_id:
-                    self._bookings[index] = confirmed
+                if existing.bookingId == updated.bookingId:
+                    self._bookings[index] = updated
                     self._save()
-                    return confirmed, True
-
-        raise HTTPException(status_code=404, detail=f"Booking '{booking_id}' not found.")
+                    return
+        raise HTTPException(status_code=404, detail=f"Booking '{updated.bookingId}' not found.")
 
 
 _booking_service: BookingService | None = None

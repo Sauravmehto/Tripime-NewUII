@@ -2,11 +2,12 @@ import secrets
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
+from fastapi.responses import Response
 
 from app import config
 from app.models.admin import AdminLoginRequest, AdminLoginResponse, AdminStats
 from app.models.agency_profile import AgencyProfileResponse, AgencyProfileUpdate
-from app.models.booking import Booking
+from app.models.booking import Booking, InvoiceUpdateRequest
 from app.models.enquiry import Enquiry, EnquirySource, EnquiryStats, EnquiryStatusUpdate
 from app.models.package import Package, PackageCatalog, PackageCreate, PackageUpdate
 from app.models.package_theme import PackageTheme, PackageThemeCreate, PackageThemeUpdate
@@ -48,8 +49,9 @@ from app.models.website_cms import (
 from app.services.admin_auth import create_admin_token, require_admin
 from app.services.agency_profile_service import get_agency_profile_service
 from app.services.booking_service import get_booking_service
-from app.services.email_service import send_booking_confirmation_email
+from app.services.email_service import send_booking_confirmation_email, send_invoice_email
 from app.services.enquiry_service import get_enquiry_service
+from app.services.invoice_service import build_invoice_pdf
 from app.services.package_service import get_package_service
 from app.services.package_theme_service import get_package_theme_service
 from app.services.admin_ops_service import get_admin_ops_service
@@ -272,6 +274,46 @@ def confirm_booking(booking_id: str, background_tasks: BackgroundTasks) -> Booki
     if newly_confirmed:
         background_tasks.add_task(send_booking_confirmation_email, booking)
     return booking
+
+
+@router.put(
+    "/bookings/{booking_id}/invoice",
+    response_model=Booking,
+    dependencies=[Depends(require_admin)],
+)
+def admin_update_invoice(booking_id: str, payload: InvoiceUpdateRequest) -> Booking:
+    return get_booking_service().update_invoice(booking_id, payload)
+
+
+@router.get(
+    "/bookings/{booking_id}/invoice",
+    dependencies=[Depends(require_admin)],
+)
+def admin_download_invoice(booking_id: str) -> Response:
+    booking = get_booking_service().get_booking(booking_id)
+    if booking is None:
+        raise HTTPException(status_code=404, detail=f"Booking '{booking_id}' not found.")
+    pdf_bytes = build_invoice_pdf(booking)
+    filename = f"Invoice-{booking.bookingId}.pdf"
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@router.post(
+    "/bookings/{booking_id}/invoice/send",
+    response_model=Booking,
+    dependencies=[Depends(require_admin)],
+)
+def admin_send_invoice(booking_id: str) -> Booking:
+    booking = get_booking_service().get_booking(booking_id)
+    if booking is None:
+        raise HTTPException(status_code=404, detail=f"Booking '{booking_id}' not found.")
+    pdf_bytes = build_invoice_pdf(booking)
+    send_invoice_email(booking, pdf_bytes)
+    return get_booking_service().mark_invoice_sent(booking_id, booking.contact.email)
 
 
 @router.get("/stats", response_model=AdminStats, dependencies=[Depends(require_admin)])

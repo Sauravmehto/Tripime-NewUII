@@ -154,6 +154,44 @@ def build_invoice_pdf(booking: Booking) -> bytes:
         )
     )
     story.append(fare_table)
+
+    invoice = booking.invoice
+    has_adjustments = bool(invoice.extraCharges) or invoice.discountAmount > 0
+    if has_adjustments:
+        story.append(Paragraph("Adjustments", heading))
+        adjustment_rows = [
+            [charge.label, f"INR {charge.amount:,}"] for charge in invoice.extraCharges
+        ]
+        if invoice.discountAmount > 0:
+            adjustment_rows.append(
+                [invoice.discountLabel or "Discount", f"- INR {invoice.discountAmount:,}"]
+            )
+        adjusted_total = (
+            booking.totalAmount
+            - invoice.discountAmount
+            + sum(charge.amount for charge in invoice.extraCharges)
+        )
+        adjustment_rows.append(["Adjusted total", f"INR {adjusted_total:,}"])
+        adjustment_table = Table(adjustment_rows, colWidths=[60 * mm, 105 * mm])
+        adjustment_table.setStyle(
+            TableStyle(
+                [
+                    ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
+                    ("FONTNAME", (0, -1), (-1, -1), "Helvetica-Bold"),
+                    ("FONTSIZE", (0, 0), (-1, -1), 9),
+                    ("BACKGROUND", (0, -1), (-1, -1), colors.HexColor("#e0f2fe")),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+                    ("TOPPADDING", (0, 0), (-1, -1), 5),
+                    ("GRID", (0, 0), (-1, -1), 0.3, colors.HexColor("#cbd5e1")),
+                ]
+            )
+        )
+        story.append(adjustment_table)
+
+    if invoice.notes.strip():
+        story.append(Paragraph("Notes", heading))
+        story.append(Paragraph(invoice.notes, styles["Normal"]))
+
     story.append(Spacer(1, 12))
     story.append(
         Paragraph(
