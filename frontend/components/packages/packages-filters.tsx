@@ -44,7 +44,7 @@ export function PackagesFilters({
   const trimmed = query.trim();
 
   return (
-    <div className="sticky top-14 z-30 border-b border-neutral-200/80">
+    <div className="border-b border-neutral-200/80 bg-canvas py-1.5 sm:sticky sm:top-14 sm:z-30">
       <div className="flex flex-wrap items-center gap-2">
         {PACKAGE_FILTERS.map(({ id, label }) => {
           const active = filter === id;
