@@ -226,6 +226,21 @@ h4 {
   animation: tp-route-draw 1.6s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
+/* Story-style progress bar; set animation-duration inline. */
+@keyframes tp-story-progress {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+.animate-story-progress {
+  transform-origin: left;
+  animation: tp-story-progress 4s linear both;
+}
+
 @keyframes tp-plane-glide {
   0% {
     transform: translate(0, 0);

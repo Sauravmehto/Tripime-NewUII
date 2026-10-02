@@ -4,7 +4,7 @@ import { VisaPageView } from "@/components/visa/visa-page-view";
 export const metadata: Metadata = {
   title: "Visa assistance",
   description:
-    "Online visa applications on Tripime are launching soon. Call or WhatsApp our team for help today.",
+    "Get visa help from a Tripime expert — tourist, business, and transit. Online applications launching soon; enquire by WhatsApp or call today.",
 };
 
 export default function VisaPage() {
