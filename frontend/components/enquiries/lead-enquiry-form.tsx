@@ -11,12 +11,17 @@ export function LeadEnquiryForm({
   title,
   submitLabel = "Send enquiry",
   showTravelFields = false,
+  initialMessage,
+  messageKey,
 }: {
   source: EnquirySource;
   serviceType?: ServiceType;
   title?: string;
   submitLabel?: string;
   showTravelFields?: boolean;
+  initialMessage?: string;
+  /** Remounts fields when destination prefill changes. */
+  messageKey?: string;
 }) {
   const [done, setDone] = useState(false);
   const [name, setName] = useState("");
@@ -37,9 +42,11 @@ export function LeadEnquiryForm({
     <div className="space-y-3">
       {title && <h3 className="text-sm font-bold text-ink">{title}</h3>}
       <EnquiryFormFields
+        key={messageKey ?? "default"}
         extraPayload={{ source, serviceType: serviceType ?? null }}
         showTravelFields={showTravelFields}
         submitLabel={submitLabel}
+        initialMessage={initialMessage}
         onSuccess={(n) => {
           setName(n);
           setDone(true);

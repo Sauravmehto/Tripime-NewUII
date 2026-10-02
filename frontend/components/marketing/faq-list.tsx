@@ -21,6 +21,8 @@ export function FaqList({ items }: { items: FaqItem[] }) {
               onClick={() => setOpenIndex(open ? null : index)}
               className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left text-sm font-semibold text-ink"
               aria-expanded={open}
+              aria-controls={`faq-panel-${index}`}
+              id={`faq-trigger-${index}`}
             >
               {item.question}
               <svg
@@ -29,11 +31,20 @@ export function FaqList({ items }: { items: FaqItem[] }) {
                 fill="none"
                 stroke="currentColor"
                 strokeWidth="2"
+                aria-hidden
               >
                 <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </button>
-            {open && <p className="px-5 pb-4 text-sm text-ink-muted">{item.answer}</p>}
+            <div
+              id={`faq-panel-${index}`}
+              role="region"
+              aria-labelledby={`faq-trigger-${index}`}
+              hidden={!open}
+              className="px-5 pb-4 text-sm text-ink-muted"
+            >
+              {item.answer}
+            </div>
           </div>
         );
       })}

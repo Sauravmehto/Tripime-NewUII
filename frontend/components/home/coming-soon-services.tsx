@@ -1,44 +1,43 @@
 import Link from "next/link";
-import { Clock } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { Section } from "@/components/layout/section";
 import { Reveal } from "@/components/motion/reveal";
-import { SectionHeading } from "./section-heading";
-import { Badge } from "@/components/ui/card";
 import { COMING_SOON_SERVICES } from "@/lib/home/home-data";
 
 export function ComingSoonServices() {
   return (
-    <Section>
+    <Section spacing="sm" className="bg-primary-900 text-white">
       <Reveal>
-        <SectionHeading
-          eyebrow="Expanding soon"
-          title="More ways to travel"
-          subtitle="Hotels, buses, visa, and experiences — clearly labeled until backend support is live."
-        />
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+          <div className="max-w-xl">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-white/55">
+              What&apos;s next
+            </p>
+            <h2 className="mt-2 text-xl font-bold tracking-tight sm:text-2xl">
+              Plan your next escape — more ways to travel coming soon
+            </h2>
+            <p className="mt-2 text-sm leading-relaxed text-white/70">
+              Hotels, buses, visa, and experiences are on the roadmap. Flights and holiday packages
+              are live today.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-x-4 gap-y-2">
+            {COMING_SOON_SERVICES.map((service) => (
+              <Link
+                key={service.id}
+                href={service.href}
+                className="inline-flex items-center gap-1.5 text-sm font-semibold text-white/90 transition hover:text-white"
+              >
+                {service.title}
+                <span className="text-[10px] font-medium uppercase tracking-wide text-white/45">
+                  {service.eta}
+                </span>
+                <ArrowRight className="size-3.5 text-white/50" aria-hidden />
+              </Link>
+            ))}
+          </div>
+        </div>
       </Reveal>
-
-      <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {COMING_SOON_SERVICES.map((service, i) => (
-          <Reveal key={service.id} delayMs={i * 60}>
-            <Link
-              href={service.href}
-              className="group block h-full rounded-xl border border-dashed border-neutral-300 bg-white p-4 transition hover:border-primary-300 hover:shadow-soft"
-            >
-              <div className="flex items-center justify-between gap-2">
-                <h3 className="text-sm font-bold text-ink">{service.title}</h3>
-                <Badge tone="neutral">{service.eta}</Badge>
-              </div>
-              <p className="mt-2 text-xs leading-relaxed text-ink-muted">
-                {service.description}
-              </p>
-              <span className="mt-3 inline-flex items-center gap-1 text-[11px] font-semibold text-ink-subtle">
-                <Clock className="size-3" aria-hidden />
-                Not bookable yet
-              </span>
-            </Link>
-          </Reveal>
-        ))}
-      </div>
     </Section>
   );
 }

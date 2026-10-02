@@ -23,7 +23,10 @@ interface EnquiryFormFieldsProps {
   showTravelFields?: boolean;
   submitLabel?: string;
   submitSize?: "md" | "lg";
-  onSuccess: (name: string) => void;
+  /** Prefill the message field (e.g. destination enquire from visa page). Remount via key when this should re-apply. */
+  initialMessage?: string;
+  /** Called after the enquiry is saved, with the submitted details. */
+  onSuccess: (name: string, enquiry: EnquiryPayload) => void;
 }
 
 /**
@@ -36,6 +39,7 @@ export function EnquiryFormFields({
   showTravelFields = true,
   submitLabel = "Send enquiry",
   submitSize = "md",
+  initialMessage = "",
   onSuccess,
 }: EnquiryFormFieldsProps) {
   const [name, setName] = useState("");
@@ -43,7 +47,7 @@ export function EnquiryFormFields({
   const [phone, setPhone] = useState("");
   const [travelMonth, setTravelMonth] = useState("");
   const [travelers, setTravelers] = useState("2");
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useState(initialMessage);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
@@ -56,7 +60,7 @@ export function EnquiryFormFields({
     }
     setSubmitting(true);
     try {
-      await createEnquiry({
+      const enquiry: EnquiryPayload = {
         ...extraPayload,
         name: name.trim(),
         email: email.trim(),
@@ -64,8 +68,9 @@ export function EnquiryFormFields({
         travelMonth: travelMonth || undefined,
         travelers: travelers ? Number(travelers) : undefined,
         message: message.trim() || undefined,
-      });
-      onSuccess(name.trim());
+      };
+      await createEnquiry(enquiry);
+      onSuccess(enquiry.name, enquiry);
     } catch (err) {
       setError(getErrorMessage(err));
     } finally {

@@ -117,7 +117,7 @@ export function PackageDetailView() {
                 <p className="mt-1 text-sm text-ink-muted">
                   Full itinerary, hotel, flights and price — tap an image to view it larger.
                 </p>
-                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                <div className="mt-4 grid gap-3 grid-cols-1">
                   {PACKAGE_BROCHURES[pkg.id].map((item) => (
                     <a
                       key={item.src}

@@ -1,39 +1,72 @@
 "use client";
 
 import { useState } from "react";
-import { CheckCircle2 } from "lucide-react";
+import { CheckCircle2, MessageCircle } from "lucide-react";
 import { EnquiryFormFields } from "@/components/enquiries/enquiry-form-fields";
 import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
-import type { TravelPackage } from "@/types";
+import { whatsappLink } from "@/lib/contact";
+import type { EnquiryPayload, TravelPackage } from "@/types";
 
 interface EnquiryModalProps {
   pkg: TravelPackage;
   onClose: () => void;
 }
 
+/** WhatsApp text for a saved package enquiry, using WhatsApp's *bold* markup. */
+function enquiryMessage(pkg: TravelPackage, enquiry: EnquiryPayload): string {
+  const lines = [
+    "Hi Tripime, I just sent an enquiry on your website.",
+    "",
+    `*Package:* ${pkg.title} (${pkg.destination})`,
+    `*Name:* ${enquiry.name}`,
+    `*Phone:* ${enquiry.phone}`,
+    `*Email:* ${enquiry.email}`,
+  ];
+  if (enquiry.travelMonth) lines.push(`*Travel month:* ${enquiry.travelMonth}`);
+  if (enquiry.travelers) lines.push(`*Travellers:* ${enquiry.travelers}`);
+  if (enquiry.message) lines.push(`*Message:* ${enquiry.message}`);
+  lines.push("", `${window.location.origin}/packages/${pkg.id}`);
+  return lines.join("\n");
+}
+
 export function EnquiryModal({ pkg, onClose }: EnquiryModalProps) {
-  const [done, setDone] = useState(false);
-  const [name, setName] = useState("");
+  const [enquiry, setEnquiry] = useState<EnquiryPayload | null>(null);
+
+  // Hand the enquiry to the Tripime team on WhatsApp, then close. Opened from
+  // the click itself so pop-up blockers allow it; WhatsApp still asks the
+  // visitor to press send.
+  function handleDone() {
+    if (enquiry) {
+      window.open(whatsappLink(enquiryMessage(pkg, enquiry)), "_blank", "noopener,noreferrer");
+    }
+    onClose();
+  }
 
   return (
     <Modal
       open
       onClose={onClose}
-      title={done ? "Enquiry sent!" : "Enquire about this package"}
+      title={enquiry ? "Enquiry sent!" : "Enquire about this package"}
       className="sm:max-w-md"
     >
-      {done ? (
+      {enquiry ? (
         <div className="flex flex-col items-center py-6 text-center">
           <CheckCircle2 className="size-12 text-success-500" aria-hidden />
-          <p className="mt-4 font-semibold text-neutral-900">Thanks, {name.split(" ")[0]}!</p>
+          <p className="mt-4 font-semibold text-neutral-900">
+            Thanks, {enquiry.name.split(" ")[0]}!
+          </p>
           <p className="mt-1.5 text-sm text-neutral-600">
             Our travel expert will call or WhatsApp you shortly to plan your trip to{" "}
             {pkg.destination}.
           </p>
-          <Button className="mt-6 w-full" onClick={onClose}>
+          <Button className="mt-6 w-full" onClick={handleDone}>
+            <MessageCircle className="size-4" aria-hidden />
             Done
           </Button>
+          <p className="mt-2 text-[11px] text-neutral-500">
+            Opens WhatsApp with your enquiry so our team can reply faster.
+          </p>
         </div>
       ) : (
         <>
@@ -42,10 +75,7 @@ export function EnquiryModal({ pkg, onClose }: EnquiryModalProps) {
             extraPayload={{ source: "package", packageId: pkg.id, packageTitle: pkg.title }}
             submitLabel="Send enquiry"
             submitSize="lg"
-            onSuccess={(n) => {
-              setName(n);
-              setDone(true);
-            }}
+            onSuccess={(_, submitted) => setEnquiry(submitted)}
           />
           <p className="mt-3 text-center text-[11px] text-neutral-400">
             We&apos;ll never share your details. Expect a call or WhatsApp within a few hours.

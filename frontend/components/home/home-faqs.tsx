@@ -7,7 +7,7 @@ import { HOME_FAQS } from "@/lib/home/home-data";
 
 export function HomeFaqs() {
   return (
-    <Section containerSize="narrow">
+    <Section spacing="md" containerSize="narrow" className="border-t border-neutral-200 bg-white">
       <Reveal>
         <SectionHeading
           align="center"
@@ -15,7 +15,7 @@ export function HomeFaqs() {
           subtitle="Quick, honest answers — call us if you need more."
         />
       </Reveal>
-      <Reveal className="mt-6" delayMs={80}>
+      <Reveal className="mt-5" delayMs={80}>
         <FaqList items={[...HOME_FAQS]} />
       </Reveal>
       <Reveal className="mt-4" delayMs={120}>

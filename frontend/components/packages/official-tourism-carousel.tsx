@@ -86,7 +86,7 @@ function TourismCardMedia({
   onExploreState: (state: string) => void;
 }) {
   return (
-    <div className="relative h-full w-full overflow-hidden rounded-2xl border border-white/15 bg-primary-950 shadow-elevated">
+    <div className="relative h-full w-full overflow-hidden rounded-2xl border border-white/15 bg-primary-900 shadow-elevated">
       <Image
         src={state.image}
         alt={`${state.state} tourism`}
@@ -148,7 +148,7 @@ export function OfficialTourismCarousel({ states, onExploreState }: OfficialTour
             role="region"
             aria-roledescription="carousel"
             aria-label={`Official tourism, slide ${counter}`}
-            className="relative mx-auto aspect-[1935/812] w-full max-w-[880px] rounded-2xl border border-neutral-200 bg-primary-950 p-0"
+            className="relative mx-auto aspect-[1935/812] w-full max-w-[880px] rounded-2xl border border-neutral-200 bg-primary-900 p-0"
           >
             {active && (
               <div aria-live="polite" className="h-full">

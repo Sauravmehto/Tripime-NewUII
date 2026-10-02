@@ -1,132 +1,103 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { ArrowRight, MapPin, Plane } from "lucide-react";
+import {
+  ArrowRight,
+  ChevronLeft,
+  ChevronRight,
+  Hand,
+  MapPin,
+  MessageCircle,
+  Plane,
+} from "lucide-react";
 import { Container } from "@/components/layout/container";
 import { Reveal } from "@/components/motion/reveal";
 import { SectionHeading } from "./section-heading";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
-import { MAP_DESTINATIONS, MAP_ROUTE } from "@/lib/home/home-data";
+import { whatsappLink } from "@/lib/contact";
+import { MAP_DESTINATIONS } from "@/lib/home/home-data";
 
 const AUTO_MS = 4200;
-const PLANE_MS = 28000;
-const BALI_T = 0.372234;
-const THAILAND_T = 0.685988;
-
-type PlaneKeyframe = { t: number; pos: number; spin: number; city: string };
+const DRAG_STEP_PX = 60;
+const CLICK_SLOP_PX = 6;
 
 /**
- * Round trip keyed to path length: Delhi → Vietnam (180°), Vietnam → Delhi (180°).
- * Holds keep pos/spin still; moves and turns use ease-in-out.
+ * Fan layout per step away from the active card, matching the original
+ * carousel's 10-item spacing: cards swing out around their bottom-left corner.
  */
-const PLANE_KEYS: PlaneKeyframe[] = [
-  { t: 0, pos: 0, spin: 0, city: "delhi" },
-  { t: 0.05, pos: 0, spin: 0, city: "delhi" },
-  { t: 0.15, pos: BALI_T, spin: 0, city: "bali" },
-  { t: 0.19, pos: BALI_T, spin: 0, city: "bali" },
-  { t: 0.29, pos: THAILAND_T, spin: 0, city: "thailand" },
-  { t: 0.33, pos: THAILAND_T, spin: 0, city: "thailand" },
-  { t: 0.43, pos: 1, spin: 0, city: "vietnam" },
-  { t: 0.52, pos: 1, spin: 180, city: "vietnam" },
-  { t: 0.62, pos: THAILAND_T, spin: 180, city: "thailand" },
-  { t: 0.66, pos: THAILAND_T, spin: 180, city: "thailand" },
-  { t: 0.76, pos: BALI_T, spin: 180, city: "bali" },
-  { t: 0.8, pos: BALI_T, spin: 180, city: "bali" },
-  { t: 0.9, pos: 0, spin: 180, city: "delhi" },
-  { t: 1, pos: 0, spin: 360, city: "delhi" },
-];
-
-function easeInOut(t: number): number {
-  return t < 0.5 ? 2 * t * t : 1 - (2 * (1 - t)) ** 2 / 2;
-}
-
-function lerp(a: number, b: number, t: number): number {
-  return a + (b - a) * t;
-}
-
-function samplePlane(progress: number): PlaneKeyframe {
-  const p = ((progress % 1) + 1) % 1;
-  let i = 0;
-  while (i < PLANE_KEYS.length - 2 && p > PLANE_KEYS[i + 1]!.t) i += 1;
-  const a = PLANE_KEYS[i]!;
-  const b = PLANE_KEYS[i + 1]!;
-  const span = b.t - a.t;
-  const u = span <= 0 ? 1 : Math.min(1, Math.max(0, (p - a.t) / span));
-  const posEased = a.pos === b.pos ? a.pos : lerp(a.pos, b.pos, easeInOut(u));
-  const spinEased = a.spin === b.spin ? a.spin : lerp(a.spin, b.spin, easeInOut(u));
-  return { t: p, pos: posEased, spin: spinEased, city: a.city };
+function fanStyle(step: number) {
+  return {
+    transform: `translate(${step * 80}%, ${step * 20}%) rotate(${step * 12}deg)`,
+    opacity: Math.max(0, 1 - Math.abs(step) * 0.3),
+  };
 }
 
 export function TravelMap() {
-  const reduceMotion = useReducedMotion();
   const [activeId, setActiveId] = useState(MAP_DESTINATIONS[0]?.id ?? "delhi");
   const [paused, setPaused] = useState(false);
-  const svgRef = useRef<SVGSVGElement>(null);
-  const routePathRef = useRef<SVGPathElement>(null);
-  const planeRef = useRef<SVGGElement>(null);
-  const planeProgressRef = useRef(0);
+  const drag = useRef<{ x: number; acc: number; moved: number } | null>(null);
   const active =
     MAP_DESTINATIONS.find((d) => d.id === activeId) ?? MAP_DESTINATIONS[0];
-  const activeIndex = MAP_DESTINATIONS.findIndex((d) => d.id === activeId);
+  const activeIndex = Math.max(0, MAP_DESTINATIONS.findIndex((d) => d.id === activeId));
+  const count = MAP_DESTINATIONS.length;
+  const reduceMotion = useReducedMotion();
 
+  const goTo = (i: number) =>
+    setActiveId(MAP_DESTINATIONS[Math.max(0, Math.min(count - 1, i))]!.id);
+
+  // Step through the stops; depending on activeIndex restarts the timer after
+  // any manual change. Paused while the pointer is over the section.
   useEffect(() => {
-    const svg = svgRef.current;
-    if (!svg) return;
-    if (paused) svg.pauseAnimations();
-    else svg.unpauseAnimations();
-  }, [paused]);
+    if (paused || count < 2) return;
+    const id = window.setTimeout(() => {
+      setActiveId(MAP_DESTINATIONS[(activeIndex + 1) % count]!.id);
+    }, AUTO_MS);
+    return () => window.clearTimeout(id);
+  }, [activeIndex, count, paused]);
 
-  useEffect(() => {
-    if (MAP_DESTINATIONS.length < 2) return;
+  function onPointerDown(e: PointerEvent<HTMLDivElement>) {
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    drag.current = { x: e.clientX, acc: 0, moved: 0 };
+  }
 
-    if (reduceMotion) {
-      if (paused) return;
-      const id = window.setInterval(() => {
-        setActiveId((prev) => {
-          const i = MAP_DESTINATIONS.findIndex((d) => d.id === prev);
-          const next = (i + 1) % MAP_DESTINATIONS.length;
-          return MAP_DESTINATIONS[next]!.id;
-        });
-      }, AUTO_MS);
-      return () => window.clearInterval(id);
+  function onPointerMove(e: PointerEvent<HTMLDivElement>) {
+    const d = drag.current;
+    if (!d) return;
+    const dx = e.clientX - d.x;
+    d.x = e.clientX;
+    d.acc += dx;
+    d.moved += Math.abs(dx);
+    if (d.moved > CLICK_SLOP_PX) e.currentTarget.setPointerCapture(e.pointerId);
+    // Dragging right brings earlier stops forward, as in the original.
+    if (d.acc <= -DRAG_STEP_PX) {
+      d.acc = 0;
+      goTo(activeIndex + 1);
+    } else if (d.acc >= DRAG_STEP_PX) {
+      d.acc = 0;
+      goTo(activeIndex - 1);
     }
+  }
 
-    if (paused) return;
+  function onPointerUp() {
+    // Keep the moved distance until the card's click handler has seen it.
+    window.setTimeout(() => (drag.current = null), 0);
+  }
 
-    const origin = performance.now() - planeProgressRef.current * PLANE_MS;
-    let raf = 0;
-    const tick = (now: number) => {
-      const progress = ((now - origin) % PLANE_MS) / PLANE_MS;
-      planeProgressRef.current = progress;
-      const sample = samplePlane(progress);
-      setActiveId((prev) => (prev === sample.city ? prev : sample.city));
+  function onKeyDown(e: KeyboardEvent<HTMLDivElement>) {
+    if (e.key === "ArrowRight") {
+      e.preventDefault();
+      goTo(activeIndex + 1);
+    } else if (e.key === "ArrowLeft") {
+      e.preventDefault();
+      goTo(activeIndex - 1);
+    }
+  }
 
-      const path = routePathRef.current;
-      const plane = planeRef.current;
-      if (path && plane) {
-        const total = path.getTotalLength();
-        const along = sample.pos * total;
-        const point = path.getPointAtLength(along);
-        const delta = 0.45;
-        const a = path.getPointAtLength(Math.max(0, along - delta));
-        const b = path.getPointAtLength(Math.min(total, along + delta));
-        const heading =
-          (Math.atan2(b.y - a.y, b.x - a.x) * 180) / Math.PI + sample.spin;
-        plane.setAttribute(
-          "transform",
-          `translate(${point.x} ${point.y}) rotate(${heading})`,
-        );
-      }
-
-      raf = window.requestAnimationFrame(tick);
-    };
-    raf = window.requestAnimationFrame(tick);
-    return () => window.cancelAnimationFrame(raf);
-  }, [reduceMotion, paused]);
+  const wasDrag = () => (drag.current?.moved ?? 0) > CLICK_SLOP_PX;
 
   return (
     <section
@@ -197,182 +168,117 @@ export function TravelMap() {
 
         <Reveal className="mt-6" delayMs={80}>
           <div className="grid gap-4 lg:grid-cols-[1.25fr_0.85fr] lg:items-stretch">
-            {/* SVG route stage */}
+            {/* Fan carousel stage */}
             <div className="relative overflow-hidden rounded-2xl border border-white/60 bg-white/70 shadow-medium backdrop-blur-sm">
-              <svg
-                ref={svgRef}
-                viewBox="0 0 100 64"
-                className="mx-auto block w-full"
-                role="img"
-                aria-label="Interactive travel route from Delhi to Vietnam"
+              {/* Decorative rails, after the original layout */}
+              <div
+                aria-hidden
+                className="pointer-events-none absolute inset-y-0 left-8 w-2 border-x border-primary-200/70 sm:left-12"
+              />
+
+              <div
+                role="region"
+                aria-roledescription="carousel"
+                aria-label="Route stops"
+                onKeyDown={onKeyDown}
+                onPointerDown={onPointerDown}
+                onPointerMove={onPointerMove}
+                onPointerUp={onPointerUp}
+                onPointerCancel={onPointerUp}
+                className="relative h-[22rem] cursor-grab touch-pan-y select-none active:cursor-grabbing sm:h-[26rem] lg:h-full lg:min-h-[26rem]"
               >
-                <defs>
-                  <linearGradient id="tpRouteGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                    <stop offset="0%" stopColor="#2563eb" />
-                    <stop offset="55%" stopColor="#3b82f6" />
-                    <stop offset="100%" stopColor="#e14d55" />
-                  </linearGradient>
-                  <linearGradient id="tpLandGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-                    <stop offset="0%" stopColor="#bfdbfe" stopOpacity="0.55" />
-                    <stop offset="100%" stopColor="#e14d55" stopOpacity="0.12" />
-                  </linearGradient>
-                  <filter id="tpGlow" x="-50%" y="-50%" width="200%" height="200%">
-                    <feGaussianBlur stdDeviation="1.2" result="blur" />
-                    <feMerge>
-                      <feMergeNode in="blur" />
-                      <feMergeNode in="SourceGraphic" />
-                    </feMerge>
-                  </filter>
-                </defs>
-
-                {/* Soft landmass silhouettes */}
-                <ellipse cx="72" cy="44" rx="26" ry="14" fill="url(#tpLandGrad)" opacity="0.7" />
-                <ellipse cx="42" cy="30" rx="22" ry="16" fill="#dbeafe" opacity="0.55" />
-                <ellipse cx="28" cy="38" rx="14" ry="10" fill="#fdecec" opacity="0.5" />
-                <path
-                  d="M14 50 Q28 44 40 48 T68 52 T92 46"
-                  fill="none"
-                  stroke="#93c5fd"
-                  strokeWidth="0.35"
-                  opacity="0.45"
-                />
-
-                {/* Glow under route */}
-                <path
-                  d={MAP_ROUTE}
-                  fill="none"
-                  stroke="#2563eb"
-                  strokeWidth="2.4"
-                  opacity="0.12"
-                  strokeLinecap="round"
-                />
-
-                {/* Animated route */}
-                <path
-                  d={MAP_ROUTE}
-                  fill="none"
-                  stroke="url(#tpRouteGrad)"
-                  strokeWidth="1.35"
-                  strokeLinecap="round"
-                  pathLength={100}
-                  className={reduceMotion ? undefined : "animate-route-draw"}
-                  style={
-                    reduceMotion
-                      ? undefined
-                      : { strokeDasharray: 100, strokeDashoffset: 0 }
-                  }
-                  filter="url(#tpGlow)"
-                />
-                <path
-                  id="tpTravelRoute"
-                  ref={routePathRef}
-                  d={MAP_ROUTE}
-                  fill="none"
-                  stroke="url(#tpRouteGrad)"
-                  strokeWidth="1.35"
-                  strokeLinecap="round"
-                  strokeDasharray="2.5 3.5"
-                  className="animate-route-dash opacity-70"
-                />
-
-                {MAP_DESTINATIONS.map((dest) => {
-                  const isActive = activeId === dest.id;
+                {MAP_DESTINATIONS.map((dest, i) => {
+                  const step = i - activeIndex;
+                  const isActive = step === 0;
+                  const fan = fanStyle(step);
                   return (
-                    <g
+                    <Link
                       key={dest.id}
-                      className="cursor-pointer"
-                      onMouseEnter={() => setActiveId(dest.id)}
-                      onFocus={() => setActiveId(dest.id)}
-                      tabIndex={0}
-                      role="button"
-                      aria-label={`${dest.name}, ${dest.country}`}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === " ") {
-                          e.preventDefault();
-                          setActiveId(dest.id);
-                        }
+                      href="/packages"
+                      draggable={false}
+                      tabIndex={Math.abs(step) <= 1 ? 0 : -1}
+                      aria-label={
+                        isActive
+                          ? `${dest.name}, ${dest.country}: packages from ${dest.priceFrom}`
+                          : `Show ${dest.name}`
+                      }
+                      aria-current={isActive}
+                      onClick={(e) => {
+                        if (wasDrag() || !isActive) e.preventDefault();
+                        if (!wasDrag() && !isActive) setActiveId(dest.id);
                       }}
+                      style={{ zIndex: count - Math.abs(step), transform: fan.transform }}
+                      className="absolute left-[42%] top-[52%] -ml-[calc(var(--w)/2)] -mt-[calc(var(--h)/2)] h-(--h) w-(--w) origin-bottom-left overflow-hidden rounded-[10px] bg-ink shadow-[0_10px_40px_rgb(15_23_42/0.35)] transition-transform duration-[800ms] ease-[cubic-bezier(0,0.02,0,1)] [--h:calc(var(--w)*4/3)] [--w:clamp(9.5rem,24vw,13.5rem)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 motion-reduce:transition-none"
                     >
-                      {isActive && (
-                        <circle
-                          cx={dest.x}
-                          cy={dest.y}
-                          r="5.5"
-                          fill="none"
-                          stroke="#e14d55"
-                          strokeWidth="0.55"
-                          opacity="0.55"
-                          className="animate-pulse-soft"
-                        />
-                      )}
-                      <circle
-                        cx={dest.x}
-                        cy={dest.y}
-                        r={isActive ? 3.4 : 2.5}
-                        className={cn(
-                          "transition-all duration-300",
-                          isActive ? "fill-accent" : "fill-primary-600",
-                        )}
-                      />
-                      <circle
-                        cx={dest.x}
-                        cy={dest.y}
-                        r={isActive ? 1.4 : 1}
-                        fill="white"
-                      />
-                      {/* Label chip */}
-                      <rect
-                        x={dest.x - 8}
-                        y={dest.y - 9.5}
-                        width="16"
-                        height="5"
-                        rx="1.5"
-                        className={cn(
-                          "transition-opacity",
-                          isActive ? "fill-white opacity-95" : "fill-white opacity-70",
-                        )}
-                        stroke={isActive ? "#e14d55" : "#93c5fd"}
-                        strokeWidth="0.35"
-                      />
-                      <text
-                        x={dest.x}
-                        y={dest.y - 6}
-                        textAnchor="middle"
-                        className="fill-ink text-[2.6px] font-bold"
+                      <div
+                        className="absolute inset-0 transition-opacity duration-[800ms] ease-[cubic-bezier(0,0.02,0,1)] motion-reduce:transition-none"
+                        style={{ opacity: fan.opacity }}
                       >
-                        {dest.name}
-                      </text>
-                    </g>
+                        <Image
+                          src={dest.image}
+                          alt=""
+                          fill
+                          draggable={false}
+                          sizes="216px"
+                          className="pointer-events-none object-cover"
+                        />
+                        <div className="absolute inset-0 bg-[linear-gradient(to_bottom,rgb(0_0_0/0.35),transparent_30%,transparent_50%,rgb(0_0_0/0.65))]" />
+                        <span className="absolute left-3.5 top-2 text-[clamp(2rem,4.5vw,3.25rem)] font-black leading-none tracking-tight text-white">
+                          {String(i + 1).padStart(2, "0")}
+                        </span>
+                        <div className="absolute inset-x-3.5 bottom-3">
+                          <p className="text-lg font-bold leading-tight text-white sm:text-xl">
+                            {dest.name}
+                          </p>
+                          <p className="mt-0.5 text-[11px] font-medium text-white/80">
+                            from {dest.priceFrom}
+                          </p>
+                        </div>
+                      </div>
+                    </Link>
                   );
                 })}
+              </div>
 
-                {/* Plane: JS-driven along #tpTravelRoute so heading and 180° turns stay in sync */}
-                {!reduceMotion && (
-                  <g ref={planeRef}>
-                    <g transform="scale(0.32) rotate(90) translate(-12 -12)">
-                      <path
-                        d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V18l-2 1.5V21l3.5-1 3.5 1v-1.5L13 18v-4.5L21 16Z"
-                        fill="#1d4ed8"
-                        stroke="#fff"
-                        strokeWidth="1.2"
-                        strokeLinejoin="round"
+              {/* Footer: hint, progress and arrows */}
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex items-end justify-between gap-3 px-4 pb-3">
+                <div className="flex flex-col gap-2">
+                  <p className="hidden items-center gap-1.5 text-[11px] font-medium text-ink-subtle sm:inline-flex">
+                    <Hand className="size-3.5" aria-hidden />
+                    Drag or tap a card
+                  </p>
+                  <div className="flex gap-1.5">
+                    {MAP_DESTINATIONS.map((d, i) => (
+                      <span
+                        key={d.id}
+                        className={cn(
+                          "h-1 rounded-full transition-all duration-300",
+                          i === activeIndex ? "w-5 bg-accent" : "w-1.5 bg-primary-200",
+                        )}
                       />
-                    </g>
-                  </g>
-                )}
-              </svg>
-
-              {/* Progress dots */}
-              <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 gap-1.5">
-                {MAP_DESTINATIONS.map((d, i) => (
-                  <span
-                    key={d.id}
-                    className={cn(
-                      "h-1 rounded-full transition-all duration-300",
-                      i === activeIndex ? "w-5 bg-accent" : "w-1.5 bg-primary-200",
-                    )}
-                  />
-                ))}
+                    ))}
+                  </div>
+                </div>
+                <div className="pointer-events-auto flex gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => goTo(activeIndex - 1)}
+                    disabled={activeIndex === 0}
+                    aria-label="Previous stop"
+                    className="flex size-8 items-center justify-center rounded-full border border-neutral-200 bg-white text-ink-muted shadow-xs transition hover:border-primary-200 hover:text-primary-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 disabled:opacity-40"
+                  >
+                    <ChevronLeft className="size-4" aria-hidden />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => goTo(activeIndex + 1)}
+                    disabled={activeIndex === count - 1}
+                    aria-label="Next stop"
+                    className="flex size-8 items-center justify-center rounded-full border border-neutral-200 bg-white text-ink-muted shadow-xs transition hover:border-primary-200 hover:text-primary-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 disabled:opacity-40"
+                  >
+                    <ChevronRight className="size-4" aria-hidden />
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -413,8 +319,24 @@ export function TravelMap() {
                         </span>
                       </p>
                       <div className="mt-4 flex flex-wrap gap-2">
-                        <Link href="/packages">
+                        <a
+                          href={whatsappLink(
+                            `Hi Tripime, I'm interested in planning a trip to ${active.name}. Please share options.`,
+                          )}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
                           <Button size="sm" variant="accent">
+                            <MessageCircle className="size-3.5" aria-hidden />
+                            Enquire on WhatsApp
+                          </Button>
+                        </a>
+                        <Link href="/packages">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="border-white/30 bg-white/10 text-white hover:bg-white/20 hover:text-white"
+                          >
                             Browse packages
                           </Button>
                         </Link>

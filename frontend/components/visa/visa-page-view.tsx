@@ -1,215 +1,436 @@
 "use client";
 
 import Image from "next/image";
-import { FileCheck2, FileText, Globe2, ShieldCheck, Zap } from "lucide-react";
+import Link from "next/link";
+import { useMemo, useState } from "react";
+import { motion, useReducedMotion } from "motion/react";
+import {
+  Clock,
+  FileCheck2,
+  MessageCircle,
+  Phone,
+  Receipt,
+  ShieldCheck,
+} from "lucide-react";
 import { Container } from "@/components/layout/container";
+import { Section } from "@/components/layout/section";
 import { SectionHeading } from "@/components/home/section-heading";
 import { Reveal } from "@/components/motion/reveal";
 import { FaqList } from "@/components/marketing/faq-list";
-import { Card } from "@/components/ui/card";
 import { LeadEnquiryForm } from "@/components/enquiries/lead-enquiry-form";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/cn";
+import { telLink, whatsappLink } from "@/lib/contact";
+import {
+  VISA_DESTINATIONS,
+  VISA_FAQS,
+  VISA_FILTERS,
+  VISA_HERO_POSTER,
+  VISA_HERO_VIDEO,
+  VISA_STEPS,
+  VISA_TRUST,
+  visaEnquiryMessage,
+  visaWhatsAppMessage,
+  type VisaDestination,
+  type VisaKind,
+} from "@/lib/visa/visa-data";
+import { VisaStickyHelp } from "./visa-sticky-help";
 
-const FEATURES = [
-  {
-    icon: Zap,
-    title: "Fast Processing",
-    body: "Streamlined applications with expert review to avoid delays.",
-  },
-  {
-    icon: FileText,
-    title: "Document Guidance",
-    body: "Clear checklists so you submit the right documents the first time.",
-  },
-  {
-    icon: FileCheck2,
-    title: "Transparent Pricing",
-    body: "No hidden fees — know the service and embassy costs upfront.",
-  },
-  {
-    icon: ShieldCheck,
-    title: "Secure Handling",
-    body: "Your personal documents are handled with strict confidentiality.",
-  },
-  {
-    icon: Globe2,
-    title: "24/7 Support",
-    body: "Visa experts available to answer questions at every step.",
-  },
+const TRUST_ICONS = [Receipt, FileCheck2, MessageCircle];
+
+const QUICK_LINKS = [
+  { href: "#destinations", label: "Destinations" },
+  { href: "#how-it-works", label: "How it works" },
+  { href: "#why-tripime", label: "Why Tripime" },
+  { href: "#visa-faqs", label: "FAQs" },
 ] as const;
-
-const DESTINATIONS = [
-  { country: "United States", type: "Tourist / Business" },
-  { country: "United Kingdom", type: "Tourist" },
-  { country: "Schengen (Europe)", type: "Tourist" },
-  { country: "Thailand", type: "Tourist" },
-  { country: "Singapore", type: "Tourist / Transit" },
-  { country: "UAE", type: "Tourist / Business" },
-] as const;
-
-const STEPS = [
-  {
-    number: "01",
-    title: "Choose Destination",
-    body: "Select your travel country and visa type from our popular destinations.",
-  },
-  {
-    number: "02",
-    title: "Submit Documents",
-    body: "Upload required documents online — our team verifies everything for you.",
-  },
-  {
-    number: "03",
-    title: "Application Processing",
-    body: "We submit your application and track status with the embassy or consulate.",
-  },
-  {
-    number: "04",
-    title: "Receive Your Visa",
-    body: "Get your approved visa delivered or ready for collection — then fly!",
-  },
-] as const;
-
-const FAQS = [
-  {
-    question: "How long does visa processing take?",
-    answer:
-      "Processing times vary by country and visa type — typically 3 to 30 business days. Each destination card shows an estimated timeline.",
-  },
-  {
-    question: "What documents do I need?",
-    answer:
-      "Requirements vary by destination and visa type; our team provides a checklist once you choose a destination.",
-  },
-  {
-    question: "Is the visa fee refundable if my application is rejected?",
-    answer: "Embassy fees are generally non-refundable; service fees follow our refund policy.",
-  },
-  {
-    question: "Can Tripime guarantee visa approval?",
-    answer:
-      "No agency can guarantee approval — final decisions rest with the embassy or consulate.",
-  },
-];
-
-const HERO_IMAGE =
-  "https://images.pexels.com/photos/2402926/pexels-photo-2402926.jpeg?auto=compress&cs=tinysrgb&w=1200";
 
 export function VisaPageView() {
+  const reduceMotion = useReducedMotion();
+  const [filter, setFilter] = useState<"all" | VisaKind>("all");
+  const [selected, setSelected] = useState<VisaDestination | null>(null);
+
+  const destinations = useMemo(
+    () =>
+      filter === "all"
+        ? VISA_DESTINATIONS
+        : VISA_DESTINATIONS.filter((d) => d.visaKinds.includes(filter)),
+    [filter],
+  );
+
+  const enquiryMessage = selected
+    ? visaEnquiryMessage(selected.country, selected.type)
+    : "";
+
+  function enquireFor(dest: VisaDestination) {
+    setSelected(dest);
+    requestAnimationFrame(() => {
+      document.getElementById("visa-enquiry")?.scrollIntoView({
+        behavior: reduceMotion ? "auto" : "smooth",
+        block: "start",
+      });
+    });
+  }
+
+  const fade = (delay: number) =>
+    reduceMotion
+      ? {}
+      : {
+          initial: { opacity: 0, y: 14 },
+          animate: { opacity: 1, y: 0 },
+          transition: { duration: 0.45, delay, ease: [0.16, 1, 0.3, 1] as const },
+        };
+
   return (
     <>
+      {/* Hero */}
       <section className="relative isolate overflow-hidden border-b border-neutral-200">
-        <Image
-          src={HERO_IMAGE}
-          alt=""
-          fill
-          priority
-          sizes="100vw"
-          className="object-cover"
-        />
-        <div className="absolute inset-0 bg-linear-to-br from-primary-900/95 via-primary-900/80 to-primary-800/55" />
-        <Container className="relative py-14 sm:py-20">
-          <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-accent">
-            Visa assistance
-          </p>
-          <h1 className="mt-3 max-w-xl text-3xl font-bold tracking-tight text-white sm:text-4xl">
-            Visas made <span className="text-accent">simple</span>
-          </h1>
-          <p className="mt-3 max-w-lg text-sm leading-relaxed text-white/80 sm:text-base">
-            Tourist, business and transit visas — expert assistance from application to approval.
-          </p>
-          <div className="mt-8 max-w-md rounded-2xl bg-white/95 p-5 shadow-elevated ring-1 ring-neutral-900/5 backdrop-blur-sm sm:p-6">
-            <LeadEnquiryForm
-              source="service"
-              serviceType="visa"
-              title="Visa enquiry"
-              submitLabel="Start visa application"
+        <div className="absolute inset-0" aria-hidden>
+          {!reduceMotion ? (
+            <video
+              className="absolute inset-0 size-full object-cover"
+              src={VISA_HERO_VIDEO}
+              poster={VISA_HERO_POSTER}
+              autoPlay
+              muted
+              loop
+              playsInline
+              preload="metadata"
             />
+          ) : (
+            <Image
+              src={VISA_HERO_POSTER}
+              alt=""
+              fill
+              priority
+              sizes="100vw"
+              className="object-cover"
+            />
+          )}
+          <div className="absolute inset-0 bg-linear-to-br from-primary-900/95 via-primary-900/82 to-accent/35" />
+          <div className="absolute inset-0 bg-linear-to-t from-ink/45 via-transparent to-ink/20" />
+        </div>
+
+        <Container className="relative py-10 sm:py-12 lg:py-16">
+          <div className="grid items-start gap-8 lg:grid-cols-[1.1fr_0.9fr] lg:gap-10">
+            <div className="max-w-xl">
+              <motion.p
+                {...fade(0.05)}
+                className="text-[11px] font-semibold uppercase tracking-[0.16em] text-white/70"
+              >
+                Visa assistance
+              </motion.p>
+              <motion.h1
+                {...fade(0.1)}
+                className="mt-2 text-2xl font-bold tracking-tight text-white sm:text-3xl lg:text-4xl lg:leading-[1.1]"
+              >
+                Visa help with a{" "}
+                <span className="text-accent">Tripime expert</span>
+              </motion.h1>
+              <motion.p
+                {...fade(0.16)}
+                className="mt-3 text-sm leading-relaxed text-white/80 sm:text-[0.9375rem]"
+              >
+                Tourist, business, and transit visas — honest guidance from checklist to
+                decision. No chatbots. No hidden fees.
+              </motion.p>
+              <motion.p
+                {...fade(0.2)}
+                className="mt-3 inline-flex items-start gap-2 rounded-lg bg-white/10 px-3 py-2 text-xs font-medium text-white/85 ring-1 ring-white/15"
+              >
+                <ShieldCheck className="mt-0.5 size-3.5 shrink-0 text-accent" aria-hidden />
+                Online applications launching soon — talk to an expert today.
+              </motion.p>
+
+              <motion.div
+                {...fade(0.28)}
+                className="mt-5 flex flex-col gap-2 sm:flex-row sm:flex-wrap"
+              >
+                <a
+                  href={whatsappLink(
+                    "Hi Tripime, I need help with a visa. Please guide me.",
+                  )}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="w-full sm:w-auto"
+                >
+                  <Button variant="accent" size="lg" className="w-full sm:w-auto">
+                    <MessageCircle className="size-4" aria-hidden />
+                    Enquire on WhatsApp
+                  </Button>
+                </a>
+                <a href={telLink()} className="w-full sm:w-auto">
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    className="w-full border-white/30 bg-white/10 text-white hover:bg-white/20 sm:w-auto"
+                  >
+                    <Phone className="size-4" aria-hidden />
+                    Request a callback
+                  </Button>
+                </a>
+              </motion.div>
+            </div>
+
+            <motion.div
+              {...fade(0.22)}
+              id="visa-enquiry"
+              className="scroll-mt-24 rounded-2xl bg-white/95 p-5 shadow-elevated ring-1 ring-neutral-900/5 backdrop-blur-sm sm:p-6"
+            >
+              <LeadEnquiryForm
+                source="service"
+                serviceType="visa"
+                title="Visa enquiry"
+                submitLabel="Get visa help"
+                showTravelFields
+                initialMessage={enquiryMessage}
+                messageKey={selected?.id ?? "none"}
+              />
+            </motion.div>
           </div>
         </Container>
       </section>
 
-      <section className="py-10 sm:py-14">
-        <Container>
-          <Reveal>
-            <SectionHeading
-              title="Why apply with Tripime?"
-              subtitle="Hassle-free visa assistance for your next international trip."
-            />
-          </Reveal>
-          <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {FEATURES.map(({ icon: Icon, title, body }, i) => (
-              <Reveal key={title} delayMs={i * 50}>
-                <Card className="h-full">
-                  <div className="flex size-9 items-center justify-center rounded-lg bg-primary-50 text-primary-700">
-                    <Icon className="size-4" aria-hidden />
+      {/* Quick links */}
+      <div className="border-b border-neutral-200 bg-white">
+        <Container className="py-3">
+          <div className="no-scrollbar flex gap-2 overflow-x-auto">
+            {QUICK_LINKS.map((link) => (
+              <a
+                key={link.href}
+                href={link.href}
+                className="min-h-9 shrink-0 rounded-full border border-neutral-200 bg-canvas px-3.5 py-2 text-xs font-semibold text-ink-muted transition hover:border-primary-200 hover:text-ink"
+              >
+                {link.label}
+              </a>
+            ))}
+            <a
+              href={whatsappLink("Hi Tripime, I need help with a visa.")}
+              target="_blank"
+              rel="noreferrer"
+              className="min-h-9 shrink-0 rounded-full border border-accent/30 bg-accent-soft px-3.5 py-2 text-xs font-semibold text-accent transition hover:border-accent"
+            >
+              WhatsApp
+            </a>
+          </div>
+        </Container>
+      </div>
+
+      {/* Destinations */}
+      <Section id="destinations" className="bg-canvas">
+        <Reveal>
+          <SectionHeading
+            eyebrow="Destinations"
+            title="Where do you need a visa?"
+            subtitle="Indicative timelines only — tap a destination to enquire or WhatsApp an expert."
+          />
+        </Reveal>
+
+        <Reveal className="mt-5" delayMs={40}>
+          <div className="no-scrollbar flex gap-2 overflow-x-auto pb-1">
+            {VISA_FILTERS.map(({ id, label }) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setFilter(id)}
+                className={cn(
+                  "min-h-9 shrink-0 rounded-lg border px-3.5 py-2 text-xs font-semibold transition",
+                  filter === id
+                    ? "border-primary-600 bg-primary-700 text-white"
+                    : "border-neutral-200 bg-white text-ink-muted hover:border-primary-200 hover:text-ink",
+                )}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </Reveal>
+
+        <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {destinations.map((dest, i) => (
+            <Reveal key={dest.id} delayMs={i * 40}>
+              <article className="group overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-xs transition hover:shadow-medium">
+                <div className="relative aspect-[16/10] overflow-hidden">
+                  <Image
+                    src={dest.image}
+                    alt={`${dest.country} visa assistance`}
+                    fill
+                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                    className="object-cover transition duration-500 group-hover:scale-105"
+                  />
+                  <div className="absolute inset-0 bg-linear-to-t from-ink/55 via-transparent to-transparent" />
+                  <div className="absolute inset-x-0 bottom-0 p-3 text-white">
+                    <p className="text-base font-bold">{dest.country}</p>
+                    <p className="text-xs text-white/80">{dest.type}</p>
                   </div>
-                  <p className="mt-3 text-sm font-bold text-ink">{title}</p>
-                  <p className="mt-1 text-xs leading-relaxed text-ink-muted">{body}</p>
-                </Card>
-              </Reveal>
-            ))}
-          </div>
-        </Container>
-      </section>
-
-      <section className="border-y border-neutral-200 bg-white py-10 sm:py-14">
-        <Container>
-          <Reveal>
-            <SectionHeading title="Popular destinations" />
-          </Reveal>
-          <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {DESTINATIONS.map((d, i) => (
-              <Reveal key={d.country} delayMs={i * 40}>
-                <Card className="group h-full overflow-hidden transition duration-300 hover:-translate-y-0.5 hover:shadow-medium">
-                  <div className="flex items-center gap-3">
-                    <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-linear-to-br from-primary-600 to-primary-800 text-sm font-bold text-white">
-                      {d.country.slice(0, 2).toUpperCase()}
-                    </div>
-                    <div>
-                      <p className="font-semibold text-ink">{d.country}</p>
-                      <p className="mt-0.5 text-sm text-ink-muted">{d.type}</p>
-                    </div>
+                </div>
+                <div className="p-3.5">
+                  <p className="inline-flex items-center gap-1.5 text-xs text-ink-muted">
+                    <Clock className="size-3.5 shrink-0 text-primary-600" aria-hidden />
+                    {dest.timeline}
+                    <span className="text-ink-subtle">· indicative</span>
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <a
+                      href={whatsappLink(
+                        visaWhatsAppMessage(dest.country, dest.type),
+                      )}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      <Button variant="accent" size="sm">
+                        <MessageCircle className="size-3.5" aria-hidden />
+                        WhatsApp
+                      </Button>
+                    </a>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => enquireFor(dest)}
+                    >
+                      Enquire
+                    </Button>
                   </div>
-                </Card>
-              </Reveal>
-            ))}
-          </div>
-        </Container>
-      </section>
+                </div>
+              </article>
+            </Reveal>
+          ))}
+        </div>
 
-      <section className="py-10 sm:py-14">
-        <Container>
-          <Reveal>
-            <SectionHeading title="How it works" subtitle="Get your visa in 4 simple steps." />
-          </Reveal>
-          <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {STEPS.map((s, i) => (
-              <Reveal key={s.number} delayMs={i * 50}>
-                <Card>
-                  <p className="text-sm font-bold text-primary-600">{s.number}</p>
-                  <h3 className="mt-2 font-semibold text-ink">{s.title}</h3>
-                  <p className="mt-1.5 text-sm text-ink-muted">{s.body}</p>
-                </Card>
-              </Reveal>
-            ))}
-          </div>
-        </Container>
-      </section>
+        {destinations.length === 0 && (
+          <p className="mt-6 text-sm text-ink-muted">No destinations match this filter.</p>
+        )}
+      </Section>
 
-      <section className="border-t border-neutral-200 bg-white py-10 sm:py-14">
-        <Container narrow>
-          <Reveal>
-            <SectionHeading
-              align="center"
-              title="Visa FAQs"
-              subtitle="Quick answers before you talk to an expert."
-            />
-          </Reveal>
-          <Reveal className="mt-6" delayMs={80}>
-            <FaqList items={[...FAQS]} />
-          </Reveal>
-        </Container>
-      </section>
+      {/* How it works */}
+      <Section id="how-it-works" className="border-y border-neutral-200 bg-white">
+        <Reveal>
+          <SectionHeading
+            title="How it works"
+            subtitle="Three honest steps — assisted by a real expert, not a fake online portal."
+          />
+        </Reveal>
+        <div className="mt-6 grid gap-4 sm:grid-cols-3">
+          {VISA_STEPS.map((step, i) => (
+            <Reveal key={step.number} delayMs={i * 50}>
+              <div className="h-full rounded-xl border border-neutral-200 bg-canvas p-5">
+                <p className="text-sm font-bold text-primary-600">{step.number}</p>
+                <h3 className="mt-2 text-base font-semibold text-ink">{step.title}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-ink-muted">{step.body}</p>
+              </div>
+            </Reveal>
+          ))}
+        </div>
+      </Section>
+
+      {/* Why Tripime */}
+      <Section id="why-tripime">
+        <Reveal>
+          <SectionHeading
+            align="center"
+            title="Why plan your visa with Tripime"
+            subtitle="High-stakes paperwork deserves clear fees and human help."
+          />
+        </Reveal>
+        <div className="mt-8 grid gap-6 sm:grid-cols-3">
+          {VISA_TRUST.map((item, i) => {
+            const Icon = TRUST_ICONS[i] ?? ShieldCheck;
+            return (
+              <Reveal key={item.title} delayMs={i * 50}>
+                <div className="text-center sm:text-left">
+                  <div className="mx-auto flex size-10 items-center justify-center rounded-lg bg-primary-50 text-primary-700 sm:mx-0">
+                    <Icon className="size-5" aria-hidden />
+                  </div>
+                  <h3 className="mt-4 text-base font-semibold text-ink">{item.title}</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-ink-muted">{item.body}</p>
+                </div>
+              </Reveal>
+            );
+          })}
+        </div>
+        <Reveal className="mt-6 text-center" delayMs={120}>
+          <p className="text-sm text-ink-muted">
+            See our{" "}
+            <Link href="/privacy" className="font-semibold text-primary-700 hover:text-primary-800">
+              Privacy Policy
+            </Link>{" "}
+            and{" "}
+            <Link
+              href="/refund-policy"
+              className="font-semibold text-primary-700 hover:text-primary-800"
+            >
+              Refund Policy
+            </Link>
+            . Embassy fees are usually non-refundable.
+          </p>
+        </Reveal>
+      </Section>
+
+      {/* FAQs */}
+      <Section
+        id="visa-faqs"
+        spacing="md"
+        containerSize="narrow"
+        className="border-t border-neutral-200 bg-white"
+      >
+        <Reveal>
+          <SectionHeading
+            align="center"
+            title="Visa FAQs"
+            subtitle="Quick answers before you talk to an expert."
+          />
+        </Reveal>
+        <Reveal className="mt-5" delayMs={80}>
+          <FaqList items={[...VISA_FAQS]} />
+        </Reveal>
+      </Section>
+
+      {/* Final CTA */}
+      <Section spacing="lg" containerSize="narrow" className="bg-ink text-white">
+        <Reveal>
+          <div className="text-center">
+            <h2 className="text-2xl font-bold tracking-tight sm:text-h1">
+              Ready to get visa help?
+            </h2>
+            <p className="mx-auto mt-3 max-w-md text-sm text-white/70">
+              Tell us your destination — a Tripime expert will share the checklist and next
+              steps on WhatsApp or call.
+            </p>
+            <div className="mt-6 flex flex-wrap justify-center gap-2">
+              <a
+                href={whatsappLink("Hi Tripime, I need help with a visa.")}
+                target="_blank"
+                rel="noreferrer"
+              >
+                <Button variant="accent" size="lg">
+                  <MessageCircle className="size-4" aria-hidden />
+                  WhatsApp Tripime
+                </Button>
+              </a>
+              <a href={telLink()}>
+                <Button variant="secondary" size="lg">
+                  <Phone className="size-4" aria-hidden />
+                  Call expert
+                </Button>
+              </a>
+              <a href="#visa-enquiry">
+                <Button
+                  variant="ghost"
+                  size="lg"
+                  className="text-white/90 hover:bg-white/10"
+                >
+                  Get visa help
+                </Button>
+              </a>
+            </div>
+          </div>
+        </Reveal>
+      </Section>
+
+      <VisaStickyHelp />
+      {/* Spacer so sticky bar doesn't cover final content on mobile */}
+      <div className="h-16 md:hidden" aria-hidden />
     </>
   );
 }
