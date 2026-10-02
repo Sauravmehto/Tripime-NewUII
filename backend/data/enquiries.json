@@ -1,5 +1,7 @@
 [
   {
+    "source": "package",
+    "serviceType": null,
     "packageId": null,
     "packageTitle": "Test Package",
     "name": "Phase6 Tester",
@@ -11,5 +13,65 @@
     "id": "ENQ-20260825-1001",
     "status": "CONTACTED",
     "createdAt": "2026-08-25T08:23:41.184032+00:00"
+  },
+  {
+    "source": "package",
+    "serviceType": null,
+    "packageId": "pkg_goa001",
+    "packageTitle": "Goa Beach Escape",
+    "name": "Saurav Mehto",
+    "email": "sauravmehto.98@gmail.com",
+    "phone": "08130699818",
+    "travelMonth": "",
+    "travelers": 2,
+    "message": "TEST",
+    "id": "ENQ-20261002-1002",
+    "status": "NEW",
+    "createdAt": "2026-10-02T09:07:07.318179+00:00"
+  },
+  {
+    "source": "package",
+    "serviceType": null,
+    "packageId": "pkg_goa001",
+    "packageTitle": "Goa Beach Escape",
+    "name": "Saurav Mehto",
+    "email": "sauravmehto.98@gmail.com",
+    "phone": "08130699818",
+    "travelMonth": "This month",
+    "travelers": 2,
+    "message": "test",
+    "id": "ENQ-20261002-1003",
+    "status": "NEW",
+    "createdAt": "2026-10-02T11:02:43.984892+00:00"
+  },
+  {
+    "source": "package",
+    "serviceType": null,
+    "packageId": "pkg_goa001",
+    "packageTitle": "Goa Beach Escape",
+    "name": "Saurav Mehto",
+    "email": "sauravmehto.98@gmail.com",
+    "phone": "08130699818",
+    "travelMonth": "This month",
+    "travelers": 2,
+    "message": "test",
+    "id": "ENQ-20261002-1004",
+    "status": "NEW",
+    "createdAt": "2026-10-02T11:03:29.110244+00:00"
+  },
+  {
+    "source": "package",
+    "serviceType": null,
+    "packageId": "pkg_goa001",
+    "packageTitle": "Goa Beach Escape",
+    "name": "Saurav Mehto",
+    "email": "sauravmehto.98@gmail.com",
+    "phone": "8130699818",
+    "travelMonth": "Next month",
+    "travelers": 2,
+    "message": "test",
+    "id": "ENQ-20261002-1005",
+    "status": "NEW",
+    "createdAt": "2026-10-02T11:09:23.037727+00:00"
   }
 ]
