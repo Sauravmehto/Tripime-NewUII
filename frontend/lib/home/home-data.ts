@@ -92,7 +92,7 @@ export const EXPLORER_DESTINATIONS: ExplorerDestination[] = [
     country: "India",
     category: "mountains",
     image:
-      "https://images.pexels.com/photos/2387866/pexels-photo-2387866.jpeg?auto=compress&cs=tinysrgb&w=800",
+      "https://images.pexels.com/photos/30750205/pexels-photo-30750205.jpeg?auto=compress&cs=tinysrgb&w=800",
     startingPrice: "₹18,499",
     experiences: ["Shikara rides", "Gulmarg", "Snow peaks"],
     href: "/packages",
