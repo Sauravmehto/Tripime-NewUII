@@ -2,7 +2,16 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app import config
-from app.routes import admin, bookings, enquiries, flights, package_themes, packages, payments
+from app.routes import (
+    admin,
+    bookings,
+    customer_profile,
+    enquiries,
+    flights,
+    package_themes,
+    packages,
+    payments,
+)
 
 app = FastAPI(
     title="Tripime Mock Flight API",
@@ -25,6 +34,11 @@ app.include_router(payments.router, prefix="/api/payments", tags=["payments"])
 app.include_router(packages.router, prefix="/api/packages", tags=["packages"])
 app.include_router(package_themes.router, prefix="/api/package-themes", tags=["package-themes"])
 app.include_router(enquiries.router, prefix="/api/enquiries", tags=["enquiries"])
+app.include_router(
+    customer_profile.router,
+    prefix="/api/customer-profile",
+    tags=["customer-profile"],
+)
 app.include_router(admin.router, prefix="/api/admin", tags=["admin"])
 
 

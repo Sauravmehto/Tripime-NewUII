@@ -59,3 +59,13 @@ CORS_ORIGIN_REGEX = os.getenv(
 
 def smtp_is_configured() -> bool:
     return bool(SMTP_HOST and SMTP_USERNAME and SMTP_PASSWORD and SMTP_FROM_EMAIL)
+
+
+# WhatsApp alerts to the Tripime team for new enquiries, via CallMeBot
+# (https://www.callmebot.com/blog/free-api-whatsapp-messages/). Off until both are set.
+WHATSAPP_ALERT_PHONE = os.getenv("WHATSAPP_ALERT_PHONE", "").strip().lstrip("+")
+WHATSAPP_CALLMEBOT_APIKEY = os.getenv("WHATSAPP_CALLMEBOT_APIKEY", "").strip()
+
+
+def whatsapp_alerts_configured() -> bool:
+    return bool(WHATSAPP_ALERT_PHONE and WHATSAPP_CALLMEBOT_APIKEY)
