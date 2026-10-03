@@ -1,9 +1,13 @@
-import { RouteStub } from "@/components/layout/route-stub";
+import type { Metadata } from "next";
+import { LegalDocView } from "@/components/legal/legal-doc-view";
+import { PRIVACY_CONTENT } from "@/lib/legal/privacy-content";
 
-export const metadata = { title: "Privacy Policy" };
+export const metadata: Metadata = {
+  title: "Privacy Policy",
+  description:
+    "How Tripime collects, uses, and protects personal information for enquiries, bookings, and customer profiles. Card numbers are not stored on our servers.",
+};
 
 export default function PrivacyPage() {
-  return (
-    <RouteStub title="Privacy policy" description="Legal copy ported from tripime-v2." phase="Phase 9" />
-  );
+  return <LegalDocView content={PRIVACY_CONTENT} />;
 }

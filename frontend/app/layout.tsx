@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
+import { GoogleTagManager } from "@/components/analytics/google-tag-manager";
+import { WhatsAppClickTracker } from "@/components/analytics/whatsapp-click-tracker";
 import "./globals.css";
 
 const inter = Inter({
@@ -28,6 +30,8 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${inter.variable} h-full`}>
       <body className="min-h-full flex flex-col bg-canvas text-ink antialiased">
+        <GoogleTagManager />
+        <WhatsAppClickTracker />
         <a
           href="#main-content"
           className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-lg focus:bg-primary-700 focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-white"
