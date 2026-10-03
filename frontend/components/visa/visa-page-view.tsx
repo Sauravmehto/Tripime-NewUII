@@ -185,6 +185,7 @@ export function VisaPageView() {
                 showTravelFields
                 initialMessage={enquiryMessage}
                 messageKey={selected?.id ?? "none"}
+                redirectToWhatsapp
               />
             </motion.div>
           </div>

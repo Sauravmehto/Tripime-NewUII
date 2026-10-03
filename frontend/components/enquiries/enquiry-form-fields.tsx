@@ -17,34 +17,32 @@ const TRAVEL_MONTHS = [
 ];
 
 interface EnquiryFormFieldsProps {
-  /** Fields merged into the submitted payload alongside name/email/phone/etc — e.g. source, serviceType, packageId. */
   extraPayload: Pick<EnquiryPayload, "source"> &
     Partial<Pick<EnquiryPayload, "serviceType" | "packageId" | "packageTitle">>;
   showTravelFields?: boolean;
   submitLabel?: string;
   submitSize?: "md" | "lg";
-  /** Prefill the message field (e.g. destination enquire from visa page). Remount via key when this should re-apply. */
   initialMessage?: string;
-  /** Called after the enquiry is saved, with the submitted details. */
+  initialName?: string;
+  initialEmail?: string;
+  initialPhone?: string;
   onSuccess: (name: string, enquiry: EnquiryPayload) => void;
 }
 
-/**
- * Shared field set + validation + submit logic for lead-capture enquiries.
- * Consumed by LeadEnquiryForm (page-embedded) and EnquiryModal (dialog-embedded) —
- * both post to the same /api/enquiries endpoint via createEnquiry.
- */
 export function EnquiryFormFields({
   extraPayload,
   showTravelFields = true,
   submitLabel = "Send enquiry",
   submitSize = "md",
   initialMessage = "",
+  initialName = "",
+  initialEmail = "",
+  initialPhone = "",
   onSuccess,
 }: EnquiryFormFieldsProps) {
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
+  const [name, setName] = useState(initialName);
+  const [email, setEmail] = useState(initialEmail);
+  const [phone, setPhone] = useState(initialPhone);
   const [travelMonth, setTravelMonth] = useState("");
   const [travelers, setTravelers] = useState("2");
   const [message, setMessage] = useState(initialMessage);

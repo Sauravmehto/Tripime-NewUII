@@ -6,6 +6,7 @@ import { EnquiryFormFields } from "@/components/enquiries/enquiry-form-fields";
 import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
 import { whatsappLink } from "@/lib/contact";
+import { useCustomerProfileOptional } from "@/context/customer-profile-provider";
 import type { EnquiryPayload, TravelPackage } from "@/types";
 
 interface EnquiryModalProps {
@@ -13,7 +14,13 @@ interface EnquiryModalProps {
   onClose: () => void;
 }
 
-/** WhatsApp text for a saved package enquiry, using WhatsApp's *bold* markup. */
+function nationalFromE164(mobile: string, countryCode?: string): string {
+  const digits = mobile.replace(/\D/g, "");
+  const cc = (countryCode || "+91").replace(/\D/g, "");
+  if (cc && digits.startsWith(cc)) return digits.slice(cc.length);
+  return digits;
+}
+
 function enquiryMessage(pkg: TravelPackage, enquiry: EnquiryPayload): string {
   const lines = [
     "Hi Tripime, I just sent an enquiry on your website.",
@@ -32,10 +39,9 @@ function enquiryMessage(pkg: TravelPackage, enquiry: EnquiryPayload): string {
 
 export function EnquiryModal({ pkg, onClose }: EnquiryModalProps) {
   const [enquiry, setEnquiry] = useState<EnquiryPayload | null>(null);
+  const profile = useCustomerProfileOptional();
+  const customer = profile?.customer;
 
-  // Hand the enquiry to the Tripime team on WhatsApp, then close. Opened from
-  // the click itself so pop-up blockers allow it; WhatsApp still asks the
-  // visitor to press send.
   function handleDone() {
     if (enquiry) {
       window.open(whatsappLink(enquiryMessage(pkg, enquiry)), "_blank", "noopener,noreferrer");
@@ -72,9 +78,15 @@ export function EnquiryModal({ pkg, onClose }: EnquiryModalProps) {
         <>
           <p className="mb-4 text-xs text-neutral-500">{pkg.title}</p>
           <EnquiryFormFields
+            key={customer?.id ?? "anon"}
             extraPayload={{ source: "package", packageId: pkg.id, packageTitle: pkg.title }}
             submitLabel="Send enquiry"
             submitSize="lg"
+            initialName={customer?.name || ""}
+            initialEmail={customer?.email || ""}
+            initialPhone={
+              customer ? nationalFromE164(customer.mobile, customer.countryCode) : ""
+            }
             onSuccess={(_, submitted) => setEnquiry(submitted)}
           />
           <p className="mt-3 text-center text-[11px] text-neutral-400">
