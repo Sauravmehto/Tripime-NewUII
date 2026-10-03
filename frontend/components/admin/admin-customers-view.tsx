@@ -48,9 +48,24 @@ export function AdminCustomersView() {
     { key: "email", header: "Email", render: (row) => row.email },
     { key: "mobile", header: "Mobile", render: (row) => row.mobile },
     {
+      key: "signupPage",
+      header: "Signed up on",
+      render: (row) => row.signupPage || "—",
+    },
+    {
+      key: "loginCount",
+      header: "Logins",
+      render: (row) => row.loginCount ?? 0,
+    },
+    {
       key: "firstLogin",
-      header: "First Time Login",
+      header: "First login",
       render: (row) => formatAdminDate(row.firstLoginAt),
+    },
+    {
+      key: "lastLogin",
+      header: "Last login",
+      render: (row) => (row.lastLoginAt ? formatAdminDate(row.lastLoginAt) : "—"),
     },
   ];
 
