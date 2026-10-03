@@ -48,7 +48,13 @@ class CustomerLogin(BaseModel):
     name: str = Field("", max_length=120)
     email: str = Field("", max_length=160)
     mobile: str = Field("", max_length=80)
-    firstLoginAt: str = Field(..., min_length=8, max_length=40)
+    firstLoginAt: str = Field("", max_length=40)
+    # Lead / customer-profile fields (optional for legacy rows)
+    consentAt: str = Field("", max_length=40)
+    lastLoginAt: str = Field("", max_length=40)
+    loginCount: int = Field(0, ge=0)
+    signupPage: str = Field("", max_length=80)
+    countryCode: str = Field("+91", max_length=8)
 
 
 class FlightSearchLog(BaseModel):
