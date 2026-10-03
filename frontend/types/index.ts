@@ -632,6 +632,24 @@ export interface CustomerLogin {
   email: string;
   mobile: string;
   firstLoginAt: string;
+  consentAt?: string;
+  lastLoginAt?: string;
+  loginCount?: number;
+  signupPage?: string;
+  countryCode?: string;
+}
+
+export interface CustomerProfile {
+  id: string;
+  name: string;
+  email: string;
+  mobile: string;
+  countryCode: string;
+}
+
+export interface CustomerProfileSession {
+  token: string;
+  customer: CustomerProfile;
 }
 
 export interface FlightSearchLog {
