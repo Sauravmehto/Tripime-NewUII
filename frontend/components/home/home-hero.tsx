@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { ArrowDown, MessageCircle, ShieldCheck } from "lucide-react";
-import { SearchForm } from "@/components/search/search-form";
+import { FlightSearchForm } from "@/components/search/flight-search-form";
 import { Container } from "@/components/layout/container";
 import { Button } from "@/components/ui/button";
 import { whatsappLink } from "@/lib/contact";
@@ -39,8 +39,9 @@ export function HomeHero() {
         };
 
   return (
-    <section className="relative isolate overflow-hidden border-b border-neutral-200/70">
-      <div className="absolute inset-0" aria-hidden>
+    // overflow-x-clip (not hidden) lets the search popovers extend below the hero
+    <section className="relative z-10 isolate overflow-x-clip border-b border-neutral-200/70">
+      <div className="absolute inset-0 overflow-hidden" aria-hidden>
         <AnimatePresence mode="sync" initial={false}>
           <motion.div
             key={active.id}
@@ -89,8 +90,8 @@ export function HomeHero() {
             </motion.p>
           </div>
 
-          <motion.div {...fade(0.24)} className="mt-5 w-full max-w-xl lg:max-w-2xl">
-            <SearchForm />
+          <motion.div {...fade(0.24)} className="relative z-30 mt-5 w-full max-w-xl lg:max-w-2xl">
+            <FlightSearchForm />
           </motion.div>
 
           <motion.div

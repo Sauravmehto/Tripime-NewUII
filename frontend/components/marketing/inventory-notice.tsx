@@ -1,20 +1,23 @@
 import { Info } from "lucide-react";
-import { INVENTORY_END, INVENTORY_START, shortDate } from "@/lib/airports";
+import { shortDate } from "@/lib/airports";
 
 interface InventoryNoticeProps {
+  /** Bookable window from the flight API. */
+  minDate: string;
+  maxDate: string;
   className?: string;
   /** Compact single-line variant for tight spaces (e.g. inside a search card). */
   compact?: boolean;
 }
 
-export function InventoryNotice({ className = "", compact = false }: InventoryNoticeProps) {
-  const range = `${shortDate(INVENTORY_START)} – ${shortDate(INVENTORY_END)}, 2026`;
+export function InventoryNotice({ minDate, maxDate, className = "", compact = false }: InventoryNoticeProps) {
+  const range = `${shortDate(minDate)} – ${shortDate(maxDate)} ${maxDate.slice(0, 4)}`;
 
   if (compact) {
     return (
       <p className={`flex items-center gap-1.5 text-xs text-ink-subtle ${className}`}>
         <Info className="size-3.5 shrink-0 text-primary-500" aria-hidden />
-        Live for booking: Delhi ⇄ Mumbai &amp; Delhi ⇄ Bangalore, {range}.
+        Bookable now: non-stop and 1-stop flights across India, the Gulf, Asia and Europe, {range}.
       </p>
     );
   }
@@ -25,8 +28,9 @@ export function InventoryNotice({ className = "", compact = false }: InventoryNo
     >
       <Info className="mt-0.5 size-4 shrink-0" aria-hidden />
       <p>
-        <strong className="font-semibold">Live for booking:</strong> Delhi ⇄ Mumbai &amp; Delhi ⇄
-        Bangalore, {range}. More routes and dates are on the way — call us for anything else.
+        <strong className="font-semibold">Bookable now:</strong> non-stop and 1-stop flights from 8
+        Indian cities to the Gulf, Istanbul, Tbilisi, Singapore, Bangkok and London, {range}. Need
+        something else? Call us.
       </p>
     </div>
   );

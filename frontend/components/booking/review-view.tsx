@@ -13,10 +13,12 @@ import { StickyActionBar } from "@/components/booking/sticky-action-bar";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { formatINR } from "@/lib/format";
+import { fareSummaryRows, passengerTypeLabel, priceTrip } from "@/lib/flights/pricing";
+import { flightsHref, travellersLabel } from "@/lib/flights/search-params";
 
 export function ReviewView() {
   const router = useRouter();
-  const { search, selectedFlight, passengers, contact } = useBooking();
+  const { search, selectedFlight, selectedReturnFlight, passengers, contact } = useBooking();
 
   useEffect(() => {
     if (!selectedFlight || !search || passengers.length === 0 || !contact.email) {
@@ -26,11 +28,9 @@ export function ReviewView() {
 
   if (!selectedFlight || !search) return null;
 
-  const count = passengers.length;
-  const baseFare = selectedFlight.fare.baseFare * count;
-  const taxes = selectedFlight.fare.taxes * count;
-  const total = selectedFlight.fare.totalFare * count;
-  const backToResults = `/flights?origin=${search.origin}&destination=${search.destination}&date=${search.date}&passengers=${search.passengers}`;
+  const roundTrip = Boolean(selectedReturnFlight);
+  const price = priceTrip(selectedFlight, selectedReturnFlight, search);
+  const total = price.total;
 
   return (
     <Container className="pb-24 pt-6 lg:pb-8">
@@ -38,13 +38,15 @@ export function ReviewView() {
       <Stepper current="review" className="hidden lg:block" />
       <FlightRouteBar
         flight={selectedFlight}
-        passengers={count}
-        changeFlightTo={backToResults}
+        returnFlight={selectedReturnFlight}
+        counts={search}
+        changeFlightTo={flightsHref(search)}
         className="mb-4 mt-4"
       />
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
         <div className="space-y-4">
-          <FlightItineraryCard flight={selectedFlight} />
+          <FlightItineraryCard flight={selectedFlight} title={roundTrip ? "Departing flight" : undefined} />
+          {selectedReturnFlight && <FlightItineraryCard flight={selectedReturnFlight} title="Return flight" />}
           <Card padded={false} className="p-4 sm:p-5">
             <div className="mb-4 flex items-start justify-between gap-3">
               <div className="flex items-start gap-2.5">
@@ -54,7 +56,7 @@ export function ReviewView() {
                 <div>
                   <h2 className="text-sm font-bold text-ink">Travellers</h2>
                   <p className="text-xs text-ink-muted">
-                    {count} {count === 1 ? "adult" : "adults"} on this booking
+                    {travellersLabel(search)} on this booking
                   </p>
                 </div>
               </div>
@@ -69,11 +71,17 @@ export function ReviewView() {
                   key={index}
                   className="flex items-center justify-between gap-3 px-3 py-2.5 text-sm"
                 >
-                  <span className="font-medium text-ink">
+                  <span className="min-w-0 font-medium text-ink">
                     {passenger.title} {passenger.firstName} {passenger.lastName}
+                    <span className="ml-2 rounded-full bg-primary-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary-700">
+                      {passengerTypeLabel(passenger.type)}
+                    </span>
                   </span>
-                  <span className="text-xs text-ink-muted">
+                  <span className="text-right text-xs text-ink-muted">
                     {passenger.gender} · {passenger.dateOfBirth}
+                    {passenger.passportNumber && (
+                      <span className="block font-mono">Passport {passenger.passportNumber}</span>
+                    )}
                   </span>
                 </li>
               ))}
@@ -91,14 +99,7 @@ export function ReviewView() {
           </Card>
         </div>
         <FareSummaryCard
-          rows={[
-            {
-              label: "Base fare",
-              hint: `${count} traveller${count > 1 ? "s" : ""}`,
-              amount: baseFare,
-            },
-            { label: "Taxes and fees", amount: taxes },
-          ]}
+          rows={fareSummaryRows(price, roundTrip)}
           total={total}
           note="No booking is created until payment is completed."
         >

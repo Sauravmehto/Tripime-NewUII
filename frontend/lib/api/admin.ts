@@ -113,6 +113,34 @@ export async function downloadAdminInvoice(bookingId: string): Promise<Blob> {
   return data;
 }
 
+export async function downloadAdminTicket(bookingId: string): Promise<Blob> {
+  const { data } = await apiClient.get<Blob>(`/api/admin/bookings/${bookingId}/ticket`, {
+    headers: authHeaders(),
+    responseType: "blob",
+  });
+  return data;
+}
+
+/** Cancels the booking and releases its seats (refunds for paid bookings are handled offline). */
+export async function cancelAdminBooking(bookingId: string, reason: string): Promise<Booking> {
+  const { data } = await apiClient.post<Booking>(
+    `/api/admin/bookings/${bookingId}/cancel`,
+    { reason },
+    { headers: authHeaders() },
+  );
+  return data;
+}
+
+/** Re-attempts notifications that failed or weren't configured; returns the updated log. */
+export async function retryAdminNotifications(bookingId: string): Promise<Booking> {
+  const { data } = await apiClient.post<Booking>(
+    `/api/admin/bookings/${bookingId}/notifications/retry`,
+    {},
+    { headers: authHeaders() },
+  );
+  return data;
+}
+
 export async function listAdminPackages(
   catalog?: PackageCatalog,
 ): Promise<TravelPackage[]> {

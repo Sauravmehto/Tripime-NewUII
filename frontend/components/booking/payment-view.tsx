@@ -2,10 +2,11 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { createBooking } from "@/lib/api/bookings";
+import { AlertTriangle, FlaskConical, QrCode, ShieldCheck } from "lucide-react";
+import { createBooking, payBooking } from "@/lib/api/bookings";
 import { getErrorMessage } from "@/lib/api/client";
-import { processMockPayment } from "@/lib/api/payments";
-import { useBooking } from "@/context/booking-provider";
+import { getPaymentConfig } from "@/lib/api/payments";
+import { useBooking, type CheckoutState } from "@/context/booking-provider";
 import { Container } from "@/components/layout/container";
 import { FareSummaryCard } from "@/components/flights/fare-summary-card";
 import { FlightRouteBar } from "@/components/flights/flight-route-bar";
@@ -16,7 +17,9 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Field } from "@/components/ui/field";
 import { formatINR } from "@/lib/format";
-import type { PaymentMethod } from "@/types";
+import { fareSummaryRows, priceTrip } from "@/lib/flights/pricing";
+import { segmentsOf } from "@/lib/flights/segments";
+import type { PaymentConfig, PaymentMethod } from "@/types";
 
 type Tab = PaymentMethod;
 
@@ -26,19 +29,30 @@ const PAYMENT_TABS: { id: Tab; label: string }[] = [
   { id: "card", label: "Card" },
 ];
 
+function newCheckoutKey(): string {
+  const random =
+    typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  return `co_${random.replace(/[^A-Za-z0-9]/g, "")}`.slice(0, 64);
+}
+
 export function PaymentView() {
   const router = useRouter();
   const {
+    search,
     selectedFlight,
+    selectedReturnFlight,
     passengers,
     contact,
     selectedSeats,
     seatCharges,
-    setPayment,
+    checkout,
+    setCheckout,
   } = useBooking();
 
+  const [config, setConfig] = useState<PaymentConfig | null>(null);
   const [tab, setTab] = useState<Tab>("upi");
-  const [upiId, setUpiId] = useState("");
   const [cardNumber, setCardNumber] = useState("");
   const [cardName, setCardName] = useState("");
   const [expiry, setExpiry] = useState("");
@@ -46,30 +60,62 @@ export function PaymentView() {
   const [qrCompleted, setQrCompleted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [failure, setFailure] = useState("");
+
+  // Every adult and child needs a seat on every segment of every leg; infants sit on a lap.
+  const seatsNeeded =
+    passengers.filter((p) => p.type !== "infant").length *
+    ((selectedFlight ? segmentsOf(selectedFlight).length : 0) +
+      (selectedReturnFlight ? segmentsOf(selectedReturnFlight).length : 0));
 
   useEffect(() => {
-    if (!selectedFlight || passengers.length === 0 || selectedSeats.length !== passengers.length) {
+    if (!selectedFlight || !search || passengers.length === 0 || selectedSeats.length !== seatsNeeded) {
       router.replace("/booking/seats");
     }
-  }, [selectedFlight, passengers, selectedSeats, router]);
+  }, [selectedFlight, search, passengers, selectedSeats, seatsNeeded, router]);
 
-  const flightFare = useMemo(() => {
-    if (!selectedFlight) return 0;
-    return selectedFlight.fare.totalFare * passengers.length;
-  }, [selectedFlight, passengers.length]);
+  useEffect(() => {
+    let cancelled = false;
+    getPaymentConfig()
+      .then((value) => {
+        if (!cancelled) setConfig(value);
+      })
+      .catch((err) => {
+        if (!cancelled) setError(`Payments are unavailable right now: ${getErrorMessage(err)}`);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
-  const baseFare = selectedFlight ? selectedFlight.fare.baseFare * passengers.length : 0;
-  const taxes = selectedFlight ? selectedFlight.fare.taxes * passengers.length : 0;
-  const totalPayable = flightFare + seatCharges;
+  const price = useMemo(
+    () => (selectedFlight && search ? priceTrip(selectedFlight, selectedReturnFlight, search) : null),
+    [selectedFlight, selectedReturnFlight, search],
+  );
+  const totalPayable = (price?.total ?? 0) + seatCharges;
 
-  if (!selectedFlight) return null;
+  // What gets booked; a change means a new checkout (and a new booking).
+  const bookingPayload = useMemo(
+    () =>
+      selectedFlight
+        ? {
+            flightId: selectedFlight.id,
+            returnFlightId: selectedReturnFlight?.id ?? null,
+            passengers,
+            contact,
+            seats: selectedSeats,
+          }
+        : null,
+    [selectedFlight, selectedReturnFlight, passengers, contact, selectedSeats],
+  );
+  const fingerprint = useMemo(() => JSON.stringify(bookingPayload), [bookingPayload]);
+  const heldBooking = checkout?.fingerprint === fingerprint ? checkout : null;
+
+  if (!selectedFlight || !search || !price || !bookingPayload) return null;
 
   function validate(): string | null {
-    if (tab === "upi" && (!upiId.trim() || !upiId.includes("@"))) {
-      return "Enter a valid UPI ID (e.g. name@upi).";
-    }
     if (tab === "qr" && !qrCompleted) {
-      return "Confirm that you have completed the test QR payment.";
+      return "Tick the box to confirm the test QR payment.";
     }
     if (tab === "card") {
       const digits = cardNumber.replace(/\s/g, "");
@@ -83,9 +129,22 @@ export function PaymentView() {
     return null;
   }
 
-  async function handlePay() {
-    if (submitting || !selectedFlight) return;
-    const validationError = validate();
+  /** The booking for this checkout, creating it (seats held, payment pending) once. */
+  async function ensureBooking(): Promise<{ bookingId: string; accessToken: string }> {
+    let current: CheckoutState = heldBooking ?? { key: newCheckoutKey(), fingerprint };
+    if (current.bookingId && current.accessToken) {
+      return { bookingId: current.bookingId, accessToken: current.accessToken };
+    }
+    setCheckout(current);
+    const booking = await createBooking({ checkoutKey: current.key, ...bookingPayload! });
+    current = { ...current, bookingId: booking.bookingId, accessToken: booking.accessToken };
+    setCheckout(current);
+    return { bookingId: booking.bookingId, accessToken: booking.accessToken };
+  }
+
+  async function handlePay(simulateFailure = false) {
+    if (submitting || !config) return;
+    const validationError = simulateFailure ? null : validate();
     if (validationError) {
       setError(validationError);
       return;
@@ -93,30 +152,21 @@ export function PaymentView() {
 
     setSubmitting(true);
     setError("");
-
+    setFailure("");
     try {
-      const digits = cardNumber.replace(/\s/g, "");
-      const payment = await processMockPayment({
-        amount: totalPayable,
-        currency: "INR",
+      const { bookingId, accessToken } = await ensureBooking();
+      const booking = await payBooking(bookingId, accessToken, {
         method: tab,
-        upiId: tab === "upi" ? upiId.trim() : undefined,
-        cardLast4: tab === "card" ? digits.slice(-4) : undefined,
+        cardLast4: tab === "card" ? cardNumber.replace(/\s/g, "").slice(-4) : undefined,
+        simulateFailure,
       });
-
-      setPayment(payment);
-
-      const booking = await createBooking({
-        flightId: selectedFlight.id,
-        passengers,
-        contact,
-        seats: selectedSeats,
-        payment,
-      });
-
       setCardNumber("");
       setCvv("");
-      router.push(`/booking/confirmation/${booking.bookingId}`);
+      if (booking.paymentStatus === "paid") {
+        router.push(`/booking/confirmation/${bookingId}?token=${encodeURIComponent(accessToken)}`);
+        return;
+      }
+      setFailure(booking.payments.at(-1)?.failureReason ?? "The payment was declined.");
     } catch (err) {
       setError(getErrorMessage(err));
     } finally {
@@ -124,21 +174,42 @@ export function PaymentView() {
     }
   }
 
+  const payLabel = failure ? `Try again · ${formatINR(totalPayable)}` : `Pay ${formatINR(totalPayable)}`;
+
   return (
     <Container className="pb-24 pt-6 lg:pb-8">
       <Stepper current="payment" variant="compact" className="lg:hidden" />
       <Stepper current="payment" className="hidden lg:block" />
       <FlightRouteBar
         flight={selectedFlight}
-        passengers={passengers.length}
+        returnFlight={selectedReturnFlight}
+        counts={search}
         className="mb-4 mt-4"
       />
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
         <Card>
-          <div className="mb-4">
-            <h1 className="text-lg font-bold text-ink">Payment options</h1>
-            <p className="text-xs text-ink-muted">Mock checkout — no real money will be charged.</p>
+          <div className="mb-4 flex flex-wrap items-start justify-between gap-2">
+            <div>
+              <h1 className="text-lg font-bold text-ink">Payment options</h1>
+              <p className="text-xs text-ink-muted">
+                {config?.testMode ? "Test checkout — no real money will be charged." : "Secure checkout."}
+              </p>
+            </div>
+            {config?.testMode && (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-warning-50 px-2.5 py-1 text-[11px] font-extrabold uppercase tracking-wide text-warning-500 ring-1 ring-warning-500/30">
+                <FlaskConical className="size-3.5" aria-hidden />
+                Test payment
+              </span>
+            )}
           </div>
+
+          {heldBooking?.bookingId && (
+            <p className="mb-4 rounded-xl bg-primary-50 px-3 py-2 text-xs text-primary-800">
+              Booking <strong className="font-mono">{heldBooking.bookingId}</strong> is held for you —{" "}
+              <strong>payment pending</strong>.
+            </p>
+          )}
+
           <div
             role="tablist"
             aria-label="Payment method"
@@ -155,9 +226,7 @@ export function PaymentView() {
                   setError("");
                 }}
                 className={`flex-1 rounded-lg px-4 py-2.5 text-sm font-semibold transition sm:flex-none ${
-                  tab === id
-                    ? "bg-white text-primary-700 shadow-xs"
-                    : "text-ink-muted hover:text-ink"
+                  tab === id ? "bg-white text-primary-700 shadow-xs" : "text-ink-muted hover:text-ink"
                 }`}
               >
                 {label}
@@ -166,19 +235,24 @@ export function PaymentView() {
           </div>
 
           {tab === "upi" && (
-            <Field label="UPI ID">
-              <Input
-                placeholder="name@upi"
-                value={upiId}
-                onChange={(e) => setUpiId(e.target.value)}
-              />
-            </Field>
+            <div className="space-y-2">
+              <Field label="Pay to UPI ID">
+                <Input value={config?.payeeVpa ?? "Loading…"} readOnly aria-readonly className="bg-neutral-50 font-mono" />
+              </Field>
+              <p className="text-xs text-ink-muted">
+                {config?.testMode
+                  ? "Test mode: pressing Pay simulates a successful UPI payment to this ID. No request is sent to any UPI app and no money moves."
+                  : "You'll be asked to approve the payment in your UPI app."}
+              </p>
+            </div>
           )}
 
           {tab === "qr" && (
             <div className="space-y-4 text-center">
-              <div className="mx-auto flex size-48 items-center justify-center rounded-xl border-2 border-dashed border-neutral-300 bg-neutral-50">
+              <div className="mx-auto flex size-48 flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-neutral-300 bg-neutral-50">
+                <QrCode className="size-10 text-ink-subtle" aria-hidden />
                 <p className="text-xs text-ink-subtle">Test QR placeholder</p>
+                <p className="font-mono text-[11px] text-ink-muted">{config?.payeeVpa}</p>
               </div>
               <label className="inline-flex items-center gap-2 text-sm text-ink-muted">
                 <input
@@ -187,7 +261,7 @@ export function PaymentView() {
                   onChange={(e) => setQrCompleted(e.target.checked)}
                   className="size-4 rounded border-neutral-300 text-primary-600"
                 />
-                I have completed payment
+                I have completed the test payment
               </label>
             </div>
           )}
@@ -204,19 +278,10 @@ export function PaymentView() {
                 />
               </Field>
               <Field label="Cardholder name" className="sm:col-span-2">
-                <Input
-                  autoComplete="cc-name"
-                  value={cardName}
-                  onChange={(e) => setCardName(e.target.value)}
-                />
+                <Input autoComplete="cc-name" value={cardName} onChange={(e) => setCardName(e.target.value)} />
               </Field>
               <Field label="Expiry (MM/YY)">
-                <Input
-                  placeholder="08/28"
-                  autoComplete="cc-exp"
-                  value={expiry}
-                  onChange={(e) => setExpiry(e.target.value)}
-                />
+                <Input placeholder="08/28" autoComplete="cc-exp" value={expiry} onChange={(e) => setExpiry(e.target.value)} />
               </Field>
               <Field label="CVV">
                 <Input
@@ -229,52 +294,83 @@ export function PaymentView() {
                 />
               </Field>
               <p className="text-xs text-ink-subtle sm:col-span-2">
-                Card number and CVV are never sent to or stored by the server.
+                Only the last 4 digits are sent to the server. Card number and CVV are never stored.
               </p>
             </div>
           )}
 
+          {failure && (
+            <div role="alert" className="mt-4 flex items-start gap-2.5 rounded-xl border border-danger-500/30 bg-danger-50 p-3 text-sm text-danger-700">
+              <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden />
+              <p>
+                <strong className="font-semibold">Payment failed:</strong> {failure}. No money was taken — your
+                booking is still held, so you can try again.
+              </p>
+            </div>
+          )}
           {error && (
             <p role="alert" className="mt-4 text-sm text-danger-700">
               {error}
             </p>
+          )}
+
+          {config?.canSimulateFailure && (
+            <div className="mt-5 border-t border-dashed border-neutral-200 pt-3">
+              <button
+                type="button"
+                disabled={submitting}
+                onClick={() => void handlePay(true)}
+                className="text-xs font-semibold text-ink-subtle underline-offset-2 hover:text-danger-700 hover:underline disabled:opacity-50"
+              >
+                TEST: Simulate a failed payment
+              </button>
+            </div>
           )}
         </Card>
 
         <FareSummaryCard
           title="Payment summary"
           rows={[
-            {
-              label: "Base fare",
-              hint: `${passengers.length} traveller${passengers.length > 1 ? "s" : ""}`,
-              amount: baseFare,
-            },
-            { label: "Taxes and fees", amount: taxes },
+            ...fareSummaryRows(price, Boolean(selectedReturnFlight)),
             {
               label: "Seat charges",
-              hint: selectedSeats.map((seat) => seat.seatNumber).join(", ") || undefined,
+              hint:
+                selectedSeats
+                  .filter((seat) => seat.price > 0)
+                  .map((seat) =>
+                    selectedReturnFlight ? `${seat.seatNumber} (${seat.leg === "outbound" ? "dep" : "ret"})` : seat.seatNumber,
+                  )
+                  .join(", ") || undefined,
               amount: seatCharges,
             },
           ]}
           total={totalPayable}
           totalLabel="Total payable"
-          note="Mock payment gateway — your card details are never stored."
+          note={
+            <span className="inline-flex items-start gap-1">
+              {config?.testMode
+                ? "Test payment gateway — the amount is calculated and confirmed by our server; no real money moves."
+                : "The amount is calculated and confirmed by our server."}
+            </span>
+          }
         >
           <Button
             className="hidden w-full lg:inline-flex"
             size="lg"
             variant="accent"
-            disabled={submitting}
+            disabled={submitting || !config}
             onClick={() => void handlePay()}
           >
-            {submitting ? "Processing payment…" : `Pay ${formatINR(totalPayable)}`}
+            <ShieldCheck className="size-4" aria-hidden />
+            {submitting ? "Processing payment…" : payLabel}
           </Button>
         </FareSummaryCard>
       </div>
       <StickyActionBar
         total={formatINR(totalPayable)}
-        ctaLabel={`Pay ${formatINR(totalPayable)}`}
+        ctaLabel={payLabel}
         loading={submitting}
+        disabled={!config}
         onClick={() => void handlePay()}
       />
     </Container>

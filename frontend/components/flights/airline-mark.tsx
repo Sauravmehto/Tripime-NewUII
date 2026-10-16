@@ -1,8 +1,21 @@
+import { Layers } from "lucide-react";
+
 const TONES: Record<string, string> = {
   "6E": "bg-primary-600",
   AI: "bg-accent",
   IX: "bg-warning-500",
   QP: "bg-primary-800",
+  EK: "bg-danger-700",
+  FZ: "bg-primary-700",
+  G9: "bg-accent-dark",
+  EY: "bg-neutral-600",
+  QR: "bg-[#5c0632]",
+  TK: "bg-danger-500",
+  SQ: "bg-primary-900",
+  TG: "bg-[#5b2a86]",
+  BA: "bg-primary-800",
+  A9: "bg-neutral-800",
+  MULTI: "bg-linear-to-br from-primary-600 to-accent",
 };
 
 const SIZES = {
@@ -29,7 +42,7 @@ export function AirlineMark({
       aria-hidden
       className={`flex shrink-0 items-center justify-center rounded-lg font-bold tracking-tight text-white ${tone} ${SIZES[size]} ${className}`}
     >
-      {code}
+      {code === "MULTI" ? <Layers className="size-[55%]" /> : code}
     </span>
   );
 }

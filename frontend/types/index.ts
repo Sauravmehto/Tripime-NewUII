@@ -9,18 +9,61 @@ export interface Airport {
   city: string;
   airport: string;
   code: string;
+  country?: string;
+  terminal?: string | null;
 }
 
+/** Per-passenger fare; base/taxes/total are the adult fare. */
 export interface Fare {
   baseFare: number;
   taxes: number;
   totalFare: number;
   currency: string;
+  childBaseFare?: number;
+  childTaxes?: number;
+  childTotalFare?: number;
+  infantBaseFare?: number;
+  infantTaxes?: number;
+  infantTotalFare?: number;
+  /** Adult fare before discount (equals totalFare when there's none). */
+  originalFare?: number;
+  discount?: number;
+}
+
+export type CabinClass = "Economy" | "Premium Economy" | "Business" | "First";
+export type TripType = "one_way" | "round_trip";
+export type PassengerType = "adult" | "child" | "infant";
+export type FlightLeg = "outbound" | "return";
+
+export interface TravellerCounts {
+  adults: number;
+  children: number;
+  infants: number;
 }
 
 export interface Baggage {
   cabin: string;
   checkIn: string;
+}
+
+export interface FlightSegment {
+  /** The bookable direct flight this segment is (seat maps, inventory). */
+  id: string;
+  airline: Airline;
+  flightNumber: string;
+  aircraft: string;
+  origin: Airport;
+  destination: Airport;
+  departureDate: string;
+  departureTime: string;
+  arrivalDate: string;
+  arrivalTime: string;
+  durationMinutes: number;
+}
+
+export interface Layover {
+  airport: Airport;
+  durationMinutes: number;
 }
 
 export interface Flight {
@@ -41,30 +84,79 @@ export interface Flight {
   baggage: Baggage;
   refundable: boolean;
   status: string;
+  stops?: number;
+  /** Missing on bookings made before connections existed — use `segmentsOf()`. */
+  segments?: FlightSegment[];
+  layovers?: Layover[];
 }
 
 export interface FlightSearchResponse {
   origin: string;
   destination: string;
   date: string;
+  /** Seated passengers (adults + children). */
   passengers: number;
   count: number;
   flights: Flight[];
+  tripType: TripType;
+  returnDate: string | null;
+  adults: number;
+  children: number;
+  infants: number;
+  cabinClass: CabinClass;
+  returnFlights: Flight[];
+  returnCount: number;
+  isInternational: boolean;
+  routeAvailable: boolean;
+  minDate: string;
+  maxDate: string;
 }
 
-export interface SearchParams {
+export interface SearchParams extends TravellerCounts {
   origin: string;
   destination: string;
   date: string;
-  passengers: number;
+  tripType: TripType;
+  returnDate: string | null;
+  cabin: CabinClass;
+}
+
+export interface CatalogAirport {
+  code: string;
+  city: string;
+  airport: string;
+  country: string;
+  countryName: string;
+}
+
+export interface FlightCatalog {
+  airports: CatalogAirport[];
+  routes: Record<string, string[]>;
+  cabins: CabinClass[];
+  minDate: string;
+  maxDate: string;
+  maxSeatedPassengers: number;
+}
+
+export interface FareCalendarResponse {
+  origin: string;
+  destination: string;
+  month: string;
+  cabinClass: CabinClass;
+  currency: string;
+  days: { date: string; lowestFare: number }[];
 }
 
 export interface PassengerForm {
+  type: PassengerType;
   title: string;
   firstName: string;
   lastName: string;
   gender: string;
   dateOfBirth: string;
+  passportNumber?: string;
+  nationality?: string;
+  passportExpiry?: string;
 }
 
 export interface ContactForm {
@@ -75,6 +167,9 @@ export interface ContactForm {
 export type SeatType = "standard" | "window" | "preferred" | "extra_legroom";
 
 export interface SelectedSeat {
+  leg: FlightLeg;
+  /** Index into the leg's segments (0 for non-stop flights). */
+  segment: number;
   passengerIndex: number;
   seatNumber: string;
   seatType: SeatType;
@@ -83,18 +178,68 @@ export interface SelectedSeat {
 
 export type PaymentMethod = "upi" | "qr" | "card";
 
+/** One payment attempt, as recorded by the server-side payment provider. */
 export interface PaymentMeta {
   paymentId: string;
   transactionId: string;
   method: PaymentMethod;
   amount: number;
   currency: string;
+  /** SUCCESS | FAILED */
   status: string;
+  /** Time of the attempt. */
   paidAt: string;
+  provider?: string;
+  testMode?: boolean;
+  payee?: string | null;
+  failureReason?: string | null;
+}
+
+export type PaymentStatus = "pending" | "paid" | "failed";
+export type BookingStatus = "pending" | "confirmed" | "cancelled";
+
+export interface StatusChange {
+  at: string;
+  field: "payment" | "booking";
+  fromStatus?: string | null;
+  toStatus: string;
+  actor: "customer" | "admin" | "system" | "payment-provider";
+  note: string;
+}
+
+export interface NotificationRecord {
+  key: string;
+  event: string;
+  channel: "email" | "whatsapp";
+  recipient: string;
+  audience: "admin" | "customer";
+  /** "sent" = accepted by the provider (SMTP server / WhatsApp API). */
+  status: "sent" | "failed" | "not_configured";
+  provider: string;
+  at: string;
+  detail: string;
+  preview: string;
+}
+
+export interface PaymentConfig {
+  provider: string;
+  testMode: boolean;
+  payeeVpa: string;
+  methods: PaymentMethod[];
+  canSimulateFailure: boolean;
 }
 
 export interface BookingPassenger extends PassengerForm {
-  seatNumber?: string;
+  seatNumber?: string | null;
+  returnSeatNumber?: string | null;
+}
+
+export interface FareLine {
+  leg: FlightLeg;
+  passengerType: PassengerType;
+  count: number;
+  unitFare: number;
+  total: number;
 }
 
 export interface InvoiceExtraCharge {
@@ -119,32 +264,49 @@ export interface Booking {
   status: string;
   createdAt: string;
   confirmedAt?: string | null;
+  paymentStatus: PaymentStatus;
+  bookingStatus: BookingStatus;
+  invoiceNumber: string;
+  tripType?: TripType;
   flight: Flight;
+  returnFlight?: Flight | null;
   passengers: BookingPassenger[];
   contact: ContactForm;
   passengerCount: number;
+  adults?: number;
+  children?: number;
+  infants?: number;
   seats: SelectedSeat[];
   fare: Fare;
+  fareBreakdown?: FareLine[];
   seatCharges: number;
   totalAmount: number;
-  payment: PaymentMeta;
+  /** Latest successful payment; null until paid. */
+  payment: PaymentMeta | null;
+  payments: PaymentMeta[];
+  statusHistory: StatusChange[];
+  /** Admin responses only (empty for customers). */
+  notifications: NotificationRecord[];
+  /** Secret for customer access to the booking and its documents. */
+  accessToken: string;
   invoice: InvoiceDetails;
 }
 
 export interface BookingCreatePayload {
+  /** One per checkout; repeating it returns the same booking. */
+  checkoutKey: string;
   flightId: string;
+  returnFlightId?: string | null;
   passengers: PassengerForm[];
   contact: ContactForm;
   seats: SelectedSeat[];
-  payment: PaymentMeta;
 }
 
-export interface MockPaymentRequest {
-  amount: number;
-  currency: string;
+export interface BookingPayPayload {
   method: PaymentMethod;
-  upiId?: string;
   cardLast4?: string;
+  /** Test mode only. */
+  simulateFailure?: boolean;
 }
 
 export interface AdminLoginResponse {

@@ -1,8 +1,13 @@
+import { Suspense } from "react";
 import type { Metadata } from "next";
 import { ConfirmationView } from "@/components/booking/confirmation-view";
 
-export const metadata: Metadata = { title: "Booking confirmed" };
+export const metadata: Metadata = { title: "Your booking" };
 
 export default function ConfirmationPage() {
-  return <ConfirmationView />;
+  return (
+    <Suspense fallback={null}>
+      <ConfirmationView />
+    </Suspense>
+  );
 }

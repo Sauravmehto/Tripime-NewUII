@@ -395,3 +395,45 @@ h4 {
 .animate-nav-slide-in {
   animation: tp-nav-slide-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
+
+/* Two-handle range slider (components/ui/range-slider.tsx): only the thumbs take input. */
+.tp-range input[type="range"] {
+  pointer-events: none;
+}
+.tp-range input[type="range"]::-webkit-slider-thumb {
+  pointer-events: auto;
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 9999px;
+  background: var(--color-primary-600);
+  border: 3px solid #fff;
+  box-shadow: 0 2px 6px rgb(30 58 138 / 0.35);
+  cursor: grab;
+}
+.tp-range input[type="range"]::-moz-range-thumb {
+  pointer-events: auto;
+  width: 14px;
+  height: 14px;
+  border-radius: 9999px;
+  background: var(--color-primary-600);
+  border: 3px solid #fff;
+  box-shadow: 0 2px 6px rgb(30 58 138 / 0.35);
+  cursor: grab;
+}
+.tp-range input[type="range"]:focus-visible::-webkit-slider-thumb {
+  box-shadow: 0 0 0 4px rgb(59 130 246 / 0.3);
+}
+.tp-range input[type="range"]:focus-visible::-moz-range-thumb {
+  box-shadow: 0 0 0 4px rgb(59 130 246 / 0.3);
+}
+.tp-range input[type="range"]:focus {
+  outline: none;
+}
+.tp-range input[type="range"]::-webkit-slider-runnable-track {
+  background: transparent;
+}
+.tp-range input[type="range"]::-moz-range-track {
+  background: transparent;
+}

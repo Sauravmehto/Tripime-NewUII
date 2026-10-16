@@ -115,7 +115,8 @@ export function AdminDashboardView() {
   const pendingBookings = useMemo(
     () =>
       bookings
-        .filter((b) => b.status === "PROCESSING")
+        // Paid and waiting for an admin to issue the ticket.
+        .filter((b) => b.paymentStatus === "paid" && b.bookingStatus === "pending")
         .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
         .slice(0, 5),
     [bookings],
@@ -259,7 +260,7 @@ export function AdminDashboardView() {
                     {b.contact.email} · {relativeTime(b.createdAt)}
                   </p>
                 </div>
-                <Badge tone="warning">PROCESSING</Badge>
+                <Badge tone="warning">PAID · TO CONFIRM</Badge>
               </li>
             ))}
           </ul>

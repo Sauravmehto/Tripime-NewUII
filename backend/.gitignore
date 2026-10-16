@@ -1,0 +1,11 @@
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.env
+*.log
+
+# Runtime data with customer details and booking access tokens — never commit.
+data/bookings.json
+data/enquiries.json
+data/flight_seat_sales.json

@@ -7,24 +7,11 @@ import { Reveal } from "@/components/motion/reveal";
 import { SectionHeading } from "@/components/home/section-heading";
 import { Card } from "@/components/ui/card";
 import { POPULAR_ROUTES } from "@/lib/home/home-data";
-import { useBooking } from "@/context/booking-provider";
-
-const SEARCH_DATE = "2026-08-10";
 
 export function PopularRoutes({ compact = false }: { compact?: boolean }) {
-  const { setSearch } = useBooking();
-
+  // No date: the results page defaults to a week from today within the live window.
   function routeHref(fromCode: string, toCode: string) {
-    return `/flights?origin=${fromCode}&destination=${toCode}&date=${SEARCH_DATE}&passengers=1`;
-  }
-
-  function onRouteClick(fromCode: string, toCode: string) {
-    setSearch({
-      origin: fromCode,
-      destination: toCode,
-      date: SEARCH_DATE,
-      passengers: 1,
-    });
+    return `/flights?origin=${fromCode}&destination=${toCode}`;
   }
 
   if (compact) {
@@ -39,7 +26,6 @@ export function PopularRoutes({ compact = false }: { compact?: boolean }) {
             <Link
               key={route.toCode}
               href={routeHref(route.fromCode, route.toCode)}
-              onClick={() => onRouteClick(route.fromCode, route.toCode)}
               className="group flex items-center gap-3 rounded-lg border border-neutral-200 bg-white px-3 py-2.5 shadow-xs transition hover:border-primary-200 hover:shadow-soft"
             >
               <div className="min-w-0 flex-1">
@@ -80,7 +66,6 @@ export function PopularRoutes({ compact = false }: { compact?: boolean }) {
           <Reveal key={route.toCode} delayMs={i * 60}>
             <Link
               href={routeHref(route.fromCode, route.toCode)}
-              onClick={() => onRouteClick(route.fromCode, route.toCode)}
               className="group block"
             >
               <Card className="h-full transition duration-200 group-hover:-translate-y-0.5 group-hover:border-primary-200 group-hover:shadow-medium">

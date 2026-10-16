@@ -1,32 +1,36 @@
 from datetime import datetime, timezone
 from uuid import uuid4
 
-from fastapi import HTTPException
-
-from app.models.payment import MockPaymentRequest, PaymentResult
+from app import config
+from app.models.payment import ChargeRequest, ChargeResult
 from app.providers.payment_base import PaymentProvider
 
 
 class MockPaymentProvider(PaymentProvider):
-    def process_payment(self, request: MockPaymentRequest) -> PaymentResult:
-        if request.amount <= 0:
-            raise HTTPException(status_code=400, detail="Payment amount must be greater than zero.")
+    """Test-mode provider: no money moves. Succeeds unless asked to fail."""
 
-        if request.method == "upi" and not (request.upiId and "@" in request.upiId):
-            raise HTTPException(status_code=400, detail="A valid UPI ID is required (e.g. name@upi).")
+    name = "mock"
+    test_mode = True
 
-        if request.method == "card" and request.cardLast4 and len(request.cardLast4) != 4:
-            raise HTTPException(status_code=400, detail="cardLast4 must be exactly 4 digits.")
+    def __init__(self, payee_vpa: str = config.MOCK_PAYEE_VPA) -> None:
+        self.payee_vpa = payee_vpa
 
-        payment_id = f"PAY-{uuid4().hex[:12].upper()}"
-        transaction_id = f"TXN-{uuid4().hex[:10].upper()}"
+    @property
+    def can_simulate_failure(self) -> bool:
+        return True
 
-        return PaymentResult(
-            paymentId=payment_id,
-            transactionId=transaction_id,
+    def charge(self, request: ChargeRequest) -> ChargeResult:
+        failed = request.simulateFailure
+        return ChargeResult(
+            paymentId=f"PAY-{uuid4().hex[:12].upper()}",
+            transactionId=f"TEST-TXN-{uuid4().hex[:10].upper()}",
+            provider=self.name,
+            testMode=True,
             method=request.method,
             amount=request.amount,
             currency=request.currency,
-            status="SUCCESS",
-            paidAt=datetime.now(timezone.utc).isoformat(),
+            status="FAILED" if failed else "SUCCESS",
+            at=datetime.now(timezone.utc).isoformat(),
+            payee=self.payee_vpa if request.method in {"upi", "qr"} else None,
+            failureReason="Simulated failure (test mode)" if failed else None,
         )

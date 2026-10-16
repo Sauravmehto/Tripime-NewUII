@@ -1,204 +1,354 @@
+"""Branded PDF documents for a booking: the tax invoice and the e-ticket.
+
+Both reflect the booking's real state. Until the server has recorded a
+successful payment they are stamped PENDING PAYMENT; test-mode payments are
+labelled as such; the e-ticket only reads CONFIRMED once an admin confirms.
+"""
+
+from __future__ import annotations
+
 from io import BytesIO
+from pathlib import Path
 
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
-from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+from reportlab.platypus import Image, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 from app.models.booking import Booking
+from app.models.flight import Flight
+
+LOGO_PATH = Path(__file__).resolve().parents[1] / "assets" / "tripime_logo.png"
+SUPPORT_LINE = "Tripime · +91 98996 44177 · info@tripime.com"
+
+INK = colors.HexColor("#101010")
+MUTED = colors.HexColor("#5c5c5c")
+PRIMARY = colors.HexColor("#1d4ed8")
+GRID = colors.HexColor("#d6d3d1")
+HEADER_BG = colors.HexColor("#eff6ff")
+
+TONES = {
+    "pending": (colors.HexColor("#fffbeb"), colors.HexColor("#b45309")),
+    "paid": (colors.HexColor("#f0fdf4"), colors.HexColor("#15803d")),
+    "cancelled": (colors.HexColor("#fef2f2"), colors.HexColor("#b91c1c")),
+    "info": (colors.HexColor("#eff6ff"), colors.HexColor("#1d4ed8")),
+}
+
+_styles = getSampleStyleSheet()
+H_TITLE = ParagraphStyle("DocTitle", parent=_styles["Heading1"], fontSize=17, textColor=INK, alignment=2, spaceAfter=0)
+H_SUB = ParagraphStyle("DocSub", parent=_styles["Normal"], fontSize=9, textColor=MUTED, alignment=2)
+H_SECTION = ParagraphStyle("Section", parent=_styles["Heading2"], fontSize=11.5, textColor=INK, spaceBefore=10, spaceAfter=5)
+BODY = ParagraphStyle("Body", parent=_styles["Normal"], fontSize=8.5, textColor=INK, leading=11)
+SMALL = ParagraphStyle("Small", parent=_styles["Normal"], fontSize=7.5, textColor=MUTED, leading=10)
+
+
+def _money(amount: int) -> str:
+    return f"INR {amount:,}"
+
+
+def _masked(passport: str | None) -> str:
+    if not passport:
+        return "—"
+    return f"{'X' * max(0, len(passport) - 4)}{passport[-4:]}"
+
+
+def _hm(minutes: int) -> str:
+    return f"{minutes // 60}h {minutes % 60:02d}m"
+
+
+def _table(rows: list[list], widths: list[float], header: bool = False, bold_first_col: bool = False) -> Table:
+    table = Table(rows, colWidths=widths, repeatRows=1 if header else 0)
+    style = [
+        ("FONTSIZE", (0, 0), (-1, -1), 8.5),
+        ("TEXTCOLOR", (0, 0), (-1, -1), INK),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("TOPPADDING", (0, 0), (-1, -1), 4),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+    ]
+    if header:
+        style += [
+            ("BACKGROUND", (0, 0), (-1, 0), HEADER_BG),
+            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+            ("LINEBELOW", (0, 0), (-1, -1), 0.3, GRID),
+        ]
+    if bold_first_col:
+        style.append(("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"))
+    table.setStyle(TableStyle(style))
+    return table
+
+
+def _banner(text: str, tone: str, width: float) -> Table:
+    bg, fg = TONES[tone]
+    table = Table([[text]], colWidths=[width])
+    table.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, -1), bg),
+                ("TEXTCOLOR", (0, 0), (-1, -1), fg),
+                ("FONTNAME", (0, 0), (-1, -1), "Helvetica-Bold"),
+                ("FONTSIZE", (0, 0), (-1, -1), 10),
+                ("BOX", (0, 0), (-1, -1), 0.8, fg),
+                ("TOPPADDING", (0, 0), (-1, -1), 6),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+                ("LEFTPADDING", (0, 0), (-1, -1), 8),
+            ]
+        )
+    )
+    return table
+
+
+def _header(title: str, number: str, width: float) -> Table:
+    logo = Image(str(LOGO_PATH), width=42 * mm, height=42 * mm * 244 / 934) if LOGO_PATH.exists() else Paragraph(
+        "<b>tripime</b>", H_TITLE
+    )
+    right = [Paragraph(title, H_TITLE), Paragraph(number, H_SUB)]
+    table = Table([[logo, right]], colWidths=[width * 0.45, width * 0.55])
+    table.setStyle(
+        TableStyle(
+            [
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ("LINEBELOW", (0, 0), (-1, -1), 1.2, PRIMARY),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
+            ]
+        )
+    )
+    return table
+
+
+def _is_test(booking: Booking) -> bool:
+    latest = booking.payments[-1] if booking.payments else None
+    return latest.testMode if latest else True
+
+
+def _payment_rows(booking: Booking) -> list[list[str]]:
+    payment = booking.payment or (booking.payments[-1] if booking.payments else None)
+    rows = [["Payment status", booking.paymentStatus.upper()]]
+    if payment:
+        rows += [
+            ["Payment method", payment.method.upper() + (" (TEST MODE)" if payment.testMode else "")],
+            ["Paid to", payment.payee or "—"],
+            ["Transaction ID", payment.transactionId],
+            ["Attempted at" if booking.paymentStatus != "paid" else "Paid at", payment.paidAt[:19].replace("T", " ") + " UTC"],
+        ]
+    else:
+        rows.append(["Payment method", "Not paid yet"])
+    return rows
+
+
+def _segments(flight: Flight) -> list:
+    """(segment-like objects, layovers) with a fallback for pre-segment bookings."""
+    return flight.segments or [flight]  # type: ignore[list-item]
+
+
+def _itinerary(booking: Booking, width: float) -> list:
+    story: list = []
+    legs = [("Departing flight", booking.flight)]
+    if booking.returnFlight is not None:
+        legs.append(("Return flight", booking.returnFlight))
+    for title, flight in legs:
+        stops = "Non-stop" if not flight.stops else f"{flight.stops} stop"
+        story.append(
+            Paragraph(
+                f"{title if len(legs) > 1 else 'Itinerary'} · {flight.origin.city} → {flight.destination.city} · "
+                f"{stops} · {_hm(flight.durationMinutes)} · {flight.cabinClass}",
+                H_SECTION,
+            )
+        )
+        rows = [["Flight", "From", "Departs", "To", "Arrives", "Duration"]]
+        for index, seg in enumerate(_segments(flight)):
+            if index and flight.layovers:
+                lay = flight.layovers[index - 1]
+                rows.append([f"Change planes in {lay.airport.city} ({lay.airport.code}) — layover {_hm(lay.durationMinutes)}", "", "", "", "", ""])
+            terminal = lambda a: f" T:{a.terminal}" if getattr(a, "terminal", None) else ""  # noqa: E731
+            rows.append(
+                [
+                    Paragraph(f"<b>{seg.flightNumber}</b><br/>{seg.airline.name}", BODY),
+                    Paragraph(f"<b>{seg.origin.code}</b>{terminal(seg.origin)}<br/>{seg.origin.city}", BODY),
+                    Paragraph(f"<b>{seg.departureTime}</b><br/>{seg.departureDate}", BODY),
+                    Paragraph(f"<b>{seg.destination.code}</b>{terminal(seg.destination)}<br/>{seg.destination.city}", BODY),
+                    Paragraph(f"<b>{seg.arrivalTime}</b><br/>{seg.arrivalDate}", BODY),
+                    _hm(seg.durationMinutes),
+                ]
+            )
+        table = _table(rows, [w * width for w in (0.2, 0.17, 0.16, 0.17, 0.16, 0.14)], header=True)
+        # Layover rows span the full width.
+        for r, row in enumerate(rows):
+            if isinstance(row[0], str) and row[0].startswith("Change planes"):
+                table.setStyle(
+                    TableStyle([("SPAN", (0, r), (-1, r)), ("TEXTCOLOR", (0, r), (-1, r), colors.HexColor("#b45309"))])
+                )
+        story.append(table)
+        story.append(
+            Paragraph(f"Baggage per passenger: cabin {flight.baggage.cabin}, check-in {flight.baggage.checkIn}.", SMALL)
+        )
+    return story
+
+
+def _passengers(booking: Booking, width: float) -> Table:
+    round_trip = booking.returnFlight is not None
+    header = ["#", "Passenger", "Type", "Passport", "Seats (departing)"] + (["Seats (return)"] if round_trip else [])
+    rows = [header]
+    for i, pax in enumerate(booking.passengers, start=1):
+        lap = "Lap infant" if pax.type == "infant" else "—"
+        row = [str(i), f"{pax.title} {pax.firstName} {pax.lastName}", pax.type.capitalize(), _masked(pax.passportNumber),
+               pax.seatNumber or lap]
+        if round_trip:
+            row.append(pax.returnSeatNumber or lap)
+        rows.append(row)
+    widths = [0.05, 0.33, 0.1, 0.16, 0.18] + ([0.18] if round_trip else [])
+    scale = 1 / sum(widths)
+    return _table(rows, [w * scale * width for w in widths], header=True)
+
+
+def _watermark(text: str | None):
+    def draw(canvas, doc) -> None:
+        canvas.saveState()
+        canvas.setFont("Helvetica", 7.5)
+        canvas.setFillColor(MUTED)
+        canvas.drawString(doc.leftMargin, 10 * mm, SUPPORT_LINE)
+        canvas.drawRightString(A4[0] - doc.rightMargin, 10 * mm, f"Page {doc.page}")
+        if text:
+            canvas.setFont("Helvetica-Bold", 58)
+            canvas.setFillColor(colors.Color(0.85, 0.47, 0.04, alpha=0.12))
+            canvas.translate(A4[0] / 2, A4[1] / 2)
+            canvas.rotate(35)
+            canvas.drawCentredString(0, 0, text)
+        canvas.restoreState()
+
+    return draw
+
+
+def _document(build_story, watermark: str | None) -> bytes:
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(
+        buffer, pagesize=A4, leftMargin=16 * mm, rightMargin=16 * mm, topMargin=14 * mm, bottomMargin=18 * mm
+    )
+    story = build_story(doc.width)
+    doc.build(story, onFirstPage=_watermark(watermark), onLaterPages=_watermark(watermark))
+    return buffer.getvalue()
+
+
+def _meta(booking: Booking, width: float) -> Table:
+    rows = [
+        ["Booking reference", booking.bookingId, "Invoice number", booking.invoiceNumber],
+        ["PNR", booking.pnr, "Booked on", booking.createdAt[:10]],
+        ["Booking status", booking.bookingStatus.upper(), "Payment status", booking.paymentStatus.upper()],
+        ["Contact", f"{booking.contact.email} · {booking.contact.phone}", "", ""],
+    ]
+    table = _table(rows, [width * 0.18, width * 0.34, width * 0.18, width * 0.3])
+    table.setStyle(
+        TableStyle(
+            [
+                ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
+                ("FONTNAME", (2, 0), (2, -1), "Helvetica-Bold"),
+                ("TEXTCOLOR", (0, 0), (0, -1), MUTED),
+                ("TEXTCOLOR", (2, 0), (2, -1), MUTED),
+                ("SPAN", (1, 3), (3, 3)),
+            ]
+        )
+    )
+    return table
 
 
 def build_invoice_pdf(booking: Booking) -> bytes:
-    buffer = BytesIO()
-    doc = SimpleDocTemplate(
-        buffer,
-        pagesize=A4,
-        leftMargin=18 * mm,
-        rightMargin=18 * mm,
-        topMargin=16 * mm,
-        bottomMargin=16 * mm,
-    )
-    styles = getSampleStyleSheet()
-    title_style = ParagraphStyle(
-        "InvoiceTitle",
-        parent=styles["Heading1"],
-        fontSize=18,
-        textColor=colors.HexColor("#0c4a6e"),
-        spaceAfter=6,
-    )
-    subtitle = ParagraphStyle(
-        "InvoiceSub",
-        parent=styles["Normal"],
-        fontSize=10,
-        textColor=colors.HexColor("#475569"),
-        spaceAfter=12,
-    )
-    heading = ParagraphStyle(
-        "Section",
-        parent=styles["Heading2"],
-        fontSize=12,
-        textColor=colors.HexColor("#0f172a"),
-        spaceBefore=10,
-        spaceAfter=6,
-    )
+    unpaid = booking.paymentStatus != "paid"
+    cancelled = booking.bookingStatus == "cancelled"
 
-    story = []
-    story.append(Paragraph("Flight Invoice", title_style))
-    story.append(Paragraph("Tripime — Mock Domestic Booking", subtitle))
+    def story(width: float) -> list:
+        out: list = [_header("TAX INVOICE", booking.invoiceNumber, width), Spacer(1, 8)]
+        if cancelled:
+            out.append(_banner("BOOKING CANCELLED", "cancelled", width))
+        elif unpaid:
+            out.append(_banner("PENDING PAYMENT — this invoice is not a receipt", "pending", width))
+        else:
+            out.append(_banner("PAID", "paid", width))
+        if _is_test(booking):
+            out += [Spacer(1, 4), _banner("TEST PAYMENT — mock checkout, no real money was charged", "info", width)]
+        out += [Spacer(1, 8), _meta(booking, width)]
+        out += _itinerary(booking, width)
+        out += [Paragraph("Passengers", H_SECTION), _passengers(booking, width)]
 
-    invoice_number = f"INV-{booking.bookingId}"
-    meta = [
-        ["Invoice Number", invoice_number],
-        ["Booking ID", booking.bookingId],
-        ["PNR", booking.pnr],
-        ["Booking Date", booking.createdAt[:10]],
-        ["Status", booking.status],
-    ]
-    meta_table = Table(meta, colWidths=[45 * mm, 120 * mm])
-    meta_table.setStyle(
-        TableStyle(
-            [
-                ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
-                ("FONTSIZE", (0, 0), (-1, -1), 9),
-                ("TEXTCOLOR", (0, 0), (-1, -1), colors.HexColor("#334155")),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
-            ]
-        )
-    )
-    story.append(meta_table)
-
-    story.append(Paragraph("Flight details", heading))
-    flight_rows = [
-        ["Airline", f"{booking.flight.airline.name} ({booking.flight.airline.code})"],
-        ["Flight", booking.flight.flightNumber],
-        [
-            "Route",
-            f"{booking.flight.origin.city} ({booking.flight.origin.code}) → "
-            f"{booking.flight.destination.city} ({booking.flight.destination.code})",
-        ],
-        [
-            "Departure",
-            f"{booking.flight.departureDate} {booking.flight.departureTime}",
-        ],
-        [
-            "Arrival",
-            f"{booking.flight.arrivalDate} {booking.flight.arrivalTime}",
-        ],
-        ["Cabin", booking.flight.cabinClass],
-        [
-            "Baggage",
-            f"Cabin {booking.flight.baggage.cabin} · Check-in {booking.flight.baggage.checkIn}",
-        ],
-    ]
-    flight_table = Table(flight_rows, colWidths=[45 * mm, 120 * mm])
-    flight_table.setStyle(
-        TableStyle(
-            [
-                ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
-                ("FONTSIZE", (0, 0), (-1, -1), 9),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
-            ]
-        )
-    )
-    story.append(flight_table)
-
-    story.append(Paragraph("Passengers & seats", heading))
-    pax_data = [["#", "Passenger", "Seat"]]
-    for i, pax in enumerate(booking.passengers, start=1):
-        pax_data.append(
-            [
-                str(i),
-                f"{pax.title} {pax.firstName} {pax.lastName}",
-                pax.seatNumber or "—",
-            ]
-        )
-    pax_table = Table(pax_data, colWidths=[15 * mm, 100 * mm, 50 * mm])
-    pax_table.setStyle(
-        TableStyle(
-            [
-                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#e2e8f0")),
-                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-                ("FONTSIZE", (0, 0), (-1, -1), 9),
-                ("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#cbd5e1")),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
-                ("TOPPADDING", (0, 0), (-1, -1), 5),
-            ]
-        )
-    )
-    story.append(pax_table)
-
-    story.append(Paragraph("Fare & payment", heading))
-    fare_data = [
-        ["Flight base fare", f"INR {booking.fare.baseFare:,}"],
-        ["Taxes", f"INR {booking.fare.taxes:,}"],
-        ["Flight fare total", f"INR {booking.fare.totalFare:,}"],
-        ["Seat charges", f"INR {booking.seatCharges:,}"],
-        ["Total paid", f"INR {booking.totalAmount:,}"],
-        ["Payment method", booking.payment.method.upper()],
-        ["Transaction ID", booking.payment.transactionId],
-        ["Payment status", booking.payment.status],
-    ]
-    fare_table = Table(fare_data, colWidths=[60 * mm, 105 * mm])
-    fare_table.setStyle(
-        TableStyle(
-            [
-                ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
-                ("FONTNAME", (0, 4), (-1, 4), "Helvetica-Bold"),
-                ("FONTSIZE", (0, 0), (-1, -1), 9),
-                ("BACKGROUND", (0, 4), (-1, 4), colors.HexColor("#e0f2fe")),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
-                ("TOPPADDING", (0, 0), (-1, -1), 5),
-                ("GRID", (0, 0), (-1, -1), 0.3, colors.HexColor("#cbd5e1")),
-            ]
-        )
-    )
-    story.append(fare_table)
-
-    invoice = booking.invoice
-    has_adjustments = bool(invoice.extraCharges) or invoice.discountAmount > 0
-    if has_adjustments:
-        story.append(Paragraph("Adjustments", heading))
-        adjustment_rows = [
-            [charge.label, f"INR {charge.amount:,}"] for charge in invoice.extraCharges
+        out.append(Paragraph("Fare breakdown", H_SECTION))
+        rows = [
+            [f"{line.leg.capitalize()} · {line.count} × {line.passengerType}",
+             f"{_money(line.unitFare)} each", _money(line.total)]
+            for line in booking.fareBreakdown
         ]
-        if invoice.discountAmount > 0:
-            adjustment_rows.append(
-                [invoice.discountLabel or "Discount", f"- INR {invoice.discountAmount:,}"]
-            )
-        adjusted_total = (
-            booking.totalAmount
-            - invoice.discountAmount
-            + sum(charge.amount for charge in invoice.extraCharges)
-        )
-        adjustment_rows.append(["Adjusted total", f"INR {adjusted_total:,}"])
-        adjustment_table = Table(adjustment_rows, colWidths=[60 * mm, 105 * mm])
-        adjustment_table.setStyle(
+        rows += [
+            ["Base fare", "", _money(booking.fare.baseFare)],
+            ["Taxes and fees", "", _money(booking.fare.taxes)],
+            ["Seat charges", "", _money(booking.seatCharges)],
+            ["Total" + (" payable" if unpaid else " paid"), "", _money(booking.totalAmount)],
+        ]
+        fare = _table(rows, [width * 0.5, width * 0.25, width * 0.25])
+        fare.setStyle(
             TableStyle(
                 [
-                    ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
+                    ("ALIGN", (1, 0), (-1, -1), "RIGHT"),
                     ("FONTNAME", (0, -1), (-1, -1), "Helvetica-Bold"),
-                    ("FONTSIZE", (0, 0), (-1, -1), 9),
-                    ("BACKGROUND", (0, -1), (-1, -1), colors.HexColor("#e0f2fe")),
-                    ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
-                    ("TOPPADDING", (0, 0), (-1, -1), 5),
-                    ("GRID", (0, 0), (-1, -1), 0.3, colors.HexColor("#cbd5e1")),
+                    ("BACKGROUND", (0, -1), (-1, -1), HEADER_BG),
+                    ("LINEABOVE", (0, -1), (-1, -1), 0.6, PRIMARY),
                 ]
             )
         )
-        story.append(adjustment_table)
+        out.append(fare)
 
-    if invoice.notes.strip():
-        story.append(Paragraph("Notes", heading))
-        story.append(Paragraph(invoice.notes, styles["Normal"]))
+        invoice = booking.invoice
+        if invoice.extraCharges or invoice.discountAmount > 0:
+            out.append(Paragraph("Adjustments", H_SECTION))
+            adj = [[c.label, _money(c.amount)] for c in invoice.extraCharges]
+            if invoice.discountAmount > 0:
+                adj.append([invoice.discountLabel or "Discount", f"- {_money(invoice.discountAmount)}"])
+            adjusted = booking.totalAmount - invoice.discountAmount + sum(c.amount for c in invoice.extraCharges)
+            adj.append(["Adjusted total", _money(adjusted)])
+            table = _table(adj, [width * 0.6, width * 0.4], bold_first_col=True)
+            table.setStyle(TableStyle([("ALIGN", (1, 0), (-1, -1), "RIGHT"), ("FONTNAME", (0, -1), (-1, -1), "Helvetica-Bold")]))
+            out.append(table)
 
-    story.append(Spacer(1, 12))
-    story.append(
-        Paragraph(
-            "This is a mock invoice for development testing. No real payment was processed.",
-            subtitle,
-        )
-    )
+        out += [Paragraph("Payment", H_SECTION), _table(_payment_rows(booking), [width * 0.3, width * 0.7], bold_first_col=True)]
+        if invoice.notes.strip():
+            out += [Paragraph("Notes", H_SECTION), Paragraph(invoice.notes, BODY)]
+        out += [Spacer(1, 10), Paragraph("Computer-generated invoice; no signature required.", SMALL)]
+        return out
 
-    doc.build(story)
-    return buffer.getvalue()
+    return _document(story, "CANCELLED" if cancelled else ("PENDING PAYMENT" if unpaid else None))
+
+
+def ticket_state(booking: Booking) -> tuple[str, str]:
+    """(banner text, tone) for the e-ticket."""
+    if booking.bookingStatus == "cancelled":
+        return "CANCELLED — not valid for travel", "cancelled"
+    if booking.paymentStatus != "paid":
+        return "PENDING PAYMENT — not valid for travel", "pending"
+    if booking.bookingStatus != "confirmed":
+        return "PAYMENT RECEIVED — ticket being issued, not yet valid for travel", "info"
+    return "CONFIRMED — e-ticket", "paid"
+
+
+def build_ticket_pdf(booking: Booking) -> bytes:
+    text, tone = ticket_state(booking)
+
+    def story(width: float) -> list:
+        out: list = [_header("E-TICKET / BOOKING CONFIRMATION", f"PNR {booking.pnr} · {booking.bookingId}", width), Spacer(1, 8)]
+        out.append(_banner(text, tone, width))
+        if _is_test(booking):
+            out += [Spacer(1, 4), _banner("TEST BOOKING — issued from mock checkout, not an airline ticket", "info", width)]
+        out += [Spacer(1, 8), _meta(booking, width)]
+        out += _itinerary(booking, width)
+        out += [Paragraph("Passengers", H_SECTION), _passengers(booking, width)]
+        out += [
+            Paragraph("Payment", H_SECTION),
+            _table(_payment_rows(booking) + [["Total", _money(booking.totalAmount)]], [width * 0.3, width * 0.7], bold_first_col=True),
+            Paragraph("Before you fly", H_SECTION),
+            Paragraph(
+                "Carry a government photo ID (passport for international travel). Arrive at the airport at least "
+                "2 hours before domestic and 3 hours before international departures. Check visa and transit "
+                "requirements for every country on your route, including connection airports.",
+                BODY,
+            ),
+        ]
+        return out
+
+    watermark = None if tone == "paid" else ("CANCELLED" if tone == "cancelled" else "NOT VALID FOR TRAVEL" if tone == "info" else "PENDING PAYMENT")
+    return _document(story, watermark)

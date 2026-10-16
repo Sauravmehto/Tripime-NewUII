@@ -1,51 +1,40 @@
 "use client";
 
-import { ArrowUpDown } from "lucide-react";
-import { SORT_OPTIONS, type SortKey, type SortTeaser } from "@/lib/flights/flight-filters";
-import { formatDuration, formatINR } from "@/lib/format";
+import { ArrowUpDown, ChevronDown } from "lucide-react";
+import { SORT_OPTIONS, type SortKey } from "@/lib/flights/flight-filters";
 
 interface FlightSortBarProps {
   value: SortKey;
   onChange: (value: SortKey) => void;
-  teasers: Record<SortKey, SortTeaser | null>;
+  shown: number;
+  total: number;
+  /** Extra context on the left, e.g. "departing flights DEL → TBS". */
+  label?: string;
 }
 
-export function FlightSortBar({ value, onChange, teasers }: FlightSortBarProps) {
+export function FlightSortBar({ value, onChange, shown, total, label }: FlightSortBarProps) {
   return (
-    <div
-      role="tablist"
-      aria-label="Sort flights"
-      className="no-scrollbar flex gap-1 overflow-x-auto rounded-2xl border border-neutral-200 bg-white p-1.5 shadow-soft"
-    >
-      <span className="hidden shrink-0 items-center gap-1.5 px-3 text-xs font-semibold uppercase tracking-wide text-ink-subtle lg:flex">
-        <ArrowUpDown className="size-3.5" aria-hidden />
-        Sort
-      </span>
-      {SORT_OPTIONS.map((option) => {
-        const teaser = teasers[option.id];
-        const active = value === option.id;
-        return (
-          <button
-            key={option.id}
-            type="button"
-            role="tab"
-            aria-selected={active}
-            onClick={() => onChange(option.id)}
-            className={`min-w-[132px] flex-1 rounded-xl px-3 py-2 text-left transition ${
-              active
-                ? "bg-primary-50 text-primary-800 ring-1 ring-primary-200"
-                : "text-ink-muted hover:bg-neutral-50"
-            }`}
-          >
-            <span className="block truncate text-sm font-semibold">{option.label}</span>
-            <span className="block truncate text-xs text-ink-subtle">
-              {teaser
-                ? `${formatINR(teaser.price)}/adult · ${formatDuration(teaser.minutes)}`
-                : "No flights"}
-            </span>
-          </button>
-        );
-      })}
+    <div className="flex flex-wrap items-center justify-between gap-2 px-1">
+      <p className="text-sm text-ink-muted" aria-live="polite">
+        <span className="font-semibold text-ink">{shown}</span> of {total} flights
+        {label && <span className="text-ink-subtle"> · {label}</span>}
+      </p>
+      <label className="relative inline-flex items-center">
+        <span className="sr-only">Sort flights by</span>
+        <ArrowUpDown className="pointer-events-none absolute left-3 size-3.5 text-ink-subtle" aria-hidden />
+        <select
+          value={value}
+          onChange={(event) => onChange(event.target.value as SortKey)}
+          className="h-9 cursor-pointer appearance-none rounded-xl border border-neutral-200 bg-white pl-8 pr-9 text-xs font-semibold text-ink shadow-xs transition hover:border-primary-300 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+        >
+          {SORT_OPTIONS.map((option) => (
+            <option key={option.id} value={option.id}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+        <ChevronDown className="pointer-events-none absolute right-3 size-3.5 text-ink-subtle" aria-hidden />
+      </label>
     </div>
   );
 }

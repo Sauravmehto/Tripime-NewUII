@@ -1,118 +1,110 @@
 import type { Flight } from "@/types";
+import { minutesOf, stopsOf } from "./segments";
 
-export type SortKey = "cheapest" | "shortest" | "earliest" | "latest";
-export type TimeSlotId = "early" | "morning" | "afternoon" | "night";
-
-interface TimeSlot {
-  id: TimeSlotId;
-  label: string;
-  hint: string;
-  from: number;
-  to: number;
-}
-
-export const TIME_SLOTS: TimeSlot[] = [
-  { id: "early", label: "Before 6 AM", hint: "00 – 06", from: 0, to: 6 },
-  { id: "morning", label: "6 AM – 12 PM", hint: "06 – 12", from: 6, to: 12 },
-  { id: "afternoon", label: "12 PM – 6 PM", hint: "12 – 18", from: 12, to: 18 },
-  { id: "night", label: "After 6 PM", hint: "18 – 24", from: 18, to: 24 },
-];
+export type SortKey = "recommended" | "cheapest" | "shortest" | "earliest" | "latest";
 
 export const SORT_OPTIONS: { id: SortKey; label: string }[] = [
+  { id: "recommended", label: "Recommended" },
   { id: "cheapest", label: "Cheapest" },
   { id: "shortest", label: "Fastest" },
   { id: "earliest", label: "Earliest departure" },
   { id: "latest", label: "Latest departure" },
 ];
 
+export type Range = [number, number];
+
 export interface FlightFilters {
+  /** Selected stop counts; empty means any. */
+  stops: number[];
   airlines: string[];
-  departSlots: TimeSlotId[];
   refundableOnly: boolean;
-  maxPrice: number | null;
+  /** `null` means the full range. */
+  price: Range | null;
+  /** Minutes after midnight, local time at the airport. */
+  depart: Range | null;
+  arrive: Range | null;
 }
 
 export const EMPTY_FILTERS: FlightFilters = {
+  stops: [],
   airlines: [],
-  departSlots: [],
   refundableOnly: false,
-  maxPrice: null,
+  price: null,
+  depart: null,
+  arrive: null,
 };
 
-export interface PriceBounds {
-  min: number;
-  max: number;
-}
-
-export interface AirlineFacet {
-  name: string;
-  code: string;
+export interface Facet<K> {
+  key: K;
+  label: string;
   count: number;
   cheapest: number;
 }
 
-function slotOf(time: string): TimeSlotId {
-  const hour = Number(time.slice(0, 2));
-  const slot = TIME_SLOTS.find((s) => hour >= s.from && hour < s.to);
-  return slot?.id ?? "night";
+export interface FlightFacets {
+  stops: Facet<number>[];
+  airlines: Facet<string>[];
+  price: Range;
+  depart: Range;
+  arrive: Range;
 }
 
-export function priceBounds(flights: Flight[]): PriceBounds {
-  if (flights.length === 0) return { min: 0, max: 0 };
-  const prices = flights.map((f) => f.fare.totalFare);
-  return { min: Math.min(...prices), max: Math.max(...prices) };
+function bounds(values: number[]): Range {
+  return values.length ? [Math.min(...values), Math.max(...values)] : [0, 0];
 }
 
-export function airlineFacets(flights: Flight[]): AirlineFacet[] {
-  const map = new Map<string, AirlineFacet>();
+function facetBy<K>(flights: Flight[], keyOf: (f: Flight) => K, labelOf: (k: K) => string): Facet<K>[] {
+  const map = new Map<K, Facet<K>>();
   for (const flight of flights) {
-    const key = flight.airline.name;
+    const key = keyOf(flight);
+    const price = flight.fare.totalFare;
     const existing = map.get(key);
     if (existing) {
       existing.count += 1;
-      existing.cheapest = Math.min(existing.cheapest, flight.fare.totalFare);
+      existing.cheapest = Math.min(existing.cheapest, price);
     } else {
-      map.set(key, {
-        name: key,
-        code: flight.airline.code,
-        count: 1,
-        cheapest: flight.fare.totalFare,
-      });
+      map.set(key, { key, label: labelOf(key), count: 1, cheapest: price });
     }
   }
-  return [...map.values()].sort((a, b) => a.name.localeCompare(b.name));
+  return [...map.values()];
 }
 
-export function slotCounts(flights: Flight[]): Record<TimeSlotId, number> {
-  const counts: Record<TimeSlotId, number> = {
-    early: 0,
-    morning: 0,
-    afternoon: 0,
-    night: 0,
+export function flightFacets(flights: Flight[]): FlightFacets {
+  return {
+    stops: facetBy(flights, stopsOf, (n) => (n === 0 ? "Non-stop" : `${n} stop${n > 1 ? "s" : ""}`)).sort(
+      (a, b) => a.key - b.key,
+    ),
+    // Like the reference: airlines listed cheapest first.
+    airlines: facetBy(flights, (f) => f.airline.name, (name) => name).sort((a, b) => a.cheapest - b.cheapest),
+    price: bounds(flights.map((f) => f.fare.totalFare)),
+    depart: bounds(flights.map((f) => minutesOf(f.departureTime))),
+    arrive: bounds(flights.map((f) => minutesOf(f.arrivalTime))),
   };
-  for (const flight of flights) counts[slotOf(flight.departureTime)] += 1;
-  return counts;
 }
+
+const within = (value: number, range: Range | null) => !range || (value >= range[0] && value <= range[1]);
 
 export function applyFilters(flights: Flight[], filters: FlightFilters): Flight[] {
-  return flights.filter((flight) => {
-    if (filters.airlines.length > 0 && !filters.airlines.includes(flight.airline.name)) {
-      return false;
-    }
-    if (
-      filters.departSlots.length > 0 &&
-      !filters.departSlots.includes(slotOf(flight.departureTime))
-    ) {
-      return false;
-    }
-    if (filters.refundableOnly && !flight.refundable) return false;
-    if (filters.maxPrice !== null && flight.fare.totalFare > filters.maxPrice) return false;
-    return true;
-  });
+  return flights.filter(
+    (flight) =>
+      (filters.stops.length === 0 || filters.stops.includes(stopsOf(flight))) &&
+      (filters.airlines.length === 0 || filters.airlines.includes(flight.airline.name)) &&
+      (!filters.refundableOnly || flight.refundable) &&
+      within(flight.fare.totalFare, filters.price) &&
+      within(minutesOf(flight.departureTime), filters.depart) &&
+      within(minutesOf(flight.arrivalTime), filters.arrive),
+  );
 }
 
 export function sortFlights(flights: Flight[], key: SortKey): Flight[] {
   const list = [...flights];
+  if (key === "recommended") {
+    // Balance price and journey time relative to the best of each in this list.
+    const minPrice = Math.min(...list.map((f) => f.fare.totalFare));
+    const minDuration = Math.min(...list.map((f) => f.durationMinutes));
+    const score = (f: Flight) => f.fare.totalFare / minPrice + 0.6 * (f.durationMinutes / minDuration);
+    return list.sort((a, b) => score(a) - score(b));
+  }
   list.sort((a, b) => {
     if (key === "cheapest") return a.fare.totalFare - b.fare.totalFare;
     if (key === "shortest") return a.durationMinutes - b.durationMinutes;
@@ -122,29 +114,16 @@ export function sortFlights(flights: Flight[], key: SortKey): Flight[] {
   return list;
 }
 
-export interface SortTeaser {
-  price: number;
-  minutes: number;
-}
-
-export function sortTeasers(flights: Flight[]): Record<SortKey, SortTeaser | null> {
-  const pick = (key: SortKey): SortTeaser | null => {
-    const best = sortFlights(flights, key)[0];
-    return best ? { price: best.fare.totalFare, minutes: best.durationMinutes } : null;
-  };
-  return {
-    cheapest: pick("cheapest"),
-    shortest: pick("shortest"),
-    earliest: pick("earliest"),
-    latest: pick("latest"),
-  };
-}
-
-export function countActiveFilters(filters: FlightFilters, bounds: PriceBounds): number {
-  let count = filters.airlines.length + filters.departSlots.length;
-  if (filters.refundableOnly) count += 1;
-  if (filters.maxPrice !== null && filters.maxPrice < bounds.max) count += 1;
-  return count;
+export function countActiveFilters(filters: FlightFilters, facets: FlightFacets): number {
+  const narrowed = (range: Range | null, full: Range) => (range && (range[0] > full[0] || range[1] < full[1]) ? 1 : 0);
+  return (
+    filters.stops.length +
+    filters.airlines.length +
+    (filters.refundableOnly ? 1 : 0) +
+    narrowed(filters.price, facets.price) +
+    narrowed(filters.depart, facets.depart) +
+    narrowed(filters.arrive, facets.arrive)
+  );
 }
 
 export function toggleValue<T>(list: T[], value: T): T[] {

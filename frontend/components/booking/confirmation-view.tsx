@@ -2,12 +2,13 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
-import { downloadInvoice, getBooking } from "@/lib/api/bookings";
+import { useParams, useSearchParams } from "next/navigation";
+import { getBooking } from "@/lib/api/bookings";
 import { getErrorMessage } from "@/lib/api/client";
 import { useBooking } from "@/context/booking-provider";
 import { Container } from "@/components/layout/container";
 import { BookingSummaryCard } from "@/components/booking/booking-summary-card";
+import { BookingDocumentButtons } from "@/components/booking/booking-document-buttons";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/card";
 import type { Booking } from "@/types";
@@ -15,20 +16,25 @@ import type { Booking } from "@/types";
 export function ConfirmationView() {
   const params = useParams<{ bookingId: string }>();
   const bookingId = params.bookingId;
+  const token = useSearchParams().get("token") ?? "";
   const { reset } = useBooking();
   const [booking, setBooking] = useState<Booking | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
-  const [downloading, setDownloading] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
 
     async function load() {
       if (!bookingId) return;
+      if (!token) {
+        setError("This confirmation link is incomplete. Use My Booking with your booking ID and email to find it.");
+        setLoading(false);
+        return;
+      }
       setLoading(true);
       try {
-        const data = await getBooking(bookingId);
+        const data = await getBooking(bookingId, token);
         if (!cancelled) {
           setBooking(data);
           reset();
@@ -44,20 +50,7 @@ export function ConfirmationView() {
     return () => {
       cancelled = true;
     };
-  }, [bookingId, reset]);
-
-  async function handleDownload() {
-    if (!bookingId) return;
-    setDownloading(true);
-    setError("");
-    try {
-      await downloadInvoice(bookingId);
-    } catch (err) {
-      setError(getErrorMessage(err));
-    } finally {
-      setDownloading(false);
-    }
-  }
+  }, [bookingId, token, reset]);
 
   return (
     <Container className="py-8">
@@ -77,9 +70,7 @@ export function ConfirmationView() {
           booking={booking}
           footer={
             <>
-              <Button size="lg" disabled={downloading} onClick={() => void handleDownload()}>
-                {downloading ? "Preparing PDF…" : "Download invoice"}
-              </Button>
+              <BookingDocumentButtons booking={booking} />
               <Link href="/my-booking">
                 <Button variant="outline" size="lg">
                   Find this booking later

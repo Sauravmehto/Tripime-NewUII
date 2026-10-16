@@ -275,7 +275,7 @@ export const MAP_DESTINATIONS: MapDestination[] = [
     priceFrom: "₹4,299",
     image:
       "https://images.pexels.com/photos/789750/pexels-photo-789750.jpeg?auto=compress&cs=tinysrgb&w=800",
-    flightHref: "/flights?origin=DEL&destination=BOM&date=2026-08-20&passengers=1",
+    flightHref: "/flights?origin=DEL&destination=BOM",
   },
   {
     id: "bali",
@@ -287,7 +287,7 @@ export const MAP_DESTINATIONS: MapDestination[] = [
     priceFrom: "₹52,999",
     image:
       "https://images.pexels.com/photos/2166553/pexels-photo-2166553.jpeg?auto=compress&cs=tinysrgb&w=800",
-    flightHref: "/flights?origin=DEL&destination=DPS&date=2026-08-20&passengers=1",
+    flightHref: "/flights?origin=DEL&destination=DPS",
   },
   {
     id: "thailand",
@@ -299,7 +299,7 @@ export const MAP_DESTINATIONS: MapDestination[] = [
     priceFrom: "₹42,999",
     image:
       "https://images.pexels.com/photos/3601425/pexels-photo-3601425.jpeg?auto=compress&cs=tinysrgb&w=800",
-    flightHref: "/flights?origin=DEL&destination=BKK&date=2026-08-20&passengers=1",
+    flightHref: "/flights?origin=DEL&destination=BKK",
   },
   {
     id: "vietnam",
@@ -311,7 +311,7 @@ export const MAP_DESTINATIONS: MapDestination[] = [
     priceFrom: "₹39,999",
     image:
       "https://images.pexels.com/photos/2387866/pexels-photo-2387866.jpeg?auto=compress&cs=tinysrgb&w=800",
-    flightHref: "/flights?origin=DEL&destination=SGN&date=2026-08-20&passengers=1",
+    flightHref: "/flights?origin=DEL&destination=SGN",
   },
 ];
 

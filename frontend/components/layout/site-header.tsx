@@ -134,7 +134,7 @@ export function SiteHeader() {
               Login
             </Button>
           ) : null}
-          <Link href="/flights?origin=DEL&destination=BOM&date=2026-08-20&passengers=1">
+          <Link href="/flights?origin=DEL&destination=BOM">
             <Button variant="ghost" size="sm" aria-label="Search flights">
               <Search className="size-4" />
             </Button>

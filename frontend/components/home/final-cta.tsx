@@ -48,7 +48,7 @@ export function FinalCta() {
                 Call expert
               </Button>
             </a>
-            <Link href="/flights?origin=DEL&destination=BOM&date=2026-08-20&passengers=1">
+            <Link href="/flights?origin=DEL&destination=BOM">
               <Button
                 variant="ghost"
                 size="lg"

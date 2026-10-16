@@ -1,12 +1,13 @@
 from fastapi import APIRouter
 
-from app.models.payment import MockPaymentRequest, PaymentResult
-from app.services.payment_service import PaymentService
+from app.models.payment import PaymentConfig
+from app.services.payment_service import payment_config
 
 router = APIRouter()
-payment_service = PaymentService()
 
 
-@router.post("/mock", response_model=PaymentResult)
-def create_mock_payment(payload: MockPaymentRequest) -> PaymentResult:
-    return payment_service.process_mock_payment(payload)
+@router.get("/config", response_model=PaymentConfig)
+def get_payment_config() -> PaymentConfig:
+    """Checkout settings (provider, test mode, payee UPI ID). Payments themselves are
+    taken via POST /api/bookings/{booking_id}/pay so the server controls the amount."""
+    return payment_config()

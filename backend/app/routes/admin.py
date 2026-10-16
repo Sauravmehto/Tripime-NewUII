@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from fastapi.responses import Response
+from pydantic import BaseModel, Field
 
 from app import config
 from app.models.admin import AdminLoginRequest, AdminLoginResponse, AdminStats
@@ -49,9 +50,10 @@ from app.models.website_cms import (
 from app.services.admin_auth import create_admin_token, require_admin
 from app.services.agency_profile_service import get_agency_profile_service
 from app.services.booking_service import get_booking_service
-from app.services.email_service import send_booking_confirmation_email, send_invoice_email
+from app.services.email_service import send_invoice_email
+from app.services.notification_service import notify_booking_event, retry_undelivered
 from app.services.enquiry_service import get_enquiry_service
-from app.services.invoice_service import build_invoice_pdf
+from app.services.invoice_service import build_invoice_pdf, build_ticket_pdf
 from app.services.package_service import get_package_service
 from app.services.package_theme_service import get_package_theme_service
 from app.services.admin_ops_service import get_admin_ops_service
@@ -270,10 +272,57 @@ def list_bookings() -> list[Booking]:
     dependencies=[Depends(require_admin)],
 )
 def confirm_booking(booking_id: str, background_tasks: BackgroundTasks) -> Booking:
+    """Issue the ticket for a paid booking; notifies the team and the customer (e-ticket attached)."""
     booking, newly_confirmed = get_booking_service().confirm_booking(booking_id)
     if newly_confirmed:
-        background_tasks.add_task(send_booking_confirmation_email, booking)
+        background_tasks.add_task(notify_booking_event, booking_id, "booking_confirmed")
     return booking
+
+
+class CancelRequest(BaseModel):
+    reason: str = Field("", max_length=300)
+
+
+@router.post(
+    "/bookings/{booking_id}/cancel",
+    response_model=Booking,
+    dependencies=[Depends(require_admin)],
+)
+def cancel_booking(booking_id: str, payload: CancelRequest, background_tasks: BackgroundTasks) -> Booking:
+    """Cancel a booking and release its seats. Refunds for paid bookings are handled offline."""
+    booking, newly_cancelled = get_booking_service().cancel_booking(booking_id, payload.reason.strip())
+    if newly_cancelled:
+        background_tasks.add_task(notify_booking_event, booking_id, "booking_cancelled")
+    return booking
+
+
+@router.post(
+    "/bookings/{booking_id}/notifications/retry",
+    response_model=Booking,
+    dependencies=[Depends(require_admin)],
+)
+def retry_notifications(booking_id: str) -> Booking:
+    """Re-send notifications that failed or weren't configured. Runs synchronously so the
+    admin sees the new delivery status straight away."""
+    if get_booking_service().get_booking(booking_id) is None:
+        raise HTTPException(status_code=404, detail=f"Booking '{booking_id}' not found.")
+    retry_undelivered(booking_id)
+    return get_booking_service().get_booking(booking_id)  # type: ignore[return-value]
+
+
+@router.get(
+    "/bookings/{booking_id}/ticket",
+    dependencies=[Depends(require_admin)],
+)
+def admin_download_ticket(booking_id: str) -> Response:
+    booking = get_booking_service().get_booking(booking_id)
+    if booking is None:
+        raise HTTPException(status_code=404, detail=f"Booking '{booking_id}' not found.")
+    return Response(
+        content=build_ticket_pdf(booking),
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="E-ticket-{booking.bookingId}.pdf"'},
+    )
 
 
 @router.put(
@@ -322,10 +371,13 @@ def get_stats() -> AdminStats:
     today = datetime.now(timezone.utc).date().isoformat()
 
     total_bookings = len(bookings)
-    confirmed_bookings = sum(1 for b in bookings if b.status == "CONFIRMED")
-    pending_bookings = sum(1 for b in bookings if b.status == "PROCESSING")
+    confirmed_bookings = sum(1 for b in bookings if b.bookingStatus == "confirmed")
+    pending_bookings = sum(1 for b in bookings if b.bookingStatus == "pending")
     bookings_today = sum(1 for b in bookings if b.createdAt[:10] == today)
-    total_revenue = sum(b.totalAmount for b in bookings)
+    # Revenue counts money actually taken, excluding cancelled bookings (refund due).
+    total_revenue = sum(
+        b.totalAmount for b in bookings if b.paymentStatus == "paid" and b.bookingStatus != "cancelled"
+    )
 
     return AdminStats(
         totalBookings=total_bookings,

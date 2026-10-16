@@ -4,9 +4,10 @@ export {
   createBooking,
   getBooking,
   lookupBooking,
-  downloadInvoice,
+  payBooking,
+  downloadBookingDocument,
 } from "./bookings";
-export { processMockPayment } from "./payments";
+export { getPaymentConfig } from "./payments";
 export { listPackages, getPackage } from "./packages";
 export { createEnquiry } from "./enquiries";
 export {

@@ -16,8 +16,6 @@ export function airportOf(code: string): AirportInfo {
   return AIRPORTS[code] ?? { code, city: code, airport: `${code} Airport` };
 }
 
-export const INVENTORY_START = "2026-08-04";
-export const INVENTORY_END = "2026-08-31";
 
 export function addDays(isoDate: string, days: number): string {
   const date = new Date(`${isoDate}T00:00:00`);

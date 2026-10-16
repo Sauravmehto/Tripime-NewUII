@@ -2,10 +2,11 @@
 
 import { useState, type FormEvent } from "react";
 import { Search } from "lucide-react";
-import { downloadInvoice, lookupBooking } from "@/lib/api/bookings";
+import { lookupBooking } from "@/lib/api/bookings";
 import { getErrorMessage } from "@/lib/api/client";
 import { Container } from "@/components/layout/container";
 import { BookingSummaryCard } from "@/components/booking/booking-summary-card";
+import { BookingDocumentButtons } from "@/components/booking/booking-document-buttons";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -18,7 +19,6 @@ export function MyBookingView() {
   const [contact, setContact] = useState("");
   const [booking, setBooking] = useState<Booking | null>(null);
   const [loading, setLoading] = useState(false);
-  const [downloading, setDownloading] = useState(false);
   const [error, setError] = useState("");
   const [searched, setSearched] = useState(false);
 
@@ -35,18 +35,6 @@ export function MyBookingView() {
       setError(getErrorMessage(err));
     } finally {
       setLoading(false);
-    }
-  }
-
-  async function handleDownload() {
-    if (!booking) return;
-    setDownloading(true);
-    try {
-      await downloadInvoice(booking.bookingId);
-    } catch (err) {
-      setError(getErrorMessage(err));
-    } finally {
-      setDownloading(false);
     }
   }
 
@@ -114,9 +102,7 @@ export function MyBookingView() {
             booking={booking}
             footer={
               <>
-                <Button size="lg" disabled={downloading} onClick={() => void handleDownload()}>
-                  {downloading ? "Preparing PDF…" : "Download invoice"}
-                </Button>
+                <BookingDocumentButtons booking={booking} />
                 <a
                   href={whatsappLink(`Hi Tripime, I need help with booking ${booking.bookingId}.`)}
                   target="_blank"

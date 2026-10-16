@@ -11,13 +11,31 @@ class FlightProvider(ABC):
     """
 
     @abstractmethod
+    def booking_window(self) -> tuple[str, str]:
+        """Inclusive (min, max) ISO dates that can currently be searched/booked."""
+        raise NotImplementedError
+
+    @abstractmethod
     def search(
         self,
         origin: str,
         destination: str,
         date: str,
-        passengers: int,
+        seats: int,
+        cabin: str = "Economy",
     ) -> list[Flight]:
+        """Flights with at least `seats` seats free in `cabin` (infants don't need one)."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def lowest_fares(
+        self,
+        origin: str,
+        destination: str,
+        dates: list[str],
+        cabin: str = "Economy",
+    ) -> dict[str, int]:
+        """Lowest adult total fare per date; dates without inventory are omitted."""
         raise NotImplementedError
 
     @abstractmethod
@@ -27,4 +45,9 @@ class FlightProvider(ABC):
     @abstractmethod
     def decrement_seats(self, flight_id: str, passengers: int) -> Flight:
         """Reduce available seats after a successful booking."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def release_seats(self, flight_id: str, passengers: int) -> None:
+        """Give back seats held by a cancelled booking (never below zero sold)."""
         raise NotImplementedError

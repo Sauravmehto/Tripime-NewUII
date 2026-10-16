@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { Mail, Phone, UserRound } from "lucide-react";
+import { Baby, BookUser, Mail, Phone, UserRound } from "lucide-react";
 import { useBooking } from "@/context/booking-provider";
 import { Container } from "@/components/layout/container";
 import { FareSummaryCard } from "@/components/flights/fare-summary-card";
@@ -14,19 +14,31 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input, Select } from "@/components/ui/input";
 import { Field } from "@/components/ui/field";
-import { emptyPassenger, formatINR } from "@/lib/format";
+import { formatINR } from "@/lib/format";
+import { todayISO } from "@/lib/flights/calendar";
+import { fareSummaryRows, passengerTypeLabel, priceTrip } from "@/lib/flights/pricing";
+import {
+  TITLES,
+  dobBounds,
+  isInternationalTrip,
+  passengerFormsFor,
+  validatePassenger,
+} from "@/lib/flights/passengers";
+import { flightsHref } from "@/lib/flights/search-params";
 import type { PassengerForm } from "@/types";
 
 type FieldErrors = Record<string, string>;
 
+const TYPE_HINT = { adult: "12+ years", child: "2–11 years", infant: "Under 2 · travels on an adult's lap" };
+
 export function PassengersView() {
   const router = useRouter();
-  const { search, selectedFlight, setPassengers, setContact, contact } = useBooking();
-  const count = search?.passengers ?? 1;
+  const { search, selectedFlight, selectedReturnFlight, passengers, setPassengers, setContact, contact } =
+    useBooking();
   const formRef = useRef<HTMLFormElement>(null);
 
   const [forms, setForms] = useState<PassengerForm[]>(() =>
-    Array.from({ length: count }, () => emptyPassenger()),
+    search ? passengerFormsFor(search, passengers) : [],
   );
   const [email, setEmail] = useState(contact.email);
   const [phone, setPhone] = useState(contact.phone);
@@ -36,49 +48,77 @@ export function PassengersView() {
     if (!selectedFlight || !search) router.replace("/");
   }, [selectedFlight, search, router]);
 
+  // The provider hydrates from sessionStorage after mount; rebuild forms once it has.
+  const countsKey = search ? `${search.adults}-${search.children}-${search.infants}` : "";
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- resizes the form list when traveller count changes
-    setForms(Array.from({ length: count }, (_, i) => forms[i] ?? emptyPassenger()));
+    if (!search) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- resizes the form list when the traveller mix changes
+    setForms((prev) => passengerFormsFor(search, prev.length ? prev : passengers));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [count]);
+  }, [countsKey]);
+
+  const trip = useMemo(
+    () =>
+      selectedFlight
+        ? {
+            firstTravel: selectedFlight.departureDate,
+            lastTravel: (selectedReturnFlight ?? selectedFlight).departureDate,
+            international: isInternationalTrip(selectedFlight),
+          }
+        : null,
+    [selectedFlight, selectedReturnFlight],
+  );
+  const today = useMemo(() => todayISO(), []);
 
   function updatePassenger(index: number, patch: Partial<PassengerForm>) {
     setForms((prev) => prev.map((p, i) => (i === index ? { ...p, ...patch } : p)));
-    const keys = Object.keys(patch);
-    if (keys.length) {
-      setErrors((prev) => {
-        const next = { ...prev };
-        for (const k of keys) delete next[`p${index}.${k}`];
-        return next;
-      });
-    }
+    setErrors((prev) => {
+      const next = { ...prev };
+      for (const k of Object.keys(patch)) delete next[`p${index}.${k}`];
+      return next;
+    });
+  }
+
+  function clearError(key: string) {
+    setErrors((prev) => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
   }
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    if (!trip) return;
     const next: FieldErrors = {};
-    for (const [i, p] of forms.entries()) {
-      if (!p.firstName.trim()) next[`p${i}.firstName`] = "Required";
-      if (!p.lastName.trim()) next[`p${i}.lastName`] = "Required";
-      if (!p.dateOfBirth) next[`p${i}.dateOfBirth`] = "Required";
-    }
+    forms.forEach((p, i) => {
+      for (const [field, message] of Object.entries(validatePassenger(p, trip))) {
+        next[`p${i}.${field}`] = message;
+      }
+    });
     if (!email.trim()) next.email = "Required";
     if (!phone.trim()) next.phone = "Required";
     setErrors(next);
-    if (Object.keys(next).length > 0) return;
-    setPassengers(forms);
+    if (Object.keys(next).length > 0) {
+      formRef.current?.querySelector<HTMLElement>("[aria-invalid='true']")?.focus();
+      return;
+    }
+    setPassengers(
+      forms.map((p) =>
+        trip.international
+          ? { ...p, passportNumber: p.passportNumber?.trim().toUpperCase() }
+          : { ...p, passportNumber: undefined, nationality: undefined, passportExpiry: undefined },
+      ),
+    );
     setContact({ email: email.trim(), phone: phone.trim() });
     router.push("/booking/review");
   }
 
-  if (!selectedFlight) return null;
+  if (!selectedFlight || !search || !trip) return null;
 
-  const baseFare = selectedFlight.fare.baseFare * count;
-  const taxes = selectedFlight.fare.taxes * count;
-  const total = selectedFlight.fare.totalFare * count;
-  const backToResults = search
-    ? `/flights?origin=${search.origin}&destination=${search.destination}&date=${search.date}&passengers=${search.passengers}`
-    : "/";
+  const roundTrip = Boolean(selectedReturnFlight);
+  const price = priceTrip(selectedFlight, selectedReturnFlight, search);
+  const typeCounters = { adult: 0, child: 0, infant: 0 };
 
   return (
     <Container className="pb-24 pt-6 lg:pb-8">
@@ -86,13 +126,15 @@ export function PassengersView() {
       <Stepper current="passengers" className="hidden lg:block" />
       <FlightRouteBar
         flight={selectedFlight}
-        passengers={count}
-        changeFlightTo={backToResults}
+        returnFlight={selectedReturnFlight}
+        counts={search}
+        changeFlightTo={flightsHref(search)}
         className="mb-4 mt-4"
       />
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
         <div className="space-y-4">
-          <FlightItineraryCard flight={selectedFlight} />
+          <FlightItineraryCard flight={selectedFlight} title={roundTrip ? "Departing flight" : undefined} />
+          {selectedReturnFlight && <FlightItineraryCard flight={selectedReturnFlight} title="Return flight" />}
           <form ref={formRef} onSubmit={handleSubmit} className="space-y-4" noValidate>
             <Card padded={false} className="p-4 sm:p-5">
               <SectionTitle
@@ -106,13 +148,10 @@ export function PassengersView() {
                     type="email"
                     placeholder="you@example.com"
                     value={email}
+                    aria-invalid={errors.email ? true : undefined}
                     onChange={(e) => {
                       setEmail(e.target.value);
-                      setErrors((prev) => {
-                        const next = { ...prev };
-                        delete next.email;
-                        return next;
-                      });
+                      clearError("email");
                     }}
                     className={errors.email ? "border-danger-500" : ""}
                     required
@@ -124,13 +163,10 @@ export function PassengersView() {
                     type="tel"
                     placeholder="+91 98765 43210"
                     value={phone}
+                    aria-invalid={errors.phone ? true : undefined}
                     onChange={(e) => {
                       setPhone(e.target.value);
-                      setErrors((prev) => {
-                        const next = { ...prev };
-                        delete next.phone;
-                        return next;
-                      });
+                      clearError("phone");
                     }}
                     className={errors.phone ? "border-danger-500" : ""}
                     required
@@ -147,96 +183,119 @@ export function PassengersView() {
               <SectionTitle
                 icon={<UserRound className="size-4" aria-hidden />}
                 title="Traveller details"
-                hint="Names must match the government ID used at check-in"
+                hint={
+                  trip.international
+                    ? "Names must match each passport exactly"
+                    : "Names must match the government ID used at check-in"
+                }
               />
               <div className="space-y-4">
-                {forms.map((passenger, index) => (
-                  <fieldset
-                    key={index}
-                    className="rounded-xl border border-neutral-200 bg-neutral-50/60 p-3 sm:p-4"
-                  >
-                    <legend className="flex items-center gap-2 px-1 text-xs font-bold uppercase tracking-wide text-ink-subtle">
-                      <span className="flex size-6 items-center justify-center rounded-full bg-primary-600 text-[11px] text-white">
-                        {index + 1}
-                      </span>
-                      Adult {index + 1}
-                    </legend>
-                    <div className="mt-2 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                      <Field label="Title">
-                        <Select
-                          value={passenger.title}
-                          onChange={(e) => updatePassenger(index, { title: e.target.value })}
-                        >
-                          {["Mr", "Mrs", "Ms", "Miss", "Dr"].map((t) => (
-                            <option key={t}>{t}</option>
-                          ))}
-                        </Select>
-                      </Field>
-                      <Field label="Gender">
-                        <Select
-                          value={passenger.gender}
-                          onChange={(e) => updatePassenger(index, { gender: e.target.value })}
-                        >
-                          {["Male", "Female", "Other"].map((g) => (
-                            <option key={g}>{g}</option>
-                          ))}
-                        </Select>
-                      </Field>
-                      <Field label="First name">
-                        <Input
+                {forms.map((passenger, index) => {
+                  typeCounters[passenger.type] += 1;
+                  const ordinal = typeCounters[passenger.type];
+                  const bounds = dobBounds(passenger.type, trip.firstTravel, trip.lastTravel, today);
+                  const err = (field: keyof PassengerForm) => errors[`p${index}.${field}`];
+                  return (
+                    <fieldset
+                      key={index}
+                      className="rounded-xl border border-neutral-200 bg-neutral-50/60 p-3 sm:p-4"
+                    >
+                      <legend className="flex items-center gap-2 px-1 text-xs font-bold uppercase tracking-wide text-ink-subtle">
+                        <span className="flex size-6 items-center justify-center rounded-full bg-primary-600 text-[11px] text-white">
+                          {passenger.type === "infant" ? <Baby className="size-3.5" aria-hidden /> : index + 1}
+                        </span>
+                        {passengerTypeLabel(passenger.type)} {ordinal}
+                        <span className="font-medium normal-case tracking-normal text-ink-subtle">
+                          · {TYPE_HINT[passenger.type]}
+                        </span>
+                      </legend>
+                      <div className="mt-2 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                        <Field label="Title">
+                          <Select
+                            value={passenger.title}
+                            onChange={(e) => updatePassenger(index, { title: e.target.value })}
+                          >
+                            {TITLES[passenger.type].map((t) => (
+                              <option key={t} value={t}>
+                                {t === "Mstr" ? "Master" : t}
+                              </option>
+                            ))}
+                          </Select>
+                        </Field>
+                        <Field label="Gender">
+                          <Select
+                            value={passenger.gender}
+                            onChange={(e) => updatePassenger(index, { gender: e.target.value })}
+                          >
+                            {["Male", "Female", "Other"].map((g) => (
+                              <option key={g}>{g}</option>
+                            ))}
+                          </Select>
+                        </Field>
+                        <TextField
+                          label="First name"
                           value={passenger.firstName}
-                          onChange={(e) => updatePassenger(index, { firstName: e.target.value })}
-                          className={errors[`p${index}.firstName`] ? "border-danger-500" : ""}
-                          required
+                          error={err("firstName")}
+                          onChange={(firstName) => updatePassenger(index, { firstName })}
                         />
-                        {errors[`p${index}.firstName`] && (
-                          <Err msg={errors[`p${index}.firstName`]} />
-                        )}
-                      </Field>
-                      <Field label="Last name">
-                        <Input
+                        <TextField
+                          label="Last name"
                           value={passenger.lastName}
-                          onChange={(e) => updatePassenger(index, { lastName: e.target.value })}
-                          className={errors[`p${index}.lastName`] ? "border-danger-500" : ""}
-                          required
+                          error={err("lastName")}
+                          onChange={(lastName) => updatePassenger(index, { lastName })}
                         />
-                        {errors[`p${index}.lastName`] && (
-                          <Err msg={errors[`p${index}.lastName`]} />
-                        )}
-                      </Field>
-                      <Field label="Date of birth" className="sm:col-span-2 lg:col-span-4">
-                        <Input
+                        <TextField
+                          label="Date of birth"
                           type="date"
-                          max="2026-08-04"
+                          min={bounds.min}
+                          max={bounds.max}
                           value={passenger.dateOfBirth}
-                          onChange={(e) =>
-                            updatePassenger(index, { dateOfBirth: e.target.value })
-                          }
-                          className={errors[`p${index}.dateOfBirth`] ? "border-danger-500" : ""}
-                          required
+                          error={err("dateOfBirth")}
+                          onChange={(dateOfBirth) => updatePassenger(index, { dateOfBirth })}
+                          className={trip.international ? "" : "sm:col-span-2 lg:col-span-4"}
                         />
-                        {errors[`p${index}.dateOfBirth`] && (
-                          <Err msg={errors[`p${index}.dateOfBirth`]} />
+                        {trip.international && (
+                          <>
+                            <TextField
+                              label="Passport number"
+                              value={passenger.passportNumber ?? ""}
+                              error={err("passportNumber")}
+                              onChange={(passportNumber) => updatePassenger(index, { passportNumber })}
+                              autoCapitalize="characters"
+                            />
+                            <TextField
+                              label="Nationality"
+                              value={passenger.nationality ?? ""}
+                              placeholder="Indian"
+                              error={err("nationality")}
+                              onChange={(nationality) => updatePassenger(index, { nationality })}
+                            />
+                            <TextField
+                              label="Passport expiry"
+                              type="date"
+                              min={today}
+                              value={passenger.passportExpiry ?? ""}
+                              error={err("passportExpiry")}
+                              onChange={(passportExpiry) => updatePassenger(index, { passportExpiry })}
+                            />
+                          </>
                         )}
-                      </Field>
-                    </div>
-                  </fieldset>
-                ))}
+                      </div>
+                    </fieldset>
+                  );
+                })}
               </div>
+              {trip.international && (
+                <p className="mt-3 flex items-start gap-1.5 text-xs text-ink-muted">
+                  <BookUser className="mt-px size-3.5 shrink-0" aria-hidden />
+                  International trip: passports must be valid for at least 6 months after you return.
+                  Check visa requirements for your destination before you fly.
+                </p>
+              )}
             </Card>
           </form>
         </div>
-        <FareSummaryCard
-          rows={[
-            {
-              label: "Base fare",
-              hint: `${count} traveller${count > 1 ? "s" : ""}`,
-              amount: baseFare,
-            },
-            { label: "Taxes and fees", amount: taxes },
-          ]}
-          total={total}
-        >
+        <FareSummaryCard rows={fareSummaryRows(price, roundTrip)} total={price.total}>
           <Button
             size="lg"
             variant="accent"
@@ -248,11 +307,45 @@ export function PassengersView() {
         </FareSummaryCard>
       </div>
       <StickyActionBar
-        total={formatINR(total)}
+        total={formatINR(price.total)}
         ctaLabel="Continue"
         onClick={() => formRef.current?.requestSubmit()}
       />
     </Container>
+  );
+}
+
+function TextField({
+  label,
+  value,
+  error,
+  onChange,
+  className = "",
+  ...input
+}: {
+  label: string;
+  value: string;
+  error?: string;
+  onChange: (value: string) => void;
+  className?: string;
+  type?: string;
+  min?: string;
+  max?: string;
+  placeholder?: string;
+  autoCapitalize?: string;
+}) {
+  return (
+    <Field label={label} className={className}>
+      <Input
+        {...input}
+        value={value}
+        aria-invalid={error ? true : undefined}
+        onChange={(e) => onChange(e.target.value)}
+        className={error ? "border-danger-500" : ""}
+        required
+      />
+      {error && <Err msg={error} />}
+    </Field>
   );
 }
 

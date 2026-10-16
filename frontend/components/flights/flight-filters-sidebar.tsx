@@ -1,65 +1,52 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
+import { ChevronDown, PlaneLanding, PlaneTakeoff } from "lucide-react";
+import { cn } from "@/lib/cn";
+import { AirlineMark } from "@/components/flights/airline-mark";
+import { RangeSlider } from "@/components/ui/range-slider";
 import {
-  ChevronDown,
-  IndianRupee,
-  Moon,
-  ShieldCheck,
-  Sun,
-  Sunrise,
-  Sunset,
-  Plane,
-} from "lucide-react";
-import { AirlineMark } from "./airline-mark";
-import {
-  TIME_SLOTS,
   toggleValue,
-  type AirlineFacet,
+  type FlightFacets,
   type FlightFilters,
-  type PriceBounds,
-  type TimeSlotId,
+  type Range,
 } from "@/lib/flights/flight-filters";
+import { clock12 } from "@/lib/flights/segments";
 import { formatINR } from "@/lib/format";
-
-const SLOT_ICONS: Record<TimeSlotId, ReactNode> = {
-  early: <Sunrise className="size-4" aria-hidden />,
-  morning: <Sun className="size-4" aria-hidden />,
-  afternoon: <Sunset className="size-4" aria-hidden />,
-  night: <Moon className="size-4" aria-hidden />,
-};
 
 interface FlightFiltersSidebarProps {
   filters: FlightFilters;
   onChange: (filters: FlightFilters) => void;
-  facets: AirlineFacet[];
-  bounds: PriceBounds;
-  slotCounts: Record<TimeSlotId, number>;
+  facets: FlightFacets;
+  /** Airport codes for the leg being shown (labels for the time sliders). */
+  fromLabel: string;
+  toLabel: string;
   activeCount: number;
   onClear: () => void;
-  className?: string;
+  /** Airline name → code, for the logo badges. */
+  airlineCodes: Record<string, string>;
 }
 
 export function FlightFiltersSidebar({
   filters,
   onChange,
   facets,
-  bounds,
-  slotCounts,
+  fromLabel,
+  toLabel,
   activeCount,
   onClear,
-  className = "",
+  airlineCodes,
 }: FlightFiltersSidebarProps) {
-  const maxPrice = filters.maxPrice ?? bounds.max;
-  const priceDisabled = bounds.max <= bounds.min;
+  const set = (patch: Partial<FlightFilters>) => onChange({ ...filters, ...patch });
+  const rangeOr = (range: Range | null, full: Range): Range => range ?? full;
 
   return (
-    <div className={`space-y-3 ${className}`}>
-      <div className="flex items-center justify-between rounded-2xl border border-neutral-200 bg-white px-4 py-3 shadow-soft">
+    <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-soft">
+      <div className="flex items-center justify-between border-b border-neutral-100 px-4 py-3">
         <p className="text-sm font-bold text-ink">
           Filters
           {activeCount > 0 && (
-            <span className="ml-2 rounded-full bg-primary-50 px-2 py-0.5 text-xs font-semibold text-primary-700">
+            <span className="ml-2 rounded-full bg-primary-600 px-1.5 py-0.5 text-[10px] font-bold text-white">
               {activeCount}
             </span>
           )}
@@ -68,136 +55,154 @@ export function FlightFiltersSidebar({
           type="button"
           onClick={onClear}
           disabled={activeCount === 0}
-          className="text-xs font-semibold text-primary-700 transition hover:text-primary-800 disabled:cursor-not-allowed disabled:text-neutral-300"
+          className="text-xs font-semibold text-primary-700 hover:text-primary-800 disabled:text-ink-subtle"
         >
           Clear all
         </button>
       </div>
 
-      <FilterSection title="Price range" icon={<IndianRupee className="size-4" aria-hidden />}>
-        <div className="flex items-center justify-between text-xs font-semibold text-ink-muted">
-          <span>{formatINR(bounds.min)}</span>
-          <span className="text-primary-700">Up to {formatINR(maxPrice)}</span>
-        </div>
-        <input
-          type="range"
-          min={bounds.min}
-          max={bounds.max}
-          step={100}
-          value={maxPrice}
-          disabled={priceDisabled}
-          onChange={(event) => onChange({ ...filters, maxPrice: Number(event.target.value) })}
-          aria-label="Maximum price"
-          className="mt-3 h-1.5 w-full cursor-pointer appearance-none rounded-full bg-neutral-200 accent-primary-600 disabled:cursor-not-allowed"
-        />
-      </FilterSection>
+      {facets.stops.length > 0 && (
+        <Section title="Stops" onReset={filters.stops.length ? () => set({ stops: [] }) : undefined}>
+          <div className="grid grid-cols-2 gap-2">
+            {facets.stops.map((stop) => {
+              const active = filters.stops.includes(stop.key);
+              return (
+                <button
+                  key={stop.key}
+                  type="button"
+                  aria-pressed={active}
+                  onClick={() => set({ stops: toggleValue(filters.stops, stop.key) })}
+                  className={cn(
+                    "rounded-xl border px-2.5 py-2 text-left transition",
+                    active
+                      ? "border-primary-500 bg-primary-50 shadow-[0_0_0_3px_rgb(59_130_246/0.12)]"
+                      : "border-neutral-200 hover:border-primary-300",
+                  )}
+                >
+                  <span className="block text-xs font-bold text-ink">{stop.label}</span>
+                  <span className="block text-[11px] text-ink-muted">
+                    from {formatINR(stop.cheapest)} · {stop.count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </Section>
+      )}
 
-      <FilterSection title="Departure from origin" icon={<Plane className="size-4" aria-hidden />}>
-        <div className="grid grid-cols-2 gap-2">
-          {TIME_SLOTS.map((slot) => {
-            const active = filters.departSlots.includes(slot.id);
-            const count = slotCounts[slot.id];
+      <Section title="Airlines" onReset={filters.airlines.length ? () => set({ airlines: [] }) : undefined}>
+        <ul className="-mx-1 max-h-60 space-y-0.5 overflow-y-auto px-1">
+          {facets.airlines.map((airline) => {
+            const checked = filters.airlines.includes(airline.key);
             return (
-              <button
-                key={slot.id}
-                type="button"
-                disabled={count === 0}
-                onClick={() =>
-                  onChange({ ...filters, departSlots: toggleValue(filters.departSlots, slot.id) })
-                }
-                className={`flex flex-col items-center gap-1 rounded-xl border px-2 py-2.5 text-center text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-40 ${
-                  active
-                    ? "border-primary-500 bg-primary-50 text-primary-800 ring-1 ring-primary-200"
-                    : "border-neutral-200 text-ink-muted hover:border-neutral-300 hover:bg-neutral-50"
-                }`}
-              >
-                {SLOT_ICONS[slot.id]}
-                <span>{slot.hint}</span>
-                <span className="text-[10px] font-medium text-ink-subtle">{count} flights</span>
-              </button>
-            );
-          })}
-        </div>
-      </FilterSection>
-
-      <FilterSection title="Airlines" icon={<Plane className="size-4 rotate-45" aria-hidden />}>
-        <ul className="space-y-1">
-          {facets.map((facet) => {
-            const checked = filters.airlines.includes(facet.name);
-            return (
-              <li key={facet.name}>
-                <label className="flex cursor-pointer items-center gap-2.5 rounded-xl px-2 py-2 transition hover:bg-neutral-50">
+              <li key={airline.key}>
+                <label className="flex cursor-pointer items-center gap-2.5 rounded-lg px-1.5 py-1.5 text-sm transition hover:bg-neutral-50">
                   <input
                     type="checkbox"
                     checked={checked}
-                    onChange={() =>
-                      onChange({ ...filters, airlines: toggleValue(filters.airlines, facet.name) })
-                    }
-                    className="size-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500"
+                    onChange={() => set({ airlines: toggleValue(filters.airlines, airline.key) })}
+                    className="size-4 shrink-0 rounded border-neutral-300 text-primary-600 focus:ring-primary-500"
                   />
-                  <AirlineMark code={facet.code} name={facet.name} size="sm" />
-                  <span className="min-w-0 flex-1 truncate text-sm font-medium text-ink-muted">
-                    {facet.name}
+                  <AirlineMark code={airlineCodes[airline.key] ?? "?"} name={airline.key} size="sm" />
+                  <span className="min-w-0 flex-1 truncate text-ink">
+                    {airline.key}
+                    <span className="ml-1 text-[11px] text-ink-subtle">({airline.count})</span>
                   </span>
-                  <span className="shrink-0 text-xs font-semibold text-ink-subtle">
-                    {formatINR(facet.cheapest)}
+                  <span className="shrink-0 text-xs font-semibold tabular-nums text-ink">
+                    {formatINR(airline.cheapest)}
                   </span>
                 </label>
               </li>
             );
           })}
-          {facets.length === 0 && (
-            <li className="px-2 py-2 text-sm text-ink-muted">No airlines available</li>
-          )}
         </ul>
-      </FilterSection>
+      </Section>
 
-      <FilterSection title="Fare policy" icon={<ShieldCheck className="size-4" aria-hidden />}>
-        <label className="flex cursor-pointer items-center gap-2.5 rounded-xl px-2 py-2 transition hover:bg-neutral-50">
+      <Section title="Price" onReset={filters.price ? () => set({ price: null }) : undefined}>
+        <RangeSlider
+          min={facets.price[0]}
+          max={facets.price[1]}
+          step={10}
+          value={rangeOr(filters.price, facets.price)}
+          onChange={(price) => set({ price })}
+          labels={["Minimum price", "Maximum price"]}
+          format={formatINR}
+        />
+        <label className="mt-4 flex cursor-pointer items-center gap-2 text-xs font-medium text-ink-muted">
           <input
             type="checkbox"
             checked={filters.refundableOnly}
-            onChange={(event) => onChange({ ...filters, refundableOnly: event.target.checked })}
+            onChange={(e) => set({ refundableOnly: e.target.checked })}
             className="size-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500"
           />
-          <span className="text-sm font-medium text-ink-muted">Refundable fares only</span>
+          Refundable fares only
         </label>
-      </FilterSection>
+      </Section>
+
+      <Section
+        title="Times"
+        onReset={filters.depart || filters.arrive ? () => set({ depart: null, arrive: null }) : undefined}
+      >
+        <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-ink">
+          <PlaneTakeoff className="size-3.5 text-primary-600" aria-hidden />
+          Depart from {fromLabel}
+        </p>
+        <RangeSlider
+          min={facets.depart[0]}
+          max={facets.depart[1]}
+          step={5}
+          value={rangeOr(filters.depart, facets.depart)}
+          onChange={(depart) => set({ depart })}
+          labels={[`Earliest departure from ${fromLabel}`, `Latest departure from ${fromLabel}`]}
+          format={clock12}
+        />
+        <p className="mb-2 mt-5 flex items-center gap-1.5 text-xs font-semibold text-ink">
+          <PlaneLanding className="size-3.5 text-primary-600" aria-hidden />
+          Arrive at {toLabel}
+        </p>
+        <RangeSlider
+          min={facets.arrive[0]}
+          max={facets.arrive[1]}
+          step={5}
+          value={rangeOr(filters.arrive, facets.arrive)}
+          onChange={(arrive) => set({ arrive })}
+          labels={[`Earliest arrival at ${toLabel}`, `Latest arrival at ${toLabel}`]}
+          format={clock12}
+        />
+      </Section>
     </div>
   );
 }
 
-function FilterSection({
+function Section({
   title,
-  icon,
+  onReset,
   children,
 }: {
   title: string;
-  icon: ReactNode;
+  onReset?: () => void;
   children: ReactNode;
 }) {
   const [open, setOpen] = useState(true);
-
   return (
-    <section className="overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-soft">
-      <button
-        type="button"
-        onClick={() => setOpen((value) => !value)}
-        aria-expanded={open}
-        className="flex w-full items-center justify-between gap-2 px-4 py-3 text-left transition hover:bg-neutral-50"
-      >
-        <span className="flex items-center gap-2 text-sm font-semibold text-ink">
-          <span className="text-primary-600">{icon}</span>
+    <section className="border-b border-neutral-100 last:border-b-0">
+      <div className="flex items-center justify-between bg-neutral-50/80 px-4 py-2.5">
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          aria-expanded={open}
+          className="flex items-center gap-1 text-sm font-bold text-ink"
+        >
           {title}
-        </span>
-        <ChevronDown
-          className={`size-4 shrink-0 text-ink-subtle transition-transform duration-200 ${
-            open ? "rotate-180" : ""
-          }`}
-          aria-hidden
-        />
-      </button>
-      {open && <div className="animate-panel-in border-t border-neutral-100 p-3">{children}</div>}
+          <ChevronDown className={cn("size-4 transition", open ? "rotate-180" : "")} aria-hidden />
+        </button>
+        {onReset && (
+          <button type="button" onClick={onReset} className="text-xs font-semibold text-primary-700 hover:text-primary-800">
+            reset
+          </button>
+        )}
+      </div>
+      {open && <div className="px-4 py-3.5">{children}</div>}
     </section>
   );
 }

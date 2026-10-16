@@ -34,6 +34,9 @@ ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin123")
 ADMIN_JWT_SECRET = os.getenv("ADMIN_JWT_SECRET", "dev-only-insecure-secret-change-me")
 ADMIN_TOKEN_TTL_HOURS = _get_int("ADMIN_TOKEN_TTL_HOURS", 12)
 
+# Mock flight inventory: bookable from today (IST) through today + N days
+FLIGHT_BOOKING_WINDOW_DAYS = _get_int("FLIGHT_BOOKING_WINDOW_DAYS", 90)
+
 # SMTP / email
 SMTP_HOST = os.getenv("SMTP_HOST", "")
 SMTP_PORT = _get_int("SMTP_PORT", 587)
@@ -61,11 +64,43 @@ def smtp_is_configured() -> bool:
     return bool(SMTP_HOST and SMTP_USERNAME and SMTP_PASSWORD and SMTP_FROM_EMAIL)
 
 
-# WhatsApp alerts to the Tripime team for new enquiries, via CallMeBot
-# (https://www.callmebot.com/blog/free-api-whatsapp-messages/). Off until both are set.
-WHATSAPP_ALERT_PHONE = os.getenv("WHATSAPP_ALERT_PHONE", "").strip().lstrip("+")
+# Payments — only "mock" exists today. A real gateway (Razorpay/Cashfree) gets its
+# own provider class and server-side env vars; secrets never go to the frontend.
+PAYMENT_PROVIDER = os.getenv("PAYMENT_PROVIDER", "mock").strip().lower()
+MOCK_PAYEE_VPA = os.getenv("MOCK_PAYEE_VPA", "tripimetrips@test.upi").strip()
+
+# Team notifications for bookings/payments (email + WhatsApp).
+ADMIN_NOTIFY_EMAIL = os.getenv("ADMIN_NOTIFY_EMAIL", "tripimetrips@gmail.com").strip()
+
+# WhatsApp alerts to the Tripime team (enquiries + bookings).
+#   WHATSAPP_PROVIDER = "callmebot" | "cloud_api" (blank = callmebot if its key is set)
+#   CallMeBot: https://www.callmebot.com/blog/free-api-whatsapp-messages/ — free, own number only.
+#   Cloud API: Meta WhatsApp Business; needs an access token, phone number ID and an
+#   approved template whose body has a single {{1}} variable for the alert text.
+WHATSAPP_ALERT_PHONE = os.getenv("WHATSAPP_ALERT_PHONE", "919899644177").strip().lstrip("+")
+WHATSAPP_PROVIDER = os.getenv("WHATSAPP_PROVIDER", "").strip().lower()
 WHATSAPP_CALLMEBOT_APIKEY = os.getenv("WHATSAPP_CALLMEBOT_APIKEY", "").strip()
+WHATSAPP_CLOUD_TOKEN = os.getenv("WHATSAPP_CLOUD_TOKEN", "").strip()
+WHATSAPP_CLOUD_PHONE_NUMBER_ID = os.getenv("WHATSAPP_CLOUD_PHONE_NUMBER_ID", "").strip()
+WHATSAPP_CLOUD_TEMPLATE = os.getenv("WHATSAPP_CLOUD_TEMPLATE", "").strip()
+WHATSAPP_CLOUD_TEMPLATE_LANG = os.getenv("WHATSAPP_CLOUD_TEMPLATE_LANG", "en").strip()
+
+
+def whatsapp_provider() -> str | None:
+    """The WhatsApp provider that is fully configured, or None."""
+    choice = WHATSAPP_PROVIDER or ("callmebot" if WHATSAPP_CALLMEBOT_APIKEY else "")
+    if choice == "callmebot" and WHATSAPP_ALERT_PHONE and WHATSAPP_CALLMEBOT_APIKEY:
+        return "callmebot"
+    if (
+        choice == "cloud_api"
+        and WHATSAPP_ALERT_PHONE
+        and WHATSAPP_CLOUD_TOKEN
+        and WHATSAPP_CLOUD_PHONE_NUMBER_ID
+        and WHATSAPP_CLOUD_TEMPLATE
+    ):
+        return "cloud_api"
+    return None
 
 
 def whatsapp_alerts_configured() -> bool:
-    return bool(WHATSAPP_ALERT_PHONE and WHATSAPP_CALLMEBOT_APIKEY)
+    return whatsapp_provider() is not None

@@ -2,39 +2,41 @@
 
 import type { ReactNode } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import {
-  INVENTORY_END,
-  INVENTORY_START,
-  addDays,
-  clampDate,
-  shortDate,
-  weekdayOf,
-} from "@/lib/airports";
+import { addDays, clampDate, shortDate, weekdayOf } from "@/lib/airports";
+import { formatINR } from "@/lib/format";
 
 const WINDOW = 7;
 
 interface FlightDateStripProps {
   date: string;
+  /** Bookable window (from the search API). */
+  minDate: string;
+  maxDate: string;
+  /** Lowest adult fare per date, shown under each day when known. */
+  fares?: Record<string, number>;
   onChange: (date: string) => void;
 }
 
-export function FlightDateStrip({ date, onChange }: FlightDateStripProps) {
-  const selected = clampDate(date, INVENTORY_START, INVENTORY_END);
-  const latestStart = addDays(INVENTORY_END, -(WINDOW - 1));
+export function FlightDateStrip({ date, minDate, maxDate, fares = {}, onChange }: FlightDateStripProps) {
+  const selected = clampDate(date, minDate, maxDate);
+  const latestStart = addDays(maxDate, -(WINDOW - 1));
   const start = clampDate(
     addDays(selected, -Math.floor(WINDOW / 2)),
-    INVENTORY_START,
-    latestStart < INVENTORY_START ? INVENTORY_START : latestStart,
+    minDate,
+    latestStart < minDate ? minDate : latestStart,
   );
 
   const days = Array.from({ length: WINDOW }, (_, index) => addDays(start, index)).filter(
-    (day) => day >= INVENTORY_START && day <= INVENTORY_END,
+    (day) => day >= minDate && day <= maxDate,
   );
+
+  const visibleFares = days.map((d) => fares[d]).filter((f): f is number => f !== undefined);
+  const cheapest = visibleFares.length ? Math.min(...visibleFares) : null;
 
   const prev = addDays(selected, -1);
   const next = addDays(selected, 1);
-  const canGoBack = prev >= INVENTORY_START;
-  const canGoForward = next <= INVENTORY_END;
+  const canGoBack = prev >= minDate;
+  const canGoForward = next <= maxDate;
 
   return (
     <div className="flex items-center gap-1 rounded-2xl border border-neutral-200 bg-white p-1.5 shadow-soft">
@@ -64,6 +66,13 @@ export function FlightDateStrip({ date, onChange }: FlightDateStripProps) {
                 {weekdayOf(day)}
               </span>
               <span className="block text-sm font-bold">{shortDate(day)}</span>
+              <span
+                className={`block h-4 text-[11px] font-semibold tabular-nums ${
+                  active ? "text-white/90" : fares[day] === cheapest ? "text-success-700" : "text-ink-muted"
+                }`}
+              >
+                {fares[day] !== undefined ? formatINR(fares[day]) : ""}
+              </span>
             </button>
           );
         })}

@@ -11,6 +11,7 @@ from app.routes import (
     package_themes,
     packages,
     payments,
+    website,
 )
 
 app = FastAPI(
@@ -39,6 +40,7 @@ app.include_router(
     prefix="/api/customer-profile",
     tags=["customer-profile"],
 )
+app.include_router(website.router, prefix="/api/website", tags=["website"])
 app.include_router(admin.router, prefix="/api/admin", tags=["admin"])
 
 

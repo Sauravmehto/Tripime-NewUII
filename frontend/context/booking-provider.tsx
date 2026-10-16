@@ -13,20 +13,32 @@ import type {
   ContactForm,
   Flight,
   PassengerForm,
-  PaymentMeta,
   SearchParams,
   SelectedSeat,
 } from "@/types";
 
-const STORAGE_KEY = "tripime_booking_v1";
+/**
+ * The booking created for the current checkout. `fingerprint` captures what was
+ * booked; if the traveller changes anything, a new checkout (and booking) starts.
+ */
+export interface CheckoutState {
+  key: string;
+  fingerprint: string;
+  bookingId?: string;
+  accessToken?: string;
+}
+
+// v2: search carries trip type, traveller mix and cabin; seats carry a leg.
+const STORAGE_KEY = "tripime_booking_v2";
 
 interface PersistedBookingState {
   search: SearchParams | null;
   selectedFlight: Flight | null;
+  selectedReturnFlight: Flight | null;
   passengers: PassengerForm[];
   contact: ContactForm;
   selectedSeats: SelectedSeat[];
-  payment: PaymentMeta | null;
+  checkout: CheckoutState | null;
 }
 
 function loadPersisted(): PersistedBookingState | null {
@@ -58,17 +70,19 @@ function clearPersisted() {
 interface BookingState {
   search: SearchParams | null;
   selectedFlight: Flight | null;
+  selectedReturnFlight: Flight | null;
   passengers: PassengerForm[];
   contact: ContactForm;
   selectedSeats: SelectedSeat[];
   seatCharges: number;
-  payment: PaymentMeta | null;
+  checkout: CheckoutState | null;
   setSearch: (search: SearchParams) => void;
   setSelectedFlight: (flight: Flight) => void;
+  setSelectedReturnFlight: (flight: Flight | null) => void;
   setPassengers: (passengers: PassengerForm[]) => void;
   setContact: (contact: ContactForm) => void;
   setSelectedSeats: (seats: SelectedSeat[]) => void;
-  setPayment: (payment: PaymentMeta | null) => void;
+  setCheckout: (checkout: CheckoutState | null) => void;
   reset: () => void;
 }
 
@@ -80,10 +94,11 @@ export function BookingProvider({ children }: { children: ReactNode }) {
   const [hydrated, setHydrated] = useState(false);
   const [search, setSearch] = useState<SearchParams | null>(null);
   const [selectedFlight, setSelectedFlight] = useState<Flight | null>(null);
+  const [selectedReturnFlight, setSelectedReturnFlight] = useState<Flight | null>(null);
   const [passengers, setPassengers] = useState<PassengerForm[]>([]);
   const [contact, setContact] = useState<ContactForm>(defaultContact);
   const [selectedSeats, setSelectedSeatsState] = useState<SelectedSeat[]>([]);
-  const [payment, setPayment] = useState<PaymentMeta | null>(null);
+  const [checkout, setCheckout] = useState<CheckoutState | null>(null);
 
   useEffect(() => {
     const restored = loadPersisted();
@@ -91,10 +106,11 @@ export function BookingProvider({ children }: { children: ReactNode }) {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time hydration from sessionStorage on mount
       setSearch(restored.search);
       setSelectedFlight(restored.selectedFlight);
+      setSelectedReturnFlight(restored.selectedReturnFlight ?? null);
       setPassengers(restored.passengers);
       setContact(restored.contact);
       setSelectedSeatsState(restored.selectedSeats);
-      setPayment(restored.payment);
+      setCheckout(restored.checkout ?? null);
     }
     setHydrated(true);
   }, []);
@@ -111,43 +127,47 @@ export function BookingProvider({ children }: { children: ReactNode }) {
   const reset = useCallback(() => {
     setSearch(null);
     setSelectedFlight(null);
+    setSelectedReturnFlight(null);
     setPassengers([]);
     setContact(defaultContact);
     setSelectedSeatsState([]);
-    setPayment(null);
+    setCheckout(null);
     clearPersisted();
   }, []);
 
   useEffect(() => {
     if (!hydrated) return;
-    persist({ search, selectedFlight, passengers, contact, selectedSeats, payment });
-  }, [hydrated, search, selectedFlight, passengers, contact, selectedSeats, payment]);
+    persist({ search, selectedFlight, selectedReturnFlight, passengers, contact, selectedSeats, checkout });
+  }, [hydrated, search, selectedFlight, selectedReturnFlight, passengers, contact, selectedSeats, checkout]);
 
   const value = useMemo(
     () => ({
       search,
       selectedFlight,
+      selectedReturnFlight,
       passengers,
       contact,
       selectedSeats,
       seatCharges,
-      payment,
+      checkout,
       setSearch,
       setSelectedFlight,
+      setSelectedReturnFlight,
       setPassengers,
       setContact,
       setSelectedSeats,
-      setPayment,
+      setCheckout,
       reset,
     }),
     [
       search,
       selectedFlight,
+      selectedReturnFlight,
       passengers,
       contact,
       selectedSeats,
       seatCharges,
-      payment,
+      checkout,
       setSelectedSeats,
       reset,
     ],

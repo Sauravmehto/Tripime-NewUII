@@ -1,12 +1,8 @@
 import { apiClient } from "./client";
-import type { MockPaymentRequest, PaymentMeta } from "@/types";
+import type { PaymentConfig } from "@/types";
 
-export async function processMockPayment(
-  payload: MockPaymentRequest,
-): Promise<PaymentMeta> {
-  const { data } = await apiClient.post<PaymentMeta>(
-    "/api/payments/mock",
-    payload,
-  );
+/** Checkout settings: provider, test mode and the payee UPI ID. No secrets. */
+export async function getPaymentConfig(): Promise<PaymentConfig> {
+  const { data } = await apiClient.get<PaymentConfig>("/api/payments/config");
   return data;
 }

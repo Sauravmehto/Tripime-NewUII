@@ -1,31 +1,40 @@
 from typing import Literal
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel
 
 
-class MockPaymentRequest(BaseModel):
-    amount: int = Field(..., ge=1)
+class ChargeRequest(BaseModel):
+    """What the booking service asks a payment provider to charge. The amount
+    always comes from the server-side booking, never from the browser."""
+
+    reference: str  # booking ID
+    amount: int
     currency: str = "INR"
     method: Literal["upi", "qr", "card"]
-    upiId: str | None = None
-    # Safe card metadata only — never accept full PAN or CVV
+    customerEmail: str
     cardLast4: str | None = None
-
-    @field_validator("cardLast4")
-    @classmethod
-    def validate_last4(cls, value: str | None) -> str | None:
-        if value is None:
-            return value
-        if not value.isdigit() or len(value) != 4:
-            raise ValueError("cardLast4 must be 4 digits")
-        return value
+    simulateFailure: bool = False
 
 
-class PaymentResult(BaseModel):
+class ChargeResult(BaseModel):
     paymentId: str
     transactionId: str
+    provider: str
+    testMode: bool
     method: str
     amount: int
     currency: str
-    status: str
-    paidAt: str
+    status: Literal["SUCCESS", "FAILED"]
+    at: str
+    payee: str | None = None
+    failureReason: str | None = None
+
+
+class PaymentConfig(BaseModel):
+    """Public payment settings for the checkout page (no secrets)."""
+
+    provider: str
+    testMode: bool
+    payeeVpa: str
+    methods: list[str]
+    canSimulateFailure: bool

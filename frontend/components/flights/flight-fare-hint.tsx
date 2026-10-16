@@ -19,7 +19,7 @@ export function FlightFareHint({ hint, onSelectDate }: FlightFareHintProps) {
   if (!hint) return null;
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-success-200 bg-success-50/80 px-3.5 py-2.5 text-sm text-success-700">
+    <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-success-500/30 bg-success-50/80 px-3.5 py-2.5 text-sm text-success-700">
       <p className="flex min-w-0 items-start gap-2">
         <TrendingDown className="mt-0.5 size-4 shrink-0" aria-hidden />
         <span>
@@ -30,7 +30,7 @@ export function FlightFareHint({ hint, onSelectDate }: FlightFareHintProps) {
       <button
         type="button"
         onClick={() => onSelectDate(hint.date)}
-        className="shrink-0 rounded-lg bg-success-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-success-700"
+        className="shrink-0 rounded-lg bg-success-700 px-3 py-1.5 text-xs font-bold text-white hover:bg-success-700/90"
       >
         Check that date
       </button>
