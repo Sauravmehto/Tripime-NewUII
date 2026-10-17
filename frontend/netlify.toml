@@ -12,7 +12,7 @@
   publish = ".next"
 
 [build.environment]
-  NODE_VERSION = "20"
+  NODE_VERSION = "24"
   # Do NOT put the API URL here — set it in the Netlify UI so secrets stay out of git.
   # NEXT_PUBLIC_API_BASE_URL is required at build time (see next.config.ts).
 
