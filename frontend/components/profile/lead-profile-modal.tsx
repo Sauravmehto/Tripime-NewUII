@@ -41,9 +41,12 @@ export function LeadProfileModal({
   const [error, setError] = useState("");
   const [loginHint, setLoginHint] = useState(false);
 
-  useEffect(() => {
+  // Reset to the requested tab each time the modal opens (adjusted during render, not in an effect).
+  const [lastOpen, setLastOpen] = useState({ open, initialTab });
+  if (lastOpen.open !== open || lastOpen.initialTab !== initialTab) {
+    setLastOpen({ open, initialTab });
     if (open) setTab(initialTab);
-  }, [open, initialTab]);
+  }
 
   useEffect(() => {
     if (!open) return;

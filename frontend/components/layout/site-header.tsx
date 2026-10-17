@@ -23,6 +23,8 @@ import { Logo } from "@/components/brand/logo";
 import { Button } from "@/components/ui/button";
 import { MobileNavDrawer } from "@/components/layout/mobile-nav-drawer";
 import { useCustomerProfileOptional } from "@/context/customer-profile-provider";
+import { useCustomerSession } from "@/context/customer-session-provider";
+import { loginHref } from "@/lib/safe-redirect";
 
 type NavIcon = ComponentType<LucideProps>;
 
@@ -42,16 +44,17 @@ function isActive(pathname: string, href: string) {
   return pathname === path || pathname.startsWith(`${path}/`);
 }
 
-function firstName(name: string) {
-  const part = name.trim().split(/\s+/)[0];
-  return part || "there";
-}
-
 export function SiteHeader() {
   const pathname = usePathname();
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const profile = useCustomerProfileOptional();
+  const { session, logout } = useCustomerSession();
+
+  async function handleLogout() {
+    await logout();
+    profile?.logout(); // also clear the lead-capture profile greeting
+  }
 
   useEffect(() => {
     function onScroll() {
@@ -108,32 +111,29 @@ export function SiteHeader() {
         </nav>
 
         <div className="hidden items-center gap-2 sm:flex">
-          {profile?.hasProfile && profile.customer ? (
+          {session?.authenticated ? (
             <div className="mr-1 flex items-center gap-2 text-xs text-ink-muted">
-              <span className="max-w-[9rem] truncate font-semibold text-ink">
-                Hi, {firstName(profile.customer.name)}
-              </span>
+              <Link href="/my-booking" className="max-w-[11rem] truncate font-semibold text-ink hover:text-primary-700">
+                {session.email}
+              </Link>
               <span className="text-neutral-300" aria-hidden>
                 ·
               </span>
               <button
                 type="button"
-                onClick={() => profile.logout()}
+                onClick={() => void handleLogout()}
                 className="font-semibold text-primary-700 transition hover:text-primary-800"
               >
                 Log out
               </button>
             </div>
-          ) : profile ? (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => profile.openProfileModal({ tab: "login" })}
-            >
-              Login
-            </Button>
-          ) : null}
+          ) : (
+            <Link href={loginHref(pathname || "/")}>
+              <Button type="button" variant="outline" size="sm">
+                Login
+              </Button>
+            </Link>
+          )}
           <Link href="/flights?origin=DEL&destination=BOM">
             <Button variant="ghost" size="sm" aria-label="Search flights">
               <Search className="size-4" />
@@ -148,23 +148,22 @@ export function SiteHeader() {
         </div>
 
         <div className="flex items-center gap-2 sm:hidden">
-          {profile?.hasProfile && profile.customer ? (
+          {session?.authenticated ? (
             <button
               type="button"
-              onClick={() => profile.logout()}
+              onClick={() => void handleLogout()}
               className="max-w-[7.5rem] truncate text-[11px] font-semibold text-primary-700"
             >
-              Hi, {firstName(profile.customer.name)} · Out
+              Log out
             </button>
-          ) : profile ? (
-            <button
-              type="button"
-              onClick={() => profile.openProfileModal({ tab: "login" })}
+          ) : (
+            <Link
+              href={loginHref(pathname || "/")}
               className="rounded-lg border border-neutral-200 bg-white px-2.5 py-1.5 text-[11px] font-semibold text-primary-700"
             >
               Login
-            </button>
-          ) : null}
+            </Link>
+          )}
           <button
             type="button"
             className="flex size-9 items-center justify-center rounded-lg border border-neutral-200 bg-white"

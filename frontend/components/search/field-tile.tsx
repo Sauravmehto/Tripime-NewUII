@@ -29,7 +29,7 @@ export const FieldTile = forwardRef<HTMLButtonElement, FieldTileProps>(function 
       data-field={field}
       data-invalid={error ? "true" : undefined}
       className={cn(
-        "group relative flex h-full min-h-[64px] w-full min-w-0 items-center gap-3 rounded-2xl border bg-white px-3.5 py-2.5 text-left transition duration-200",
+        "group relative flex h-full min-h-[56px] w-full min-w-0 items-center gap-2.5 rounded-xl border bg-white px-3 py-1.5 text-left transition duration-200",
         "hover:border-primary-300 hover:shadow-[0_6px_18px_-10px_rgb(37_99_235/0.45)]",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40",
         active
@@ -44,7 +44,7 @@ export const FieldTile = forwardRef<HTMLButtonElement, FieldTileProps>(function 
       {icon && (
         <span
           className={cn(
-            "flex size-9 shrink-0 items-center justify-center rounded-xl transition",
+            "flex size-8 shrink-0 items-center justify-center rounded-lg transition",
             active
               ? "bg-primary-600 text-white"
               : "bg-primary-50 text-primary-600 group-hover:bg-primary-100",
@@ -55,18 +55,18 @@ export const FieldTile = forwardRef<HTMLButtonElement, FieldTileProps>(function 
         </span>
       )}
       <span className="min-w-0 flex-1">
-        <span className="block text-[10px] font-bold uppercase tracking-[0.12em] text-primary-600">
+        <span className="block text-[9.5px] font-bold uppercase leading-none tracking-[0.12em] text-primary-600">
           {label}
         </span>
         <span
           className={cn(
-            "mt-0.5 block truncate text-[15px] font-bold leading-tight",
+            "mt-1 block truncate text-[13.5px] font-bold leading-tight",
             placeholder ? "text-ink-subtle" : "text-ink",
           )}
         >
           {value}
         </span>
-        {hint && <span className="mt-0.5 block truncate text-[11px] text-ink-muted">{hint}</span>}
+        {hint && <span className="block truncate text-[10.5px] leading-tight text-ink-muted">{hint}</span>}
         {error && <span className="sr-only">Error: {error}</span>}
       </span>
     </button>

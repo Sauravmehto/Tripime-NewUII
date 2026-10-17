@@ -82,7 +82,7 @@ export function FlightItineraryCard({
       </div>
       <div className="flex flex-wrap gap-1.5 border-t border-neutral-100 px-4 py-2.5 text-[11px] font-medium text-ink-muted">
         <Tag><Armchair className="size-3" aria-hidden /> {flight.cabinClass}</Tag>
-        <Tag><Luggage className="size-3" aria-hidden /> Cabin {flight.baggage.cabin}</Tag>
+        <Tag><Luggage className="size-3" aria-hidden /> Cabin {flight.baggage.cabin} · Check-in {flight.baggage.checkIn}</Tag>
         <Tag><Clock className="size-3" aria-hidden /> {flight.aircraft}</Tag>
         <Tag highlight={flight.refundable}>
           <ShieldCheck className="size-3" aria-hidden />

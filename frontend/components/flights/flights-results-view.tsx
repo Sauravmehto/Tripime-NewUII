@@ -6,6 +6,8 @@ import { ArrowRight, CircleCheck, PlaneLanding, PlaneTakeoff, SearchX, SlidersHo
 import { searchFlights } from "@/lib/api/flights";
 import { getErrorMessage } from "@/lib/api/client";
 import { useBooking } from "@/context/booking-provider";
+import { useCustomerSession } from "@/context/customer-session-provider";
+import { loginHref } from "@/lib/safe-redirect";
 import { Container } from "@/components/layout/container";
 import { FlightDateStrip } from "@/components/flights/flight-date-strip";
 import {
@@ -75,7 +77,8 @@ function departsAfter(flight: Flight, outbound: Flight) {
 export function FlightsResultsView() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { setSearch, setSelectedFlight, setSelectedReturnFlight, setSelectedSeats } = useBooking();
+  const { setSearch, selectFlights } = useBooking();
+  const { session } = useCustomerSession();
 
   const queryKey = searchParams.toString();
   // Parse once per URL so effects keyed on `search` don't refire every render.
@@ -211,11 +214,9 @@ export function FlightsResultsView() {
       window.scrollTo({ top: 0, behavior: "smooth" });
       return;
     }
-    setSearch(search);
-    setSelectedFlight(roundTrip && outbound ? outbound : flight);
-    setSelectedReturnFlight(roundTrip ? flight : null);
-    setSelectedSeats([]);
-    router.push("/booking/passengers");
+    // Keep the selection; booking needs sign-in, then resumes here without a new search.
+    selectFlights(search, roundTrip && outbound ? outbound : flight, roundTrip ? flight : null);
+    router.push(session?.authenticated ? "/booking/passengers" : loginHref("/booking/passengers"));
   }
 
   function changeLegDate(nextDate: string) {

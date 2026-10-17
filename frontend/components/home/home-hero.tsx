@@ -52,10 +52,14 @@ export function HomeHero() {
             transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
           >
             <Image
-              src={active.image}
+              // Full-bleed on wide screens, so use a larger source than the 800px card thumbnails. It also
+              // gives this image its own address, so Next's dev check can't confuse it with lazy copies below.
+              src={active.image.replace("w=800", "w=1600")}
               alt=""
               fill
-              priority={index === 0}
+              preload={index === 0}
+              loading={index === 0 ? "eager" : undefined}
+              fetchPriority={index === 0 ? "high" : undefined}
               sizes="100vw"
               className="object-cover"
             />

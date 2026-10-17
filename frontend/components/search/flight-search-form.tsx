@@ -148,15 +148,15 @@ export function FlightSearchForm({
       noValidate
       aria-label="Search flights"
       className={cn(
-        "relative w-full rounded-3xl border border-white/60 bg-white/95 p-3 text-ink backdrop-blur-xl sm:p-4",
+        "relative w-full rounded-2xl border border-white/60 bg-white/95 p-2.5 text-ink backdrop-blur-xl sm:p-3.5",
         "shadow-[0_30px_70px_-30px_rgb(30_58_138/0.55),0_2px_8px_rgb(16_16_16/0.06)]",
         className,
       )}
     >
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
         <TripTypeToggle value={search.tripType} onChange={setTripType} />
         {catalog && (
-          <p className="text-[11px] font-medium text-ink-subtle">
+          <p className="text-[10.5px] font-medium text-ink-subtle">
             {catalog.airports.length} airports · {new Set(catalog.airports.map((a) => a.country)).size} countries
           </p>
         )}
@@ -201,13 +201,13 @@ export function FlightSearchForm({
             whileHover={reduceMotion ? undefined : { scale: 1.08 }}
             whileTap={reduceMotion ? undefined : { scale: 0.92 }}
             className={cn(
-              "absolute z-10 flex size-9 items-center justify-center rounded-full border-4 border-white bg-linear-to-b from-primary-500 to-primary-700 text-white",
+              "absolute z-10 flex size-7 items-center justify-center rounded-full border-[3px] border-white bg-linear-to-b from-primary-500 to-primary-700 text-white",
               "shadow-[0_8px_18px_-6px_rgb(37_99_235/0.7)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2",
               // Mobile: right edge between the stacked fields; ≥sm: centred between them.
-              "right-4 top-[68px] -translate-y-1/2 sm:right-auto sm:left-1/2 sm:top-8 sm:-translate-x-1/2",
+              "right-4 top-[60px] -translate-y-1/2 sm:right-auto sm:left-1/2 sm:top-7 sm:-translate-x-1/2",
             )}
           >
-            <ArrowLeftRight className="size-4 rotate-90 sm:rotate-0" aria-hidden />
+            <ArrowLeftRight className="size-3.5 rotate-90 sm:rotate-0" aria-hidden />
           </motion.button>
         </div>
 
@@ -232,27 +232,27 @@ export function FlightSearchForm({
             type="submit"
             disabled={!catalog}
             className={cn(
-              "group relative inline-flex h-[64px] items-center justify-center gap-2 overflow-hidden rounded-2xl px-6 text-sm font-bold text-white",
+              "group relative inline-flex h-[56px] items-center justify-center gap-1.5 overflow-hidden rounded-xl px-5 text-[13px] font-bold text-white",
               "bg-linear-to-b from-accent to-accent-dark shadow-[0_14px_28px_-12px_rgb(225_77_85/0.8),inset_0_1px_0_rgb(255_255_255/0.25)]",
               "transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_18px_32px_-12px_rgb(225_77_85/0.9)] active:translate-y-0",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-70",
               "motion-reduce:transition-none motion-reduce:hover:translate-y-0",
             )}
           >
-            <Search className="size-4" aria-hidden />
+            <Search className="size-3.5" aria-hidden />
             Search flights
-            <ArrowRight className="size-4 transition group-hover:translate-x-0.5" aria-hidden />
+            <ArrowRight className="size-3.5 transition group-hover:translate-x-0.5" aria-hidden />
           </button>
         </div>
       </div>
 
       {recent.length > 0 && (
-        <div className="mt-3 border-t border-neutral-100 pt-3">
-          <p className="mb-2 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-ink-subtle">
+        <div className="mt-2 border-t border-neutral-100 pt-2">
+          <p className="mb-1.5 flex items-center gap-1.5 text-[9.5px] font-bold uppercase tracking-[0.14em] text-ink-subtle">
             <History className="size-3.5" aria-hidden />
             Recent searches
           </p>
-          <div className="no-scrollbar -mx-1 flex gap-2 overflow-x-auto px-1 pb-0.5">
+          <div className="no-scrollbar -mx-1 flex gap-1.5 overflow-x-auto px-1 pb-0.5">
             {recent.map((item) => (
               <button
                 key={`${item.origin}-${item.destination}-${item.date}-${item.returnDate}`}
@@ -261,9 +261,9 @@ export function FlightSearchForm({
                   setDraft(item);
                   setErrors({});
                 }}
-                className="shrink-0 rounded-xl border border-neutral-200 bg-white px-3 py-2 text-left transition hover:-translate-y-px hover:border-primary-300 hover:shadow-soft motion-reduce:hover:translate-y-0"
+                className="shrink-0 rounded-lg border border-neutral-200 bg-white px-2.5 py-1.5 text-left transition hover:-translate-y-px hover:border-primary-300 hover:shadow-soft motion-reduce:hover:translate-y-0"
               >
-                <span className="flex items-center gap-1.5 text-xs font-bold text-ink">
+                <span className="flex items-center gap-1.5 text-[11.5px] font-bold text-ink">
                   {item.origin}
                   {item.tripType === "round_trip" ? (
                     <ArrowLeftRight className="size-3 text-primary-600" aria-label="round trip to" />
@@ -276,7 +276,7 @@ export function FlightSearchForm({
                     {travellerCount(item)}
                   </span>
                 </span>
-                <span className="block text-[10.5px] text-ink-muted">
+                <span className="block text-[10px] text-ink-muted">
                   {friendlyDate(item.date)}
                   {item.returnDate ? ` – ${friendlyDate(item.returnDate)}` : ""} · {item.cabin}
                 </span>
@@ -352,7 +352,7 @@ function TripTypeToggle({ value, onChange }: { value: TripType; onChange: (v: Tr
             aria-checked={selected}
             onClick={() => onChange(option.id)}
             className={cn(
-              "relative z-[1] rounded-full px-4 py-1.5 text-xs font-bold transition-colors",
+              "relative z-[1] rounded-full px-3.5 py-1 text-[11.5px] font-bold transition-colors",
               selected ? "text-primary-700" : "text-ink-muted hover:text-ink",
             )}
           >

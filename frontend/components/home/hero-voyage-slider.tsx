@@ -147,11 +147,12 @@ export function HeroVoyageSlider({
           >
             <div className="absolute inset-0 overflow-hidden rounded-xl shadow-elevated">
               <Image
-                src={slide.image}
+                // Smaller variant than the full-bleed hero photo: a distinct address keeps Next from
+                // mistaking this lazy card for the hero when it reports the page's main image.
+                src={slide.image.replace("w=800", "w=480")}
                 alt=""
                 fill
                 sizes="240px"
-                priority={i === 0}
                 className="object-cover transition-[filter] duration-700 motion-reduce:transition-none"
                 style={{
                   filter: pos.filter,
