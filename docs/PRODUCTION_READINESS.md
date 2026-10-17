@@ -38,7 +38,7 @@ Verdict as of 2026-10-17: **Not ready for real customers or real money.** Ready 
 - [ ] Legal pages reviewed
 
 ### Quality & Ops
-- [ ] CI green (tests, types, lint, build) — workflow `.github/workflows/ci.yml` exists and its commands pass locally from a clean clone; tick this once it is green on GitHub and required via branch protection
+- [ ] CI green (tests, types, lint, build) — workflow `.github/workflows/ci.yml` exists and its commands pass locally from a clean clone; first GitHub run (80b4770): backend job passed, frontend job failed at `npm ci` (Node 22/npm 10 vs npm 11 lockfile); fix committed locally, not yet re-run; tick this once it is green on GitHub and required via branch protection
 - [ ] E2E happy path automated
 - [ ] Error tracking, uptime monitoring, alerting
 - [ ] Staging environment mirrors production
