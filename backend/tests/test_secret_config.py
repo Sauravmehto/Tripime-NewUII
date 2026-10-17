@@ -74,7 +74,7 @@ class SecretSeparationTests(unittest.TestCase):
             self.addCleanup(p.stop)
 
     def test_admin_token_cannot_be_verified_with_customer_secret(self):
-        token, _ = admin_auth.create_admin_token()
+        token, _, _ = admin_auth.create_admin_token()
         with self.assertRaises(jwt.InvalidTokenError):
             jwt.decode(token, CUSTOMER_KEY, algorithms=["HS256"])
         self.assertEqual(jwt.decode(token, ADMIN_KEY, algorithms=["HS256"])["sub"], "admin")

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { getAdminToken } from "@/lib/admin-auth";
+import { loadAdminSession, purgeLegacyAdminToken } from "@/lib/admin-auth";
 import { Skeleton } from "@/components/ui/card";
 
 /** Redirects unauthenticated users away from protected admin routes. */
@@ -17,11 +17,16 @@ export function AdminGuard({ children }: { children: ReactNode }) {
       setReady(true);
       return;
     }
-    if (!getAdminToken()) {
-      router.replace("/admin/login");
-      return;
-    }
-    setReady(true);
+    let cancelled = false;
+    purgeLegacyAdminToken();
+    void loadAdminSession().then((ok) => {
+      if (cancelled) return;
+      if (ok) setReady(true);
+      else router.replace("/admin/login");
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [pathname, router]);
 
   if (pathname === "/admin/login") return <>{children}</>;

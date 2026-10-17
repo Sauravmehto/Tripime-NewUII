@@ -6,9 +6,10 @@ Verdict as of 2026-10-17: **Not ready for real customers or real money.** Ready 
 
 ### Security
 - [ ] Strong unique `ADMIN_USERNAME`, `ADMIN_PASSWORD`, `ADMIN_JWT_SECRET` set on Render; startup fails otherwise
-- [ ] Separate customer-session secret
-- [ ] Admin login rate limit/lockout
-- [ ] Admin token out of localStorage; CSP set
+- [x] Separate customer-session secret
+- [x] Admin login rate limit/lockout (REDIS_URL needed only for multi-instance)
+- [x] Admin token out of localStorage (HttpOnly cookie + CSRF)
+- [ ] CSP set
 - [ ] `CUSTOMER_OTP_DEV_CODE` unset and `APP_ENV=production`
 - [ ] CORS restricted to real domains
 - [ ] Cookies: `Secure`, `SameSite` verified across Netlify↔Render

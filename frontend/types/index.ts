@@ -337,7 +337,9 @@ export interface BookingDraftPayload {
 }
 
 export interface AdminLoginResponse {
-  token: string;
+  /** Only present outside production; browsers rely on the HttpOnly cookie. */
+  token?: string | null;
+  csrfToken: string;
   expiresAt: string;
 }
 

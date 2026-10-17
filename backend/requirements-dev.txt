@@ -1,0 +1,5 @@
+-r requirements.txt
+# Test-only dependencies (not installed on Render)
+httpx==0.28.1
+fakeredis==2.40.0
+lupa==2.8

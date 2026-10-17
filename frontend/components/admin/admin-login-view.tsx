@@ -4,7 +4,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { adminLogin } from "@/lib/api/admin";
 import { getErrorMessage } from "@/lib/api/client";
-import { getAdminToken, setAdminToken } from "@/lib/admin-auth";
+import { loadAdminSession, purgeLegacyAdminToken } from "@/lib/admin-auth";
 import { Logo } from "@/components/brand/logo";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
@@ -18,7 +18,10 @@ export function AdminLoginView() {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    if (getAdminToken()) router.replace("/admin/profile");
+    purgeLegacyAdminToken();
+    void loadAdminSession().then((ok) => {
+      if (ok) router.replace("/admin/profile");
+    });
   }, [router]);
 
   async function handleSubmit(e: FormEvent) {
@@ -26,8 +29,7 @@ export function AdminLoginView() {
     setError("");
     setSubmitting(true);
     try {
-      const { token } = await adminLogin(username.trim(), password);
-      setAdminToken(token);
+      await adminLogin(username.trim(), password);
       router.replace("/admin/profile");
     } catch (err) {
       setError(getErrorMessage(err));

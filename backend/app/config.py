@@ -92,6 +92,25 @@ CUSTOMER_SESSION_COOKIE = "tripime_session"
 COOKIE_SAMESITE = os.getenv("COOKIE_SAMESITE", "lax").strip().lower()
 COOKIE_SECURE = _get_bool("COOKIE_SECURE", IS_PRODUCTION or COOKIE_SAMESITE == "none")
 OTP_TTL_SECONDS = _get_int("OTP_TTL_SECONDS", 600)
+
+# Admin session: HttpOnly cookie (JS can never read it) + CSRF token checked on writes.
+ADMIN_SESSION_COOKIE = "tripime_admin_session"
+# Hand the raw JWT back in the login response too (scripts/smoke tests). Off in production.
+ADMIN_RETURN_TOKEN = _get_bool("ADMIN_RETURN_TOKEN", not IS_PRODUCTION)
+
+# Admin login brute-force protection. Failures are counted per client IP and per username;
+# crossing a threshold locks that key out, doubling the lock on each repeat up to the maximum.
+# Locks always expire, so a legitimate admin is never locked out permanently.
+ADMIN_LOGIN_IP_MAX_FAILURES = _get_int("ADMIN_LOGIN_IP_MAX_FAILURES", 5)
+ADMIN_LOGIN_ACCOUNT_MAX_FAILURES = _get_int("ADMIN_LOGIN_ACCOUNT_MAX_FAILURES", 20)
+ADMIN_LOGIN_WINDOW_SECONDS = _get_int("ADMIN_LOGIN_WINDOW_SECONDS", 900)
+ADMIN_LOGIN_LOCK_BASE_SECONDS = _get_int("ADMIN_LOGIN_LOCK_BASE_SECONDS", 60)
+ADMIN_LOGIN_LOCK_MAX_SECONDS = _get_int("ADMIN_LOGIN_LOCK_MAX_SECONDS", 900)
+# Shared counter store for multi-instance deployments (e.g. redis://...). Empty = per-process memory.
+REDIS_URL = os.getenv("REDIS_URL", "").strip()
+# Reverse proxies in front of the app whose X-Forwarded-For entries we trust (Render = 1).
+# 0 = ignore the header and use the socket address. Never trust more hops than really exist.
+TRUSTED_PROXY_HOPS = _get_int("TRUSTED_PROXY_HOPS", 1 if os.getenv("RENDER", "").strip() else 0)
 # Development only: when SMTP isn't set, print sign-in codes to the backend log.
 CUSTOMER_OTP_DEV_LOG = _get_bool("CUSTOMER_OTP_DEV_LOG", not IS_PRODUCTION)
 # Development only: a fixed sign-in code for any email, so login works before email is set up.

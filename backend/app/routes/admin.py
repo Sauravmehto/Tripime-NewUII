@@ -1,12 +1,12 @@
 import secrets
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
 from app import config
-from app.models.admin import AdminLoginRequest, AdminLoginResponse, AdminStats
+from app.models.admin import AdminLoginRequest, AdminLoginResponse, AdminSessionResponse, AdminStats
 from app.models.agency_profile import AgencyProfileResponse, AgencyProfileUpdate
 from app.models.booking import (
     AirlineConfirmationRequest,
@@ -54,7 +54,15 @@ from app.models.website_cms import (
     WebsiteAirlines,
     WebsiteBusRoutes,
 )
-from app.services.admin_auth import create_admin_token, require_admin
+from app.services.admin_auth import (
+    admin_claims,
+    clear_admin_cookie,
+    create_admin_token,
+    require_admin,
+    set_admin_cookie,
+)
+from app.services.login_throttle import login_throttle
+from app.services.rate_limit import client_ip
 from app.services.agency_profile_service import get_agency_profile_service
 from app.services.booking_service import get_booking_service
 from app.services.email_service import send_invoice_email
@@ -69,15 +77,52 @@ from app.services.website_cms_service import get_website_cms_service
 router = APIRouter()
 
 
-@router.post("/login", response_model=AdminLoginResponse)
-def admin_login(payload: AdminLoginRequest) -> AdminLoginResponse:
-    valid_username = secrets.compare_digest(payload.username, config.ADMIN_USERNAME)
-    valid_password = secrets.compare_digest(payload.password, config.ADMIN_PASSWORD)
-    if not (valid_username and valid_password):
-        raise HTTPException(status_code=401, detail="Invalid admin username or password.")
+LOGIN_FAILED = "Invalid admin username or password."
 
-    token, expires_at = create_admin_token()
-    return AdminLoginResponse(token=token, expiresAt=expires_at.isoformat())
+
+@router.post("/login", response_model=AdminLoginResponse)
+def admin_login(payload: AdminLoginRequest, request: Request, response: Response) -> AdminLoginResponse:
+    ip = client_ip(request)
+    locked = login_throttle.locked_seconds(ip, payload.username)
+    if locked:
+        # Checked before the password is looked at, so a lockout can't be used to keep guessing.
+        raise HTTPException(
+            status_code=429,
+            detail=f"Too many sign-in attempts. Try again in {max(1, -(-locked // 60))} minute(s).",
+            headers={"Retry-After": str(locked)},
+        )
+
+    # Both comparisons always run and the error is identical, so nothing reveals which part was wrong.
+    valid_username = secrets.compare_digest(payload.username.encode(), config.ADMIN_USERNAME.encode())
+    valid_password = secrets.compare_digest(payload.password.encode(), config.ADMIN_PASSWORD.encode())
+    if not (valid_username and valid_password):
+        login_throttle.record_failure(ip, payload.username)
+        raise HTTPException(status_code=401, detail=LOGIN_FAILED)
+
+    login_throttle.record_success(ip, payload.username)
+    token, expires_at, csrf = create_admin_token()
+    set_admin_cookie(response, token)
+    return AdminLoginResponse(
+        token=token if config.ADMIN_RETURN_TOKEN else None,
+        csrfToken=csrf,
+        expiresAt=expires_at.isoformat(),
+    )
+
+
+@router.get("/session", response_model=AdminSessionResponse)
+def admin_session(request: Request) -> AdminSessionResponse:
+    """Who am I? Also how the page learns its CSRF token after a reload (only the cookie holder can read it)."""
+    try:
+        claims = admin_claims(request)
+    except HTTPException:
+        return AdminSessionResponse(authenticated=False)
+    expires = datetime.fromtimestamp(claims["exp"], tz=timezone.utc).isoformat()
+    return AdminSessionResponse(authenticated=True, csrfToken=claims.get("csrf"), expiresAt=expires)
+
+
+@router.post("/logout", status_code=204)
+def admin_logout(response: Response) -> None:
+    clear_admin_cookie(response)
 
 
 @router.get("/profile", response_model=AgencyProfileResponse, dependencies=[Depends(require_admin)])

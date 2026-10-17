@@ -59,6 +59,10 @@ Status: Complete · Partial · Missing · Broken · Unverified. "V" = verified b
 9. **Cookie settings** — cross-site (Netlify ↔ Render) cookies need `SameSite=None; Secure` and a shared parent domain strategy; unverified in a real deployment.
 10. **Zero automated frontend tests and no CI.**
 
+## 4a. Update — 2026-10-17, admin authentication hardening
+
+Findings 1, 2 and 8 above are addressed: production refuses weak/default/identical secrets; customer and admin sessions use separate keys; admin login is throttled with expiring progressive lockouts (per IP and per username, spoof-resistant client IP); the admin session is an HttpOnly cookie with CSRF protection and no token in localStorage. Backend tests: 61 passing. Still open: shared store is optional (`REDIS_URL`) and only exercised against a fake Redis; no per-admin accounts, 2FA, CSP or admin audit log; admin login limits are not tested against a real proxy chain.
+
 ## 5. What is solid
 
 State machine and honesty rules (no fake payment/ticket/notification), authorization on every route, customer data isolated per user, types/lint/build clean, backend tests cover the core flow, safe-redirect handling, no passport data in browser storage or notifications.

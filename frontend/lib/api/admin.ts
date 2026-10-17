@@ -1,5 +1,5 @@
 import { apiClient } from "./client";
-import { getAdminToken } from "@/lib/admin-auth";
+import { clearAdminSession, getAdminCsrf, setAdminCsrf } from "@/lib/admin-auth";
 import type {
   AdminLoginResponse,
   AdminStats,
@@ -45,9 +45,10 @@ import type {
   MarketingVideo,
 } from "@/types";
 
-function authHeaders() {
-  const token = getAdminToken();
-  return token ? { Authorization: `Bearer ${token}` } : {};
+/** The session cookie is sent by the browser; writes also need the CSRF token held in memory. */
+function authHeaders(): Record<string, string> {
+  const csrf = getAdminCsrf();
+  return csrf ? { "X-CSRF-Token": csrf } : {};
 }
 
 export async function adminLogin(
@@ -58,7 +59,16 @@ export async function adminLogin(
     "/api/admin/login",
     { username, password },
   );
+  setAdminCsrf(data.csrfToken);
   return data;
+}
+
+export async function adminLogout(): Promise<void> {
+  try {
+    await apiClient.post("/api/admin/logout", undefined, { headers: authHeaders() });
+  } finally {
+    clearAdminSession();
+  }
 }
 
 export async function listAdminBookings(): Promise<Booking[]> {

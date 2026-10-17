@@ -40,7 +40,7 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Logo } from "@/components/brand/logo";
-import { clearAdminToken } from "@/lib/admin-auth";
+import { adminLogout } from "@/lib/api/admin";
 import { cn } from "@/lib/cn";
 import { WEBSITE_SECTIONS } from "@/lib/admin/website-sections";
 import { AdminNavItem } from "./ui/admin-nav-item";
@@ -240,8 +240,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
   }
 
   function handleLogout() {
-    clearAdminToken();
-    router.replace("/admin/login");
+    void adminLogout().finally(() => router.replace("/admin/login"));
   }
 
   const navCollapsed = collapsed && !mobileOpen;

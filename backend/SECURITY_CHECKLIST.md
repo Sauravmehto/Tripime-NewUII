@@ -13,9 +13,10 @@ This doc describes exactly what exists today and what to change before launch.
 - On successful login, the backend issues a JWT (`HS256`, signed with
   `ADMIN_JWT_SECRET`) valid for `ADMIN_TOKEN_TTL_HOURS` (default 12h). See
   `backend/app/services/admin_auth.py`.
-- Every `/api/admin/*` route requires `Authorization: Bearer <token>` — see
+- Every `/api/admin/*` route requires the HttpOnly `tripime_admin_session` cookie (plus an `X-CSRF-Token` header on writes) or, for scripts, `Authorization: Bearer <token>` — see
   `backend/app/routes/admin.py`.
-- The frontend stores that token in `localStorage` (`frontend/src/lib/adminAuth.ts`).
+- The browser never sees the JWT: it is an HttpOnly cookie (`SameSite`/`Secure` from `COOKIE_SAMESITE`/`COOKIE_SECURE`, path `/api/admin`). The frontend keeps only the CSRF token, in memory, re-read from `GET /api/admin/session` after a reload (`frontend/lib/admin-auth.ts`). Legacy `localStorage` tokens are purged.
+- Login is throttled (`backend/app/services/login_throttle.py`): 5 failures per IP / 20 per username in 15 min lock that key for 60 s, doubling per repeat up to 15 min; locks always expire; a successful login clears counters; locked requests are refused before the password is checked; errors are identical for unknown user and wrong password. Client IP comes from the Nth-from-right `X-Forwarded-For` entry (`TRUSTED_PROXY_HOPS`), never the client-controlled left side.
 
 ## ⚠️ Must fix before go-live
 
@@ -27,7 +28,8 @@ This doc describes exactly what exists today and what to change before launch.
       unique values in every deployed environment (Render, etc.), not just `.env` locally.
 - [ ] **Rotate `ADMIN_JWT_SECRET` if it was ever committed, logged, or shared** —
       rotating it invalidates all existing admin sessions, which is expected.
-- [ ] **Add login rate limiting / lockout.** `POST /api/admin/login` has no throttling
+- [x] ~~**Add login rate limiting / lockout.**~~ Done (see above). Remaining: set `REDIS_URL` if you ever run more than one instance (otherwise counters are per process and reset on restart).
+- [ ] (old note) **Add login rate limiting / lockout.** `POST /api/admin/login` has no throttling
       today, so it's brute-forceable given enough attempts. Add a rate limiter
       (e.g. `slowapi`, or a reverse-proxy/WAF rule) before launch.
 - [ ] **Restrict `CORS_ORIGINS` to your real domain(s).** The default
@@ -39,7 +41,7 @@ This doc describes exactly what exists today and what to change before launch.
 
 ## Recommended hardening (do soon after launch)
 
-- [ ] Move the admin token out of `localStorage` into an `httpOnly` cookie, or at
+- [x] ~~Move the admin token out of `localStorage`~~ Done: HttpOnly cookie + CSRF. Still recommended: a strong Content-Security-Policy. (old note: or at
       least accept the XSS-token-theft risk knowingly and add a strong
       Content-Security-Policy to reduce it.
 - [ ] Add per-admin accounts (instead of one shared username/password) once more than
