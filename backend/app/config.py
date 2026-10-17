@@ -32,6 +32,8 @@ def _get_int(name: str, default: int) -> int:
 ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "admin")
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin123")
 ADMIN_JWT_SECRET = os.getenv("ADMIN_JWT_SECRET", "dev-only-insecure-secret-change-me")
+# Customer sessions are signed with their own key so an admin-token secret can never mint them.
+CUSTOMER_JWT_SECRET = os.getenv("CUSTOMER_JWT_SECRET", "dev-only-insecure-customer-secret")
 ADMIN_TOKEN_TTL_HOURS = _get_int("ADMIN_TOKEN_TTL_HOURS", 12)
 
 # Mock flight inventory: bookable from today (IST) through today + N days
@@ -65,7 +67,8 @@ def smtp_is_configured() -> bool:
 
 
 APP_ENV = os.getenv("APP_ENV", "development").strip().lower()
-IS_PRODUCTION = APP_ENV == "production"
+# Render sets RENDER=true, so a forgotten APP_ENV on that host still counts as production.
+IS_PRODUCTION = APP_ENV == "production" or bool(os.getenv("RENDER", "").strip())
 
 # Payments — no gateway is integrated. Bookings are *requests*; payment is
 # arranged by the team and verified manually in admin. A future gateway gets a
@@ -127,3 +130,58 @@ def whatsapp_provider() -> str | None:
 
 def whatsapp_alerts_configured() -> bool:
     return whatsapp_provider() is not None
+
+
+# --- Production startup validation -------------------------------------------------------
+
+MIN_SECRET_LENGTH = 32
+MIN_ADMIN_PASSWORD_LENGTH = 12
+_KNOWN_INSECURE = {
+    "admin123",
+    "change-this-password",
+    "change-this-to-a-long-random-string",
+    "dev-only-insecure-secret-change-me",
+    "dev-only-insecure-customer-secret",
+}
+
+
+def production_config_errors(
+    *,
+    admin_password: str | None = None,
+    admin_secret: str | None = None,
+    customer_secret: str | None = None,
+) -> list[str]:
+    """Problems that make the configured credentials unsafe in production.
+
+    Messages name the variable only, never its value. Arguments default to the live settings.
+    """
+    password = ADMIN_PASSWORD if admin_password is None else admin_password
+    admin_key = ADMIN_JWT_SECRET if admin_secret is None else admin_secret
+    customer_key = CUSTOMER_JWT_SECRET if customer_secret is None else customer_secret
+    errors: list[str] = []
+
+    if password in _KNOWN_INSECURE or len(password) < MIN_ADMIN_PASSWORD_LENGTH:
+        errors.append(
+            f"ADMIN_PASSWORD must be set to a unique value of at least {MIN_ADMIN_PASSWORD_LENGTH} characters "
+            "(not a default or example value)."
+        )
+    for name, value in (("ADMIN_JWT_SECRET", admin_key), ("CUSTOMER_JWT_SECRET", customer_key)):
+        if value in _KNOWN_INSECURE or len(value) < MIN_SECRET_LENGTH:
+            errors.append(
+                f"{name} must be set to a random secret of at least {MIN_SECRET_LENGTH} characters "
+                "(not a default or example value)."
+            )
+    if admin_key == customer_key:
+        errors.append("ADMIN_JWT_SECRET and CUSTOMER_JWT_SECRET must be different values.")
+    return errors
+
+
+def validate_production_config() -> None:
+    """Refuse to start in production with unsafe credentials. No-op in development."""
+    if not IS_PRODUCTION:
+        return
+    errors = production_config_errors()
+    if errors:
+        raise RuntimeError(
+            "Refusing to start in production with unsafe configuration: " + " | ".join(errors)
+        )

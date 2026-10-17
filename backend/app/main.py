@@ -15,6 +15,8 @@ from app.routes import (
     website,
 )
 
+config.validate_production_config()
+
 app = FastAPI(
     title="Tripime Mock Flight API",
     description="Domestic mock flight search and booking for development.",

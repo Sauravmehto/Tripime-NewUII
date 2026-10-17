@@ -19,7 +19,7 @@ python scripts/generate_flights.py
 
 See the root [README.md](../README.md#deploy-github--render--netlify). Blueprint: [`../render.yaml`](../render.yaml).
 
-Required env: `ADMIN_USERNAME`, `ADMIN_PASSWORD`, `ADMIN_JWT_SECRET`, `CORS_ORIGINS` (your Netlify URL). Optional: `SMTP_*` for confirmation emails.
+Required env: `ADMIN_USERNAME`, `ADMIN_PASSWORD`, `ADMIN_JWT_SECRET`, `CUSTOMER_JWT_SECRET` (different from the admin one), `APP_ENV=production`, `CORS_ORIGINS` (your Netlify URL). Optional: `SMTP_*` for confirmation emails.
 
 ## Before going live
 

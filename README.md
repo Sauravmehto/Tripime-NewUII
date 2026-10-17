@@ -45,7 +45,9 @@ npm run dev
 | `PYTHON_VERSION` | `3.11.9` |
 | `ADMIN_USERNAME` | your admin user |
 | `ADMIN_PASSWORD` | strong password |
-| `ADMIN_JWT_SECRET` | long random string (or Generate) |
+| `ADMIN_JWT_SECRET` | random, 32+ chars (or Generate) |
+| `CUSTOMER_JWT_SECRET` | random, 32+ chars, **different** from the admin secret |
+| `APP_ENV` | `production` (startup fails on default/weak secrets or `ADMIN_PASSWORD` under 12 chars) |
 | `CORS_ORIGINS` | `https://YOUR-SITE.netlify.app` |
 
 After deploy, note the URL (e.g. `https://tripime-new.onrender.com`).

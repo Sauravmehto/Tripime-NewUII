@@ -18,6 +18,10 @@ services:
         sync: false
       - key: ADMIN_JWT_SECRET
         generateValue: true
+      - key: CUSTOMER_JWT_SECRET
+        generateValue: true
+      - key: APP_ENV
+        value: production
       - key: ADMIN_TOKEN_TTL_HOURS
         value: "12"
       - key: CORS_ORIGINS

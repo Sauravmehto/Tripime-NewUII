@@ -95,12 +95,12 @@ def create_profile_token(customer_id: str) -> str:
         "kind": TOKEN_KIND,
         "exp": expires_at,
     }
-    return jwt.encode(payload, config.ADMIN_JWT_SECRET, algorithm=ALGORITHM)
+    return jwt.encode(payload, config.CUSTOMER_JWT_SECRET, algorithm=ALGORITHM)
 
 
 def decode_profile_token(token: str) -> str:
     try:
-        payload = jwt.decode(token, config.ADMIN_JWT_SECRET, algorithms=[ALGORITHM])
+        payload = jwt.decode(token, config.CUSTOMER_JWT_SECRET, algorithms=[ALGORITHM])
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Session expired. Please sign in again.")
     except jwt.InvalidTokenError:

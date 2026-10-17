@@ -73,7 +73,7 @@ class CustomerSession:
 
 
 def _digest(email: str, code: str) -> str:
-    return hmac.new(config.ADMIN_JWT_SECRET.encode(), f"{email}:{code}".encode(), hashlib.sha256).hexdigest()
+    return hmac.new(config.CUSTOMER_JWT_SECRET.encode(), f"{email}:{code}".encode(), hashlib.sha256).hexdigest()
 
 
 def fixed_dev_code() -> str | None:
@@ -160,7 +160,7 @@ def start_session(response: Response, customer: CustomerLogin) -> None:
     expires = datetime.now(timezone.utc) + timedelta(hours=config.CUSTOMER_SESSION_HOURS)
     token = jwt.encode(
         {"sub": customer.id, "email": normalize_email(customer.email), "kind": SESSION_KIND, "exp": expires},
-        config.ADMIN_JWT_SECRET,
+        config.CUSTOMER_JWT_SECRET,
         algorithm=ALGORITHM,
     )
     response.set_cookie(
@@ -183,7 +183,7 @@ def optional_session(request: Request) -> CustomerSession | None:
     if not token:
         return None
     try:
-        payload = jwt.decode(token, config.ADMIN_JWT_SECRET, algorithms=[ALGORITHM])
+        payload = jwt.decode(token, config.CUSTOMER_JWT_SECRET, algorithms=[ALGORITHM])
     except jwt.InvalidTokenError:
         return None
     if payload.get("kind") != SESSION_KIND or not payload.get("sub") or not payload.get("email"):
