@@ -1,5 +1,6 @@
 import { MarketingShell } from "@/components/layout/marketing-shell";
 import { BookingProvider } from "@/context/booking-provider";
+import { CustomerSessionProvider } from "@/context/customer-session-provider";
 
 export default function MarketingLayout({
   children,
@@ -7,8 +8,10 @@ export default function MarketingLayout({
   children: React.ReactNode;
 }) {
   return (
-    <BookingProvider>
-      <MarketingShell>{children}</MarketingShell>
-    </BookingProvider>
+    <CustomerSessionProvider>
+      <BookingProvider>
+        <MarketingShell>{children}</MarketingShell>
+      </BookingProvider>
+    </CustomerSessionProvider>
   );
 }

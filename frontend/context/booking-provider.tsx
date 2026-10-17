@@ -9,27 +9,29 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import type {
-  ContactForm,
-  Flight,
-  PassengerForm,
-  SearchParams,
-  SelectedSeat,
-} from "@/types";
+import type { BookingState, ContactForm, Flight, PassengerForm, SearchParams } from "@/types";
+
+// v3: booking requests (server drafts, no seat map, no client-side payment).
+const STORAGE_KEY = "tripime_booking_v3";
 
 /**
- * The booking created for the current checkout. `fingerprint` captures what was
- * booked; if the traveller changes anything, a new checkout (and booking) starts.
+ * The server-side draft for the current checkout. `key` is sent with every
+ * save so repeats update the same draft; `state` mirrors the server's
+ * booking state so steps can be guarded.
  */
 export interface CheckoutState {
   key: string;
-  fingerprint: string;
   bookingId?: string;
-  accessToken?: string;
+  state?: BookingState;
 }
 
-// v2: search carries trip type, traveller mix and cabin; seats carry a leg.
-const STORAGE_KEY = "tripime_booking_v2";
+export interface BookingProgress {
+  /** Set once the request is submitted: the checkout is finished and goes to its status page. */
+  submittedId?: string;
+  passengersDone: boolean;
+  reviewed: boolean;
+  seatsDone: boolean;
+}
 
 interface PersistedBookingState {
   search: SearchParams | null;
@@ -37,8 +39,20 @@ interface PersistedBookingState {
   selectedReturnFlight: Flight | null;
   passengers: PassengerForm[];
   contact: ContactForm;
-  selectedSeats: SelectedSeat[];
   checkout: CheckoutState | null;
+  seatsAcknowledged: boolean;
+}
+
+// Passport details are sensitive: they're kept in memory and saved to the
+// server draft, never written to browser storage.
+function withoutDocuments(passengers: PassengerForm[]): PassengerForm[] {
+  return passengers.map((p) => {
+    const copy = { ...p };
+    delete copy.passportNumber;
+    delete copy.passportExpiry;
+    delete copy.nationality;
+    return copy;
+  });
 }
 
 function loadPersisted(): PersistedBookingState | null {
@@ -53,9 +67,12 @@ function loadPersisted(): PersistedBookingState | null {
 
 function persist(state: PersistedBookingState) {
   try {
-    window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    window.sessionStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({ ...state, passengers: withoutDocuments(state.passengers) }),
+    );
   } catch {
-    // ignore
+    // storage unavailable — the flow still works for this page view
   }
 }
 
@@ -67,28 +84,32 @@ function clearPersisted() {
   }
 }
 
-interface BookingState {
+interface BookingContextState {
+  hydrated: boolean;
   search: SearchParams | null;
   selectedFlight: Flight | null;
   selectedReturnFlight: Flight | null;
   passengers: PassengerForm[];
   contact: ContactForm;
-  selectedSeats: SelectedSeat[];
-  seatCharges: number;
   checkout: CheckoutState | null;
+  seatsAcknowledged: boolean;
+  progress: BookingProgress;
   setSearch: (search: SearchParams) => void;
-  setSelectedFlight: (flight: Flight) => void;
-  setSelectedReturnFlight: (flight: Flight | null) => void;
+  /** Selecting flights starts a fresh checkout. */
+  selectFlights: (search: SearchParams, flight: Flight, returnFlight: Flight | null) => void;
   setPassengers: (passengers: PassengerForm[]) => void;
   setContact: (contact: ContactForm) => void;
-  setSelectedSeats: (seats: SelectedSeat[]) => void;
   setCheckout: (checkout: CheckoutState | null) => void;
+  setSeatsAcknowledged: (value: boolean) => void;
   reset: () => void;
 }
 
-const defaultContact: ContactForm = { email: "", phone: "" };
+const defaultContact: ContactForm = { email: "", countryCode: "+91", phone: "" };
+const BookingContext = createContext<BookingContextState | null>(null);
 
-const BookingContext = createContext<BookingState | null>(null);
+const REVIEWED_STATES: BookingState[] = ["REVIEWED"];
+const PASSENGER_STATES: BookingState[] = ["PASSENGERS_COMPLETED", "REVIEWED"];
+const EDITING_STATES: BookingState[] = ["DRAFT", "PASSENGERS_COMPLETED", "REVIEWED"];
 
 export function BookingProvider({ children }: { children: ReactNode }) {
   const [hydrated, setHydrated] = useState(false);
@@ -97,8 +118,8 @@ export function BookingProvider({ children }: { children: ReactNode }) {
   const [selectedReturnFlight, setSelectedReturnFlight] = useState<Flight | null>(null);
   const [passengers, setPassengers] = useState<PassengerForm[]>([]);
   const [contact, setContact] = useState<ContactForm>(defaultContact);
-  const [selectedSeats, setSelectedSeatsState] = useState<SelectedSeat[]>([]);
   const [checkout, setCheckout] = useState<CheckoutState | null>(null);
+  const [seatsAcknowledged, setSeatsAcknowledged] = useState(false);
 
   useEffect(() => {
     const restored = loadPersisted();
@@ -107,22 +128,26 @@ export function BookingProvider({ children }: { children: ReactNode }) {
       setSearch(restored.search);
       setSelectedFlight(restored.selectedFlight);
       setSelectedReturnFlight(restored.selectedReturnFlight ?? null);
-      setPassengers(restored.passengers);
-      setContact(restored.contact);
-      setSelectedSeatsState(restored.selectedSeats);
+      setPassengers(restored.passengers ?? []);
+      setContact({ ...defaultContact, ...restored.contact });
       setCheckout(restored.checkout ?? null);
+      setSeatsAcknowledged(Boolean(restored.seatsAcknowledged));
     }
     setHydrated(true);
   }, []);
 
-  const setSelectedSeats = useCallback((seats: SelectedSeat[]) => {
-    setSelectedSeatsState(seats);
-  }, []);
+  useEffect(() => {
+    if (!hydrated) return;
+    persist({ search, selectedFlight, selectedReturnFlight, passengers, contact, checkout, seatsAcknowledged });
+  }, [hydrated, search, selectedFlight, selectedReturnFlight, passengers, contact, checkout, seatsAcknowledged]);
 
-  const seatCharges = useMemo(
-    () => selectedSeats.reduce((sum, seat) => sum + seat.price, 0),
-    [selectedSeats],
-  );
+  const selectFlights = useCallback((next: SearchParams, flight: Flight, returnFlight: Flight | null) => {
+    setSearch(next);
+    setSelectedFlight(flight);
+    setSelectedReturnFlight(returnFlight);
+    setCheckout(null);
+    setSeatsAcknowledged(false);
+  }, []);
 
   const reset = useCallback(() => {
     setSearch(null);
@@ -130,47 +155,39 @@ export function BookingProvider({ children }: { children: ReactNode }) {
     setSelectedReturnFlight(null);
     setPassengers([]);
     setContact(defaultContact);
-    setSelectedSeatsState([]);
     setCheckout(null);
+    setSeatsAcknowledged(false);
     clearPersisted();
   }, []);
 
-  useEffect(() => {
-    if (!hydrated) return;
-    persist({ search, selectedFlight, selectedReturnFlight, passengers, contact, selectedSeats, checkout });
-  }, [hydrated, search, selectedFlight, selectedReturnFlight, passengers, contact, selectedSeats, checkout]);
+  const progress = useMemo<BookingProgress>(() => {
+    const state = checkout?.state;
+    const passengersDone = Boolean(checkout?.bookingId && state && PASSENGER_STATES.includes(state));
+    const reviewed = Boolean(state && REVIEWED_STATES.includes(state));
+    const submittedId = state && !EDITING_STATES.includes(state) ? checkout?.bookingId : undefined;
+    return { submittedId, passengersDone, reviewed, seatsDone: reviewed && seatsAcknowledged };
+  }, [checkout, seatsAcknowledged]);
 
   const value = useMemo(
     () => ({
+      hydrated,
       search,
       selectedFlight,
       selectedReturnFlight,
       passengers,
       contact,
-      selectedSeats,
-      seatCharges,
       checkout,
+      seatsAcknowledged,
+      progress,
       setSearch,
-      setSelectedFlight,
-      setSelectedReturnFlight,
+      selectFlights,
       setPassengers,
       setContact,
-      setSelectedSeats,
       setCheckout,
+      setSeatsAcknowledged,
       reset,
     }),
-    [
-      search,
-      selectedFlight,
-      selectedReturnFlight,
-      passengers,
-      contact,
-      selectedSeats,
-      seatCharges,
-      checkout,
-      setSelectedSeats,
-      reset,
-    ],
+    [hydrated, search, selectedFlight, selectedReturnFlight, passengers, contact, checkout, seatsAcknowledged, progress, selectFlights, reset],
   );
 
   return <BookingContext.Provider value={value}>{children}</BookingContext.Provider>;

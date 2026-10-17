@@ -28,8 +28,9 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${inter.variable} h-full`}>
-      <body className="min-h-full flex flex-col bg-canvas text-ink antialiased">
+    <html lang="en" className={`${inter.variable} h-full`} data-scroll-behavior="smooth">
+      {/* Browser extensions (e.g. Grammarly) add attributes to <body> before React loads. */}
+      <body suppressHydrationWarning className="min-h-full flex flex-col bg-canvas text-ink antialiased">
         <GoogleTagManager />
         <WhatsAppClickTracker />
         <a

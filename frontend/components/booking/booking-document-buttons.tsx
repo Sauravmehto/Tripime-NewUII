@@ -7,17 +7,18 @@ import { getErrorMessage } from "@/lib/api/client";
 import { Button } from "@/components/ui/button";
 import type { Booking } from "@/types";
 
-/** E-ticket and invoice downloads for a booking the customer has the token for. */
+/** Quote/invoice and (only once issued) e-ticket downloads for the signed-in owner. */
 export function BookingDocumentButtons({ booking }: { booking: Booking }) {
   const [busy, setBusy] = useState<BookingDocument | null>(null);
   const [error, setError] = useState("");
-  const ticketReady = booking.paymentStatus === "paid" && booking.bookingStatus === "confirmed";
+  const issued = booking.state === "TICKET_ISSUED";
+  const paid = booking.paymentStatus === "paid";
 
   async function download(document: BookingDocument) {
     setBusy(document);
     setError("");
     try {
-      await downloadBookingDocument(booking.bookingId, booking.accessToken, document);
+      await downloadBookingDocument(booking.bookingId, document);
     } catch (err) {
       setError(getErrorMessage(err));
     } finally {
@@ -27,13 +28,15 @@ export function BookingDocumentButtons({ booking }: { booking: Booking }) {
 
   return (
     <>
-      <Button size="lg" disabled={busy !== null} onClick={() => void download("ticket")}>
-        <Ticket className="size-4" aria-hidden />
-        {busy === "ticket" ? "Preparing PDF…" : ticketReady ? "Download e-ticket" : "Download booking confirmation"}
-      </Button>
+      {issued && (
+        <Button size="lg" disabled={busy !== null} onClick={() => void download("ticket")}>
+          <Ticket className="size-4" aria-hidden />
+          {busy === "ticket" ? "Preparing PDF…" : "Download e-ticket"}
+        </Button>
+      )}
       <Button size="lg" variant="outline" disabled={busy !== null} onClick={() => void download("invoice")}>
         <FileText className="size-4" aria-hidden />
-        {busy === "invoice" ? "Preparing PDF…" : "Download invoice"}
+        {busy === "invoice" ? "Preparing PDF…" : paid ? "Download invoice" : "Download quote"}
       </Button>
       {error && (
         <p role="alert" className="basis-full text-sm text-danger-700">

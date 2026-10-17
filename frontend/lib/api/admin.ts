@@ -75,13 +75,43 @@ export async function getAdminStats(): Promise<AdminStats> {
   return data;
 }
 
-export async function confirmAdminBooking(bookingId: string): Promise<Booking> {
-  const { data } = await apiClient.post<Booking>(
-    `/api/admin/bookings/${bookingId}/confirm`,
-    {},
-    { headers: authHeaders() },
-  );
+async function adminPost(path: string, body: unknown): Promise<Booking> {
+  const { data } = await apiClient.post<Booking>(`/api/admin/bookings/${path}`, body, { headers: authHeaders() });
   return data;
+}
+
+export interface ManualPaymentInput {
+  reference: string;
+  method: "upi" | "bank_transfer" | "card_link" | "other";
+  amount: number;
+  note?: string;
+}
+
+/** Record a payment the admin has verified (bank statement / UPI app). */
+export function confirmAdminPayment(bookingId: string, input: ManualPaymentInput): Promise<Booking> {
+  return adminPost(`${bookingId}/payment/confirm`, input);
+}
+
+export function failAdminPayment(bookingId: string, note: string): Promise<Booking> {
+  return adminPost(`${bookingId}/payment/fail`, { note });
+}
+
+export function reopenAdminPayment(bookingId: string, note: string): Promise<Booking> {
+  return adminPost(`${bookingId}/payment/reopen`, { note });
+}
+
+/** Record the airline's confirmation PNR. */
+export function confirmAdminBooking(bookingId: string, airlinePnr: string, note = ""): Promise<Booking> {
+  return adminPost(`${bookingId}/confirm`, { airlinePnr, note });
+}
+
+/** Record the airline's ticket numbers; the e-ticket becomes available. */
+export function issueAdminTicket(bookingId: string, ticketNumbers: string[], note = ""): Promise<Booking> {
+  return adminPost(`${bookingId}/ticket`, { ticketNumbers, note });
+}
+
+export function failAdminBooking(bookingId: string, note: string): Promise<Booking> {
+  return adminPost(`${bookingId}/fail`, { note });
 }
 
 export async function updateAdminInvoice(
@@ -114,7 +144,7 @@ export async function downloadAdminInvoice(bookingId: string): Promise<Blob> {
 }
 
 export async function downloadAdminTicket(bookingId: string): Promise<Blob> {
-  const { data } = await apiClient.get<Blob>(`/api/admin/bookings/${bookingId}/ticket`, {
+  const { data } = await apiClient.get<Blob>(`/api/admin/bookings/${bookingId}/ticket.pdf`, {
     headers: authHeaders(),
     responseType: "blob",
   });

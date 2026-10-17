@@ -1,13 +1,7 @@
-import { Suspense } from "react";
-import type { Metadata } from "next";
-import { ConfirmationView } from "@/components/booking/confirmation-view";
+import { redirect } from "next/navigation";
 
-export const metadata: Metadata = { title: "Your booking" };
-
-export default function ConfirmationPage() {
-  return (
-    <Suspense fallback={null}>
-      <ConfirmationView />
-    </Suspense>
-  );
+/** Older links: /booking/confirmation/<id> → /booking/confirmation?ref=<id>. */
+export default async function LegacyConfirmationPage({ params }: { params: Promise<{ bookingId: string }> }) {
+  const { bookingId } = await params;
+  redirect(`/booking/confirmation?ref=${encodeURIComponent(bookingId)}`);
 }

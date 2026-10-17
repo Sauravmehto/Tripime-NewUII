@@ -1,7 +1,7 @@
 /** Passenger-form rules — mirrors the booking API's checks so errors show inline. */
 
 import { addDays } from "@/lib/airports";
-import type { Flight, PassengerForm, PassengerType, TravellerCounts } from "@/types";
+import type { DocumentRequirements, PassengerForm, PassengerType, TravellerCounts } from "@/types";
 
 export const TITLES: Record<PassengerType, string[]> = {
   adult: ["Mr", "Mrs", "Ms", "Dr"],
@@ -37,10 +37,6 @@ export function passengerFormsFor(counts: TravellerCounts, existing: PassengerFo
   });
 }
 
-export function isInternationalTrip(flight: Flight): boolean {
-  return [flight.origin.country, flight.destination.country].some((c) => c && c !== "IN");
-}
-
 function yearsBefore(iso: string, years: number): string {
   return `${Number(iso.slice(0, 4)) - years}${iso.slice(4)}`;
 }
@@ -61,32 +57,53 @@ export function dobBounds(type: PassengerType, firstTravel: string, lastTravel: 
 
 export interface TripContext {
   firstTravel: string;
-  lastTravel: string;
-  international: boolean;
+  requirements: DocumentRequirements;
 }
 
-/** Field errors for one passenger, keyed by field name. */
+/** Field errors for one passenger, keyed by field name (mirrors the booking API). */
 export function validatePassenger(p: PassengerForm, trip: TripContext): Partial<Record<keyof PassengerForm, string>> {
   const errors: Partial<Record<keyof PassengerForm, string>> = {};
+  const { requirements } = trip;
+  const lastTravel = requirements.lastTravelDate;
   if (!p.firstName.trim()) errors.firstName = "Required";
+  else if (/\d/.test(p.firstName)) errors.firstName = "Names can't contain digits";
   if (!p.lastName.trim()) errors.lastName = "Required";
+  else if (/\d/.test(p.lastName)) errors.lastName = "Names can't contain digits";
   if (!p.dateOfBirth) errors.dateOfBirth = "Required";
   else {
     const age = ageOn(p.dateOfBirth, trip.firstTravel);
-    if (p.type === "adult" && age < 12) errors.dateOfBirth = "Adults must be 12 or older on the travel date";
-    if (p.type === "child" && (age < 2 || age >= 12)) errors.dateOfBirth = "Children must be 2–11 on the travel date";
-    if (p.type === "infant" && (age < 0 || ageOn(p.dateOfBirth, trip.lastTravel) >= 2)) {
+    if (p.dateOfBirth > new Date().toISOString().slice(0, 10)) errors.dateOfBirth = "Date of birth can't be in the future";
+    else if (p.type === "adult" && age < 12) errors.dateOfBirth = "Adults must be 12 or older on the travel date";
+    else if (p.type === "child" && (age < 2 || age >= 12)) errors.dateOfBirth = "Children must be 2–11 on the travel date";
+    else if (p.type === "infant" && ageOn(p.dateOfBirth, lastTravel) >= 2) {
       errors.dateOfBirth = "Infants must be under 2 for the whole trip";
     }
   }
-  if (trip.international) {
+  if (requirements.passportRequired) {
     const passport = (p.passportNumber ?? "").trim();
     if (!/^[A-Za-z0-9]{6,9}$/.test(passport)) errors.passportNumber = "6–9 letters or digits";
-    if (!(p.nationality ?? "").trim()) errors.nationality = "Required";
     if (!p.passportExpiry) errors.passportExpiry = "Required";
-    else if (p.passportExpiry < addDays(trip.lastTravel, 182)) {
-      errors.passportExpiry = "Must be valid 6 months after your trip";
-    }
+    else if (p.passportExpiry <= lastTravel) errors.passportExpiry = "Expires before your trip ends";
   }
+  if (requirements.nationalityRequired && !(p.nationality ?? "").trim()) errors.nationality = "Required";
   return errors;
+}
+
+/** Valid for the trip but less than ~6 months beyond it — worth a warning, not an error. */
+export function passportValidityWarning(p: PassengerForm, requirements: DocumentRequirements): boolean {
+  if (!requirements.passportRequired || !p.passportExpiry || p.passportExpiry <= requirements.lastTravelDate) return false;
+  return p.passportExpiry < addDays(requirements.lastTravelDate, 182);
+}
+
+/** Index of each passenger that repeats an earlier one (same name and date of birth). */
+export function duplicateTravellers(passengers: PassengerForm[]): Set<number> {
+  const seen = new Map<string, number>();
+  const dupes = new Set<number>();
+  passengers.forEach((p, i) => {
+    if (!p.firstName.trim() || !p.lastName.trim() || !p.dateOfBirth) return;
+    const key = `${p.firstName.trim().toLowerCase()}|${p.lastName.trim().toLowerCase()}|${p.dateOfBirth}`;
+    if (seen.has(key)) dupes.add(i);
+    else seen.set(key, i);
+  });
+  return dupes;
 }

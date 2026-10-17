@@ -9,6 +9,8 @@ function resolveApiBaseUrl(): string {
 export const apiClient = axios.create({
   baseURL: resolveApiBaseUrl(),
   headers: { "Content-Type": "application/json" },
+  // Sends the HttpOnly customer session cookie (never readable from JS).
+  withCredentials: true,
 });
 
 export function getErrorMessage(error: unknown): string {

@@ -161,6 +161,8 @@ export interface PassengerForm {
 
 export interface ContactForm {
   email: string;
+  /** Dialling code, e.g. "+91". */
+  countryCode?: string;
   phone: string;
 }
 
@@ -221,12 +223,36 @@ export interface NotificationRecord {
   preview: string;
 }
 
+/** How payment works today. With mode "manual" there is no gateway. */
 export interface PaymentConfig {
-  provider: string;
-  testMode: boolean;
-  payeeVpa: string;
-  methods: PaymentMethod[];
-  canSimulateFailure: boolean;
+  mode: "manual" | string;
+  gatewayConfigured: boolean;
+  upiId: string;
+  upiIdVerified: boolean;
+  whatsappNumber: string;
+}
+
+export type BookingState =
+  | "DRAFT"
+  | "PASSENGERS_COMPLETED"
+  | "REVIEWED"
+  | "PAYMENT_PENDING"
+  | "PAYMENT_CONFIRMED"
+  | "BOOKING_CONFIRMED"
+  | "TICKET_ISSUED"
+  | "PAYMENT_FAILED"
+  | "BOOKING_FAILED"
+  | "CANCELLED";
+
+export interface DocumentRequirements {
+  international: boolean;
+  passportRequired: boolean;
+  nationalityRequired: boolean;
+  genderRequired: boolean;
+  dateOfBirthRequired: boolean;
+  countries: string[];
+  lastTravelDate: string;
+  passportValidityAdvice?: string | null;
 }
 
 export interface BookingPassenger extends PassengerForm {
@@ -259,11 +285,22 @@ export interface InvoiceDetails {
 export type InvoiceUpdateInput = Omit<InvoiceDetails, "sentAt" | "sentTo">;
 
 export interface Booking {
+  /** Booking-request reference (TRQ-…); legacy test bookings use BK-…. */
   bookingId: string;
-  pnr: string;
-  status: string;
   createdAt: string;
   confirmedAt?: string | null;
+  updatedAt?: string;
+  submittedAt?: string | null;
+  ticketedAt?: string | null;
+  state: BookingState;
+  customerId?: string | null;
+  /** Airline booking reference; only set once the airline confirms. */
+  pnr: string | null;
+  ticketNumbers: string[];
+  documentRequirements?: DocumentRequirements | null;
+  /** Created by the earlier mock checkout. */
+  legacy?: boolean;
+  seatsHeld?: boolean;
   paymentStatus: PaymentStatus;
   bookingStatus: BookingStatus;
   invoiceNumber: string;
@@ -273,9 +310,9 @@ export interface Booking {
   passengers: BookingPassenger[];
   contact: ContactForm;
   passengerCount: number;
-  adults?: number;
-  children?: number;
-  infants?: number;
+  adults: number;
+  children: number;
+  infants: number;
   seats: SelectedSeat[];
   fare: Fare;
   fareBreakdown?: FareLine[];
@@ -287,26 +324,16 @@ export interface Booking {
   statusHistory: StatusChange[];
   /** Admin responses only (empty for customers). */
   notifications: NotificationRecord[];
-  /** Secret for customer access to the booking and its documents. */
-  accessToken: string;
   invoice: InvoiceDetails;
 }
 
-export interface BookingCreatePayload {
-  /** One per checkout; repeating it returns the same booking. */
+export interface BookingDraftPayload {
+  /** One per checkout; repeating it updates the same draft. */
   checkoutKey: string;
   flightId: string;
   returnFlightId?: string | null;
   passengers: PassengerForm[];
-  contact: ContactForm;
-  seats: SelectedSeat[];
-}
-
-export interface BookingPayPayload {
-  method: PaymentMethod;
-  cardLast4?: string;
-  /** Test mode only. */
-  simulateFailure?: boolean;
+  contact: Required<ContactForm>;
 }
 
 export interface AdminLoginResponse {

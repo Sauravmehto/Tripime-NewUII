@@ -1,10 +1,11 @@
 export { apiClient, getErrorMessage } from "./client";
 export { searchFlights } from "./flights";
 export {
-  createBooking,
   getBooking,
-  lookupBooking,
-  payBooking,
+  listMyBookings,
+  saveBookingDraft,
+  reviewBooking,
+  submitBookingRequest,
   downloadBookingDocument,
 } from "./bookings";
 export { getPaymentConfig } from "./payments";
