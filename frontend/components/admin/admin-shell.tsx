@@ -259,7 +259,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
           </Link>
         ) : (
           <Link href="/admin/profile" className="min-w-0 px-1">
-            <Logo className="h-6" />
+            <Logo priority className="h-6" />
           </Link>
         )}
         <button
@@ -332,7 +332,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
           >
             <Menu className="size-4" />
           </button>
-          <Logo className="h-6" />
+          <Logo priority className="h-6" />
           <button
             type="button"
             onClick={handleLogout}

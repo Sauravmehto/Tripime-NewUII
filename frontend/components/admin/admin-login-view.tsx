@@ -40,7 +40,7 @@ export function AdminLoginView() {
     <div className="admin-app flex min-h-screen items-center justify-center bg-admin-canvas px-4">
       <div className="w-full max-w-sm rounded-md border border-admin-border bg-admin-surface p-5">
         <div className="mb-4 flex flex-col items-center">
-          <Logo className="h-7" />
+          <Logo priority className="h-7" />
           <p className="mt-2 text-[12px] font-medium text-admin-ink-subtle">Admin sign in</p>
         </div>
 

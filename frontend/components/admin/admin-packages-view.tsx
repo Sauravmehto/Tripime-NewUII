@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { Eye, EyeOff, Pencil, Plus, Trash2 } from "lucide-react";
 import {
   createAdminPackage,
@@ -14,6 +14,7 @@ import { formatINR } from "@/lib/format";
 import { useAdminAuthError } from "./use-admin-auth-error";
 import { AdminPageHeader } from "./admin-page-header";
 import { AdminItineraryEditor } from "./admin-itinerary-editor";
+import { AdminPackageEnquiries } from "./admin-package-enquiries";
 import {
   AdminDataTable,
   AdminErrorState,
@@ -81,6 +82,9 @@ function listToLines(list: string[]): string {
 export function AdminPackagesView({ catalog }: { catalog: PackageCatalog }) {
   const handleAuthError = useAdminAuthError();
   const [packages, setPackages] = useState<TravelPackage[]>([]);
+  // Enquiries sent for each package (itinerary catalog only).
+  const [enquiryCounts, setEnquiryCounts] = useState<Record<string, number>>({});
+  const handleEnquiryCounts = useCallback((counts: Record<string, number>) => setEnquiryCounts(counts), []);
   const [themes, setThemes] = useState<PackageTheme[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -239,6 +243,23 @@ export function AdminPackagesView({ catalog }: { catalog: PackageCatalog }) {
       className: "w-[110px]",
       render: (pkg) => <span className="font-medium tabular-nums">{formatINR(pkg.price)}</span>,
     },
+    ...(catalog === "itinerary"
+      ? [
+          {
+            key: "enquiries",
+            header: "Enquiries",
+            className: "w-[90px]",
+            render: (pkg: TravelPackage) => {
+              const n = enquiryCounts[pkg.id] ?? 0;
+              return n ? (
+                <AdminStatusBadge tone="accent">{n}</AdminStatusBadge>
+              ) : (
+                <span className="text-admin-ink-subtle">—</span>
+              );
+            },
+          },
+        ]
+      : []),
     {
       key: "status",
       header: "Status",
@@ -309,6 +330,8 @@ export function AdminPackagesView({ catalog }: { catalog: PackageCatalog }) {
         emptyDescription="Create one to start building itineraries."
         onRowClick={openEdit}
       />
+
+      {catalog === "itinerary" ? <AdminPackageEnquiries onLoaded={handleEnquiryCounts} /> : null}
 
       <Modal
         open={modalOpen}

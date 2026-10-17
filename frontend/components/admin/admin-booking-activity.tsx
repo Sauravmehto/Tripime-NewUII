@@ -3,16 +3,12 @@
 import { Mail, MessageCircle } from "lucide-react";
 import { Badge } from "@/components/ui/card";
 import { formatDateTime, formatINR } from "@/lib/format";
+import { STATE_INFO } from "@/lib/booking-status";
 import type { Booking, NotificationRecord } from "@/types";
 
 type Tone = "success" | "warning" | "danger" | "neutral";
 
 const PAYMENT_TONE: Record<Booking["paymentStatus"], Tone> = { paid: "success", pending: "warning", failed: "danger" };
-const BOOKING_TONE: Record<Booking["bookingStatus"], Tone> = {
-  confirmed: "success",
-  pending: "warning",
-  cancelled: "danger",
-};
 const NOTIFY_TONE: Record<NotificationRecord["status"], Tone> = {
   sent: "success",
   failed: "danger",
@@ -42,10 +38,12 @@ export function PaymentStatusBadge({ booking, labelled }: { booking: Booking; la
 }
 
 export function BookingStatusBadge({ booking, labelled }: { booking: Booking; labelled?: boolean }) {
+  // The detailed lifecycle state (e.g. "Request submitted", "Ticket issued").
+  const info = STATE_INFO[booking.state];
   return (
-    <Badge tone={BOOKING_TONE[booking.bookingStatus]}>
+    <Badge tone={info.tone}>
       {labelled && "Booking: "}
-      {booking.bookingStatus.toUpperCase()}
+      {info.label.toUpperCase()}
     </Badge>
   );
 }

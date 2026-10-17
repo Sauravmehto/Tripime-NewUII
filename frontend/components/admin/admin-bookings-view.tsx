@@ -4,7 +4,6 @@ import { useEffect, useState, type ReactNode } from "react";
 import { Plus, RefreshCw, Trash2 } from "lucide-react";
 import {
   cancelAdminBooking,
-  confirmAdminBooking,
   downloadAdminInvoice,
   downloadAdminTicket,
   listAdminBookings,
@@ -21,6 +20,7 @@ import {
   PaymentStatusBadge,
   StatusTimeline,
 } from "./admin-booking-activity";
+import { ACTION_LABELS, AdminBookingActionDialog, actionsFor, type AdminAction } from "./admin-booking-action-dialog";
 import { getErrorMessage } from "@/lib/api/client";
 import { formatDateTime, formatINR } from "@/lib/format";
 import { useAdminAuthError } from "./use-admin-auth-error";
@@ -42,8 +42,7 @@ export function AdminBookingsView() {
   const handleAuthError = useAdminAuthError();
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [selected, setSelected] = useState<Booking | null>(null);
-  const [confirmTarget, setConfirmTarget] = useState<Booking | null>(null);
-  const [confirmingId, setConfirmingId] = useState<string | null>(null);
+  const [action, setAction] = useState<{ booking: Booking; kind: AdminAction } | null>(null);
   const [invoiceTarget, setInvoiceTarget] = useState<Booking | null>(null);
   const [invoiceForm, setInvoiceForm] = useState<InvoiceUpdateInput>(EMPTY_INVOICE_FORM);
   const [savingInvoice, setSavingInvoice] = useState(false);
@@ -150,25 +149,6 @@ export function AdminBookingsView() {
     setBookings((prev) => prev.map((b) => (b.bookingId === updated.bookingId ? updated : b)));
     if (selected?.bookingId === updated.bookingId) setSelected(updated);
     if (invoiceTarget?.bookingId === updated.bookingId) setInvoiceTarget(updated);
-  }
-
-  async function handleConfirm() {
-    if (!confirmTarget) return;
-    const booking = confirmTarget;
-    setConfirmTarget(null);
-    setConfirmingId(booking.bookingId);
-    setSuccess("");
-    try {
-      const updated = await confirmAdminBooking(booking.bookingId);
-      applyBookingUpdate(updated);
-      setSuccess(`Ticket confirmed for ${updated.pnr}. Notifications are being attempted; see delivery status.`);
-      window.setTimeout(() => void refresh(), 1500);
-    } catch (err) {
-      if (handleAuthError(err)) return;
-      setError(getErrorMessage(err));
-    } finally {
-      setConfirmingId(null);
-    }
   }
 
   function openInvoiceEditor(booking: Booking) {
@@ -369,13 +349,9 @@ export function AdminBookingsView() {
                         <Button size="sm" variant="ghost" onClick={() => openInvoiceEditor(b)}>
                           Invoice
                         </Button>
-                        {b.paymentStatus === "paid" && b.bookingStatus === "pending" && (
-                          <Button
-                            size="sm"
-                            onClick={() => setConfirmTarget(b)}
-                            disabled={confirmingId === b.bookingId}
-                          >
-                            {confirmingId === b.bookingId ? "…" : "Confirm"}
+                        {actionsFor(b.state)[0] && (
+                          <Button size="sm" onClick={() => setAction({ booking: b, kind: actionsFor(b.state)[0] })}>
+                            {ACTION_LABELS[actionsFor(b.state)[0]]}
                           </Button>
                         )}
                       </div>
@@ -389,7 +365,7 @@ export function AdminBookingsView() {
 
         {/* Details open in a wide dialog so the table can use the full width. */}
         <Modal
-          open={Boolean(selected) && !confirmTarget && !cancelTarget && !invoiceTarget}
+          open={Boolean(selected) && !action && !cancelTarget && !invoiceTarget}
           onClose={() => setSelected(null)}
           title={selected ? `Booking ${selected.bookingId}` : "Booking"}
           className="sm:max-w-2xl"
@@ -478,23 +454,26 @@ export function AdminBookingsView() {
                 </p>
               )}
               <div className="flex flex-wrap gap-2">
-                {selected.paymentStatus === "paid" && selected.bookingStatus === "pending" && (
+                {actionsFor(selected.state).map((kind, i) => (
+                  <Button
+                    key={kind}
+                    className="flex-1"
+                    variant={i === 0 ? "primary" : "outline"}
+                    onClick={() => setAction({ booking: selected, kind })}
+                  >
+                    {ACTION_LABELS[kind]}
+                  </Button>
+                ))}
+                {selected.state === "TICKET_ISSUED" && (
                   <Button
                     className="flex-1"
-                    onClick={() => setConfirmTarget(selected)}
-                    disabled={confirmingId === selected.bookingId}
+                    variant="outline"
+                    onClick={() => void handleDownloadTicket(selected)}
+                    disabled={downloadingId === `${selected.bookingId}-ticket`}
                   >
-                    Confirm ticket
+                    {downloadingId === `${selected.bookingId}-ticket` ? "…" : "E-ticket PDF"}
                   </Button>
                 )}
-                <Button
-                  className="flex-1"
-                  variant="outline"
-                  onClick={() => void handleDownloadTicket(selected)}
-                  disabled={downloadingId === `${selected.bookingId}-ticket`}
-                >
-                  {downloadingId === `${selected.bookingId}-ticket` ? "…" : "E-ticket PDF"}
-                </Button>
                 <Button
                   className="flex-1"
                   variant="outline"
@@ -528,29 +507,16 @@ export function AdminBookingsView() {
         </Modal>
       </div>
 
-      <Modal
-        open={Boolean(confirmTarget)}
-        onClose={() => setConfirmTarget(null)}
-        title="Confirm this ticket?"
-      >
-        {confirmTarget && (
-          <div className="space-y-4">
-            <p className="text-sm text-ink-muted">
-              PNR <strong className="text-ink">{confirmTarget.pnr}</strong> ·{" "}
-              {confirmTarget.flight.origin.code} → {confirmTarget.flight.destination.code}
-              <br />
-              The team and <strong className="text-ink">{confirmTarget.contact.email}</strong> will be notified
-              (e-ticket attached). Delivery status appears in the notification log.
-            </p>
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setConfirmTarget(null)}>
-                Cancel
-              </Button>
-              <Button onClick={() => void handleConfirm()}>Confirm ticket</Button>
-            </div>
-          </div>
-        )}
-      </Modal>
+      <AdminBookingActionDialog
+        booking={action?.booking ?? null}
+        action={action?.kind ?? null}
+        onClose={() => setAction(null)}
+        onDone={(updated, message) => {
+          applyBookingUpdate(updated);
+          setSuccess(message);
+          window.setTimeout(() => void refresh(), 1500);
+        }}
+      />
 
       <Modal open={Boolean(cancelTarget)} onClose={() => setCancelTarget(null)} title="Cancel this booking?">
         {cancelTarget && (
