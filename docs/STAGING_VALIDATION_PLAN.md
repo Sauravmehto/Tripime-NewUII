@@ -37,6 +37,7 @@ Header: `Content-Security-Policy-Report-Only`, set in `frontend/next.config.ts`.
 ## 4. `TRUSTED_PROXY_HOPS` and forwarded-header spoofing
 - [ ] On Render, inspect what `X-Forwarded-For` really looks like for a request (temporary debug in a throwaway branch, never logging credentials) and set `TRUSTED_PROXY_HOPS` to the real hop count (default on Render is 1). If Netlify proxies `/api` to Render, count that hop too.
 - [ ] Send login failures with a forged `X-Forwarded-For: 1.2.3.4` prefix: they must still be counted against the true client IP, not the forged value.
+- [ ] Confirm the Render Start Command includes `--no-proxy-headers` (locally, without it, uvicorn trusted a forged `X-Forwarded-For` from 127.0.0.1 and no lock ever triggered; with it, the 5th failure locks).
 - [ ] Confirm the recorded client IP is the real caller, not the proxy's (otherwise all users share one limit).
 
 ## 5. Admin lockouts and recovery

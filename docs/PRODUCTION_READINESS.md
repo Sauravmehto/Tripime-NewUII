@@ -50,3 +50,19 @@ Unit tests 19/19 · tsc clean · eslint clean · production build clean · all a
 
 ## Not verified (blockers to confirm, not guessed)
 Real deployment behaviour, SMTP/WhatsApp delivery, cross-site cookies, load behaviour, accessibility audit, Core Web Vitals.
+
+## Local simulation results (2026-10-17) — NOT staging, NOT verification of the real deployment
+
+Run with a production build of the frontend on `http://localhost:3100` calling a separate API origin `http://127.0.0.1:8003` (`COOKIE_SAMESITE=none`, exact-origin `CORS_ORIGINS`, development credentials only):
+- Cross-origin admin login, session persistence across reload, CSRF-protected write (200 with header, 403 without), logout clearing the session, CORS preflight accepting only the configured origin: **worked**.
+- CSP Report-Only (and enforce-mode build earlier): no violations on ~20 pages; `connect-src` included the API origin. Creator reels in the sample data are photo slideshows, so YouTube/Instagram/MP4 embeds and the admin map iframe were **not exercised**; GTM's real origin needs were **not observed**.
+- Lockout: works against a direct connection. Found and documented a bypass when uvicorn is allowed to rewrite the client address from `X-Forwarded-For` (fix: `--no-proxy-headers`; see `backend/SECURITY_CHECKLIST.md`).
+- Not tested here: HTTPS, real Netlify/Render, real proxy chain, Safari/Firefox, `TRUSTED_PROXY_HOPS` on the real path.
+
+## `main` branch protection (not configured — needs repository admin rights)
+
+GitHub → Settings → Branches → add rule for `main`:
+- Require a pull request before merging.
+- Require status checks to pass before merging; select **Backend tests** and **Frontend types, lint, build** (they only appear in the list after the workflow has run once on GitHub), and require branches to be up to date.
+- Block force pushes and deletions; apply to administrators if desired.
+Tick this only after the rule exists and CI is green. Not done: no GitHub credentials/CLI are available in this environment.

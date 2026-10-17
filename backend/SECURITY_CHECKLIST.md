@@ -21,6 +21,7 @@ This doc describes exactly what exists today and what to change before launch.
 ## ⚠️ Must fix before go-live
 
 - [x] **Startup guard (implemented):** with `APP_ENV=production` (or on Render) the app refuses to start if `ADMIN_PASSWORD` is a default or under 12 chars, if `ADMIN_JWT_SECRET`/`CUSTOMER_JWT_SECRET` are defaults or under 32 chars, or if the two secrets are equal. Customer sessions use `CUSTOMER_JWT_SECRET`; admin tokens use `ADMIN_JWT_SECRET`.
+- [ ] **Run uvicorn with `--no-proxy-headers`** (now in `render.yaml` / `RENDER_ENV.txt`; an existing Render service needs its Start Command changed in the dashboard). Found during local validation: by default uvicorn rewrites the client address from `X-Forwarded-For` when the TCP peer is 127.0.0.1 or in `FORWARDED_ALLOW_IPS`, which lets a caller rotate a forged header to dodge the per-IP login lock. On Render (`TRUSTED_PROXY_HOPS=1`) the app reads the header itself and is not affected, but the flag removes the dependency on uvicorn's behaviour.
 - [ ] **Set real secrets on the server.** `backend/app/config.py` falls back to
       `ADMIN_PASSWORD=admin123` and `ADMIN_JWT_SECRET=dev-only-insecure-secret-change-me`
       if the env vars are missing. These defaults are intentionally obvious/insecure —

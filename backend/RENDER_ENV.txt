@@ -13,7 +13,7 @@
 #    Root Directory:  backend
 #    Build Command:   python scripts/render_build.py
 #      (or: pip install -r requirements.txt)
-#    Start Command:   uvicorn app.main:app --host 0.0.0.0 --port $PORT
+#    Start Command:   uvicorn app.main:app --host 0.0.0.0 --port $PORT --no-proxy-headers
 #    Health Check Path: /api/health
 #
 # 2) Environment → Add (recommended):
