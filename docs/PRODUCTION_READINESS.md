@@ -38,7 +38,7 @@ Verdict as of 2026-10-17: **Not ready for real customers or real money.** Ready 
 - [ ] Legal pages reviewed
 
 ### Quality & Ops
-- [ ] CI green (tests, types, lint, build)
+- [ ] CI green (tests, types, lint, build) — workflow `.github/workflows/ci.yml` exists and its commands pass locally from a clean clone; tick this once it is green on GitHub and required via branch protection
 - [ ] E2E happy path automated
 - [ ] Error tracking, uptime monitoring, alerting
 - [ ] Staging environment mirrors production

@@ -9,6 +9,13 @@ pip install -r requirements.txt
 uvicorn app.main:app --reload --port 8002
 ```
 
+Run the tests (CI runs the same):
+
+```bash
+pip install -r requirements-dev.txt
+python -m unittest discover -s tests
+```
+
 Regenerate inventory:
 
 ```bash
