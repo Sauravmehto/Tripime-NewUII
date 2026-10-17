@@ -8,6 +8,5 @@ router = APIRouter()
 
 @router.get("/config", response_model=PaymentConfig)
 def get_payment_config() -> PaymentConfig:
-    """Checkout settings (provider, test mode, payee UPI ID). Payments themselves are
-    taken via POST /api/bookings/{booking_id}/pay so the server controls the amount."""
+    """How payment works right now. There is no gateway, so no endpoint takes payment."""
     return payment_config()

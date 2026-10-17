@@ -1,22 +1,25 @@
-from abc import ABC, abstractmethod
+"""Interface for a future payment gateway (Razorpay, Cashfree, …).
 
-from app.models.payment import ChargeRequest, ChargeResult
+Not used yet: Tripime has no gateway, so bookings are requests whose payment
+is verified manually by an admin. A real provider must:
+  * create the order/checkout server-side for the booking's server-priced total,
+  * confirm payment only from the gateway's API or a signature-verified webhook,
+  * be idempotent per gateway payment ID, and handle pending/failed/cancelled.
+Secrets come from server environment variables only.
+"""
+
+from abc import ABC, abstractmethod
 
 
 class PaymentProvider(ABC):
-    """Server-side payment gateway. Add a Razorpay/Cashfree implementation that
-    reads its secrets from the environment and confirms payments via the
-    gateway's API or signed webhooks — never from what the browser reports."""
-
     name: str
-    test_mode: bool
-    payee_vpa: str
 
     @abstractmethod
-    def charge(self, request: ChargeRequest) -> ChargeResult:
+    def create_checkout(self, booking_id: str, amount: int, currency: str) -> dict:
+        """Return what the frontend needs to open the gateway's checkout (no secrets)."""
         raise NotImplementedError
 
-    @property
-    def can_simulate_failure(self) -> bool:
-        """Only test providers may be told to fail on purpose."""
-        return False
+    @abstractmethod
+    def verify_payment(self, payload: dict, signature: str) -> dict:
+        """Verify a webhook/callback with the gateway; return {payment_id, status, amount}."""
+        raise NotImplementedError

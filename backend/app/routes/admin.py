@@ -8,7 +8,14 @@ from pydantic import BaseModel, Field
 from app import config
 from app.models.admin import AdminLoginRequest, AdminLoginResponse, AdminStats
 from app.models.agency_profile import AgencyProfileResponse, AgencyProfileUpdate
-from app.models.booking import Booking, InvoiceUpdateRequest
+from app.models.booking import (
+    AirlineConfirmationRequest,
+    Booking,
+    InvoiceUpdateRequest,
+    ManualPaymentRequest,
+    StateNoteRequest,
+    TicketIssueRequest,
+)
 from app.models.enquiry import Enquiry, EnquirySource, EnquiryStats, EnquiryStatusUpdate
 from app.models.package import Package, PackageCatalog, PackageCreate, PackageUpdate
 from app.models.package_theme import PackageTheme, PackageThemeCreate, PackageThemeUpdate
@@ -266,17 +273,42 @@ def list_bookings() -> list[Booking]:
     return get_booking_service().list_bookings()
 
 
-@router.post(
-    "/bookings/{booking_id}/confirm",
-    response_model=Booking,
-    dependencies=[Depends(require_admin)],
-)
-def confirm_booking(booking_id: str, background_tasks: BackgroundTasks) -> Booking:
-    """Issue the ticket for a paid booking; notifies the team and the customer (e-ticket attached)."""
-    booking, newly_confirmed = get_booking_service().confirm_booking(booking_id)
-    if newly_confirmed:
-        background_tasks.add_task(notify_booking_event, booking_id, "booking_confirmed")
+def _then_notify(tasks: BackgroundTasks, booking: Booking, event: str) -> Booking:
+    tasks.add_task(notify_booking_event, booking.bookingId, event)
     return booking
+
+
+@router.post("/bookings/{booking_id}/payment/confirm", response_model=Booking, dependencies=[Depends(require_admin)])
+def confirm_payment(booking_id: str, payload: ManualPaymentRequest, background_tasks: BackgroundTasks) -> Booking:
+    """Record a payment the admin has verified (bank statement / UPI app). Never automatic."""
+    return _then_notify(background_tasks, get_booking_service().confirm_payment(booking_id, payload), "payment_confirmed")
+
+
+@router.post("/bookings/{booking_id}/payment/fail", response_model=Booking, dependencies=[Depends(require_admin)])
+def fail_payment(booking_id: str, payload: StateNoteRequest, background_tasks: BackgroundTasks) -> Booking:
+    return _then_notify(background_tasks, get_booking_service().fail_payment(booking_id, payload.note), "payment_failed")
+
+
+@router.post("/bookings/{booking_id}/payment/reopen", response_model=Booking, dependencies=[Depends(require_admin)])
+def reopen_payment(booking_id: str, payload: StateNoteRequest) -> Booking:
+    return get_booking_service().reopen_payment(booking_id, payload.note)
+
+
+@router.post("/bookings/{booking_id}/confirm", response_model=Booking, dependencies=[Depends(require_admin)])
+def confirm_booking(booking_id: str, payload: AirlineConfirmationRequest, background_tasks: BackgroundTasks) -> Booking:
+    """Record the airline's confirmation (PNR) for a paid booking."""
+    return _then_notify(background_tasks, get_booking_service().confirm_with_airline(booking_id, payload), "booking_confirmed")
+
+
+@router.post("/bookings/{booking_id}/ticket", response_model=Booking, dependencies=[Depends(require_admin)])
+def issue_ticket(booking_id: str, payload: TicketIssueRequest, background_tasks: BackgroundTasks) -> Booking:
+    """Record the airline's ticket numbers; the e-ticket becomes available."""
+    return _then_notify(background_tasks, get_booking_service().issue_ticket(booking_id, payload), "ticket_issued")
+
+
+@router.post("/bookings/{booking_id}/fail", response_model=Booking, dependencies=[Depends(require_admin)])
+def fail_booking(booking_id: str, payload: StateNoteRequest, background_tasks: BackgroundTasks) -> Booking:
+    return _then_notify(background_tasks, get_booking_service().fail_booking(booking_id, payload.note), "booking_failed")
 
 
 class CancelRequest(BaseModel):
@@ -311,15 +343,19 @@ def retry_notifications(booking_id: str) -> Booking:
 
 
 @router.get(
-    "/bookings/{booking_id}/ticket",
+    "/bookings/{booking_id}/ticket.pdf",
     dependencies=[Depends(require_admin)],
 )
 def admin_download_ticket(booking_id: str) -> Response:
     booking = get_booking_service().get_booking(booking_id)
     if booking is None:
         raise HTTPException(status_code=404, detail=f"Booking '{booking_id}' not found.")
+    try:
+        content = build_ticket_pdf(booking)
+    except ValueError:
+        raise HTTPException(status_code=409, detail="No ticket has been issued for this booking yet.") from None
     return Response(
-        content=build_ticket_pdf(booking),
+        content=content,
         media_type="application/pdf",
         headers={"Content-Disposition": f'attachment; filename="E-ticket-{booking.bookingId}.pdf"'},
     )

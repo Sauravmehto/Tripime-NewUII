@@ -1,54 +1,72 @@
+"""Booking requests: drafts → review → submitted request → manual payment
+verification → airline confirmation → ticket issued.
+
+Nothing here takes payment or creates a ticket. Customers can only move a
+booking up to PAYMENT_PENDING (a submitted request). Every later state is set
+by an admin from real-world evidence: a verified payment, the airline's PNR,
+the airline's ticket numbers.
+"""
+
 from __future__ import annotations
 
 import json
-import random
 import secrets
-import string
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, timezone
 from pathlib import Path
 from threading import Lock
 
 from fastapi import HTTPException
 
 from app.models.booking import (
+    AirlineConfirmationRequest,
     Booking,
     BookingContact,
-    BookingCreateRequest,
+    BookingDraftRequest,
     BookingFare,
     BookingPassenger,
     BookingPayment,
-    BookingPayRequest,
-    BookingSeat,
+    BookingState,
     FareLine,
     InvoiceDetails,
+    InvoiceUpdateRequest,
+    ManualPaymentRequest,
     NotificationRecord,
     StatusChange,
-    InvoiceUpdateRequest,
+    TicketIssueRequest,
 )
 from app.models.flight import Flight
-from app.models.payment import ChargeRequest
 from app.providers.base import FlightProvider
-from app.providers.flight_network import is_international
+from app.services.booking_rules import document_requirements, validate_contact, validate_passengers
+from app.services.customer_auth_service import CustomerSession
 from app.services.flight_service import get_flight_provider, validate_passenger_mix
-from app.services.payment_service import get_payment_provider
 
 DATA_DIR = Path(__file__).resolve().parents[2] / "data"
 BOOKINGS_PATH = DATA_DIR / "bookings.json"
 
+EDITABLE_STATES = {"DRAFT", "PASSENGERS_COMPLETED", "REVIEWED"}
+# Allowed moves; anything else is refused with 409.
+TRANSITIONS: dict[str, set[str]] = {
+    "DRAFT": {"PASSENGERS_COMPLETED", "CANCELLED"},
+    "PASSENGERS_COMPLETED": {"PASSENGERS_COMPLETED", "REVIEWED", "CANCELLED"},
+    "REVIEWED": {"PASSENGERS_COMPLETED", "REVIEWED", "PAYMENT_PENDING", "CANCELLED"},
+    "PAYMENT_PENDING": {"PAYMENT_CONFIRMED", "PAYMENT_FAILED", "CANCELLED"},
+    "PAYMENT_FAILED": {"PAYMENT_PENDING", "PAYMENT_CONFIRMED", "CANCELLED"},
+    "PAYMENT_CONFIRMED": {"BOOKING_CONFIRMED", "BOOKING_FAILED", "CANCELLED"},
+    "BOOKING_CONFIRMED": {"TICKET_ISSUED", "BOOKING_FAILED", "CANCELLED"},
+    "TICKET_ISSUED": {"CANCELLED"},
+    "BOOKING_FAILED": {"CANCELLED"},
+    "CANCELLED": set(),
+}
 
-def _normalize_contact(value: str) -> str:
-    """Lowercase + strip for emails, digits-only for phone numbers, so
-    "+91 98765-43210" and "9876543210" (or mismatched email casing) still match."""
-    value = value.strip().lower()
-    digits = "".join(ch for ch in value if ch.isdigit())
-    # If it looks like a phone number (mostly digits), compare digits only.
-    if digits and len(digits) >= 7 and len(digits) >= len(value) - 2:
-        return digits
-    return value
+
+def _now() -> str:
+    return datetime.now(timezone.utc).isoformat()
 
 
-def _age_on(dob: date, on: date) -> int:
-    return on.year - dob.year - ((on.month, on.day) < (dob.month, dob.day))
+def _today_ist() -> date:
+    from app.providers.mock_provider import today_ist
+
+    return today_ist()
 
 
 def _pax_units(legs: list[tuple[str, Flight]], adults: int, children: int, infants: int):
@@ -65,255 +83,357 @@ def _pax_units(legs: list[tuple[str, Flight]], adults: int, children: int, infan
                 yield leg, pax_type, count, unit
 
 
+def price_booking(flight: Flight, return_flight: Flight | None, adults: int, children: int, infants: int):
+    """Server-side price from provider fares. Returns (BookingFare, breakdown lines)."""
+    legs: list[tuple[str, Flight]] = [("outbound", flight)]
+    if return_flight is not None:
+        legs.append(("return", return_flight))
+    units = list(_pax_units(legs, adults, children, infants))
+    breakdown = [
+        FareLine(leg=leg, passengerType=t, count=count, unitFare=unit[2], total=unit[2] * count)  # type: ignore[arg-type]
+        for leg, t, count, unit in units
+    ]
+    fare = BookingFare(
+        baseFare=sum(unit[0] * count for _, _, count, unit in units),
+        taxes=sum(unit[1] * count for _, _, count, unit in units),
+        totalFare=sum(line.total for line in breakdown),
+        currency=flight.fare.currency,
+    )
+    return fare, breakdown
+
+
 class BookingService:
-    def __init__(
-        self,
-        provider: FlightProvider | None = None,
-        path: Path = BOOKINGS_PATH,
-    ) -> None:
+    def __init__(self, provider: FlightProvider | None = None, path: Path = BOOKINGS_PATH) -> None:
         self.provider = provider or get_flight_provider()
         self._path = path
         self._lock = Lock()
         self._bookings = self._load()
+
+    # ---- storage ----------------------------------------------------------------
 
     def _load(self) -> list[Booking]:
         if not self._path.exists():
             self._path.parent.mkdir(parents=True, exist_ok=True)
             self._path.write_text("[]", encoding="utf-8")
             return []
-        raw = json.loads(self._path.read_text(encoding="utf-8-sig"))
-        bookings: list[Booking] = []
-        migrated = False
-        for item in raw:
-            # Skip legacy bookings that lack the new fields
-            if "seats" not in item or ("payment" not in item and "paymentStatus" not in item):
-                continue
-            booking = Booking.model_validate(item)
-            if not booking.accessToken:
-                # Older records predate document access tokens.
-                booking = booking.model_copy(update={"accessToken": secrets.token_urlsafe(24)})
-                migrated = True
-            bookings.append(booking)
-        if migrated:
+        raw = json.loads(self._path.read_text(encoding="utf-8-sig") or "[]")
+        bookings = [Booking.model_validate(item) for item in raw if "flight" in item]
+        if any("state" not in item for item in raw):
+            # Persist migrated legacy records (drops old access tokens and mock PNRs).
             self._path.write_text(json.dumps([b.model_dump() for b in bookings], indent=2), encoding="utf-8")
         return bookings
 
     def _save(self) -> None:
-        payload = [booking.model_dump() for booking in self._bookings]
-        self._path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+        self._path.write_text(json.dumps([b.model_dump() for b in self._bookings], indent=2), encoding="utf-8")
 
-    def _next_booking_id(self) -> str:
+    def _new_reference(self) -> str:
         today = datetime.now(timezone.utc).strftime("%Y%m%d")
-        # Highest sequence so far + 1, so IDs stay unique even if records are removed.
-        seqs = [int(b.bookingId.rsplit("-", 1)[-1]) for b in self._bookings if b.bookingId.rsplit("-", 1)[-1].isdigit()]
-        return f"BK-{today}-{max(seqs, default=10000) + 1}"
+        existing = {b.bookingId for b in self._bookings}
+        while True:
+            # Random, so references can't be guessed or enumerated.
+            ref = f"TRQ-{today}-{secrets.token_hex(3).upper()}"
+            if ref not in existing:
+                return ref
 
-    @staticmethod
-    def _generate_pnr() -> str:
-        alphabet = string.ascii_uppercase + string.digits
-        return "".join(random.choices(alphabet, k=6))
-
-    def create_booking(self, payload: BookingCreateRequest) -> tuple[Booking, bool]:
-        """Create a booking awaiting payment and hold its seats.
-        Returns (booking, created); a repeated checkout key returns the existing booking."""
-        existing = next((b for b in self._bookings if b.checkoutKey == payload.checkoutKey), None)
-        if existing is not None:
-            if existing.flight.id != payload.flightId or (existing.returnFlight.id if existing.returnFlight else None) != (
-                payload.returnFlightId or None
-            ):
-                raise HTTPException(status_code=409, detail="This checkout was already used for a different trip.")
-            return existing, False
-
-        flight, return_flight = self._resolve_flights(payload)
-        legs: list[tuple[str, Flight]] = [("outbound", flight)]
-        if return_flight is not None:
-            legs.append(("return", return_flight))
-
-        types = [p.type for p in payload.passengers]
-        adults, children, infants = types.count("adult"), types.count("child"), types.count("infant")
-        validate_passenger_mix(adults, children, infants)
-        last_travel_date = (return_flight or flight).departureDate
-        self._validate_passenger_details(payload, flight.departureDate, last_travel_date)
-        if is_international(flight.origin.code, flight.destination.code):
-            self._validate_passports(payload, last_travel_date)
-
-        seated = [i for i, p in enumerate(payload.passengers) if p.type != "infant"]
-        seats_by_leg = self._validate_seats(
-            payload, seated, [(leg, max(1, len(f.segments))) for leg, f in legs]
-        )
-        for leg, leg_flight in legs:
-            if leg_flight.availableSeats < len(seated):
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Not enough seats available on the {leg} flight {leg_flight.flightNumber}.",
-                )
-
-        units = list(_pax_units(legs, adults, children, infants))
-        breakdown = [
-            FareLine(leg=leg, passengerType=pax_type, count=count, unitFare=unit[2], total=unit[2] * count)
-            for leg, pax_type, count, unit in units
-        ]
-        fare = BookingFare(
-            baseFare=sum(unit[0] * count for _, _, count, unit in units),
-            taxes=sum(unit[1] * count for _, _, count, unit in units),
-            totalFare=sum(line.total for line in breakdown),
-            currency=flight.fare.currency,
-        )
-        seat_charges = sum(s.price for s in payload.seats)
-        total_amount = fare.totalFare + seat_charges
-
-        # Seats are held once every check above has passed; cancelling releases them.
-        updated_flight = self.provider.decrement_seats(flight.id, len(seated))
-        updated_return = (
-            self.provider.decrement_seats(return_flight.id, len(seated)) if return_flight else None
-        )
-
-        now = datetime.now(timezone.utc).isoformat()
-        booking_id = self._next_booking_id()
-        booking = Booking(
-            bookingId=booking_id,
-            pnr=self._generate_pnr(),
-            createdAt=now,
-            confirmedAt=None,
-            paymentStatus="pending",
-            bookingStatus="pending",
-            invoiceNumber=f"INV-{booking_id}",
-            accessToken=secrets.token_urlsafe(24),
-            checkoutKey=payload.checkoutKey,
-            statusHistory=[
-                StatusChange(at=now, field="booking", toStatus="pending", actor="customer", note="Booking created; seats held"),
-                StatusChange(at=now, field="payment", toStatus="pending", actor="system", note="Awaiting payment"),
-            ],
-            tripType="round_trip" if updated_return else "one_way",
-            flight=updated_flight,
-            returnFlight=updated_return,
-            passengers=[
-                BookingPassenger(
-                    **passenger.model_dump(),
-                    seatNumber=seats_by_leg["outbound"].get(index),
-                    returnSeatNumber=seats_by_leg.get("return", {}).get(index),
-                )
-                for index, passenger in enumerate(payload.passengers)
-            ],
-            contact=BookingContact(**payload.contact.model_dump()),
-            passengerCount=len(payload.passengers),
-            adults=adults,
-            children=children,
-            infants=infants,
-            seats=[BookingSeat(**seat.model_dump()) for seat in payload.seats],
-            fare=fare,
-            fareBreakdown=breakdown,
-            seatCharges=seat_charges,
-            totalAmount=total_amount,
-        )
-
-        with self._lock:
-            self._bookings.append(booking)
-            self._save()
-
-        return booking, True
-
-    # ---- payment & status changes ------------------------------------------------
-
-    def get_for_customer(self, booking_id: str, token: str | None) -> Booking:
-        """The booking if `token` matches; otherwise a 404 (never reveal that it exists)."""
+    def _find(self, booking_id: str) -> Booking:
         booking = self.get_booking(booking_id)
-        if booking is None or not token or not secrets.compare_digest(booking.accessToken, token):
+        if booking is None:
             raise HTTPException(status_code=404, detail=f"Booking '{booking_id}' not found.")
         return booking
 
-    def pay(self, booking_id: str, token: str | None, request: BookingPayRequest) -> tuple[Booking, BookingPayment | None]:
-        """Take payment server-side for the booking's own total. Returns (booking, new attempt);
-        the attempt is None when the booking was already paid (idempotent)."""
-        booking = self.get_for_customer(booking_id, token)
-        if booking.paymentStatus == "paid":
-            return booking, None
-        if booking.bookingStatus == "cancelled":
-            raise HTTPException(status_code=409, detail="This booking was cancelled and can't be paid.")
+    def _replace_locked(self, updated: Booking) -> Booking:
+        updated = Booking.model_validate({**updated.model_dump(), "updatedAt": _now()})
+        for index, existing in enumerate(self._bookings):
+            if existing.bookingId == updated.bookingId:
+                self._bookings[index] = updated
+                self._save()
+                return updated
+        raise HTTPException(status_code=404, detail=f"Booking '{updated.bookingId}' not found.")
 
-        provider = get_payment_provider()
-        if request.simulateFailure and not provider.can_simulate_failure:
-            raise HTTPException(status_code=400, detail="Simulated failures are only available in test mode.")
-        result = provider.charge(
-            ChargeRequest(
-                reference=booking.bookingId,
-                amount=booking.totalAmount,
-                currency=booking.fare.currency,
-                method=request.method,
-                customerEmail=booking.contact.email,
-                cardLast4=request.cardLast4,
-                simulateFailure=request.simulateFailure,
+    def _move(self, booking: Booking, to: BookingState, actor: str, note: str = "", **changes) -> Booking:
+        """Apply a state transition (validated) with an audit entry. Caller holds the lock."""
+        if to not in TRANSITIONS[booking.state]:
+            raise HTTPException(
+                status_code=409, detail=f"A booking in state {booking.state} can't move to {to}."
             )
-        )
-        attempt = BookingPayment(
-            paymentId=result.paymentId,
-            transactionId=result.transactionId,
-            method=result.method,
-            amount=result.amount,
-            currency=result.currency,
-            status=result.status,
-            paidAt=result.at,
-            provider=result.provider,
-            testMode=result.testMode,
-            payee=result.payee,
-            failureReason=result.failureReason,
-        )
-        if attempt.amount != booking.totalAmount:
-            raise HTTPException(status_code=502, detail="Payment provider returned a mismatched amount.")
+        history = list(booking.statusHistory)
+        if to != booking.state or note:
+            history.append(
+                StatusChange(at=_now(), field="state", fromStatus=booking.state, toStatus=to, actor=actor, note=note)  # type: ignore[arg-type]
+            )
+        return self._replace_locked(booking.model_copy(update={"state": to, "statusHistory": history, **changes}))
 
+    # ---- access -----------------------------------------------------------------
+
+    def get_booking(self, booking_id: str) -> Booking | None:
+        return next((b for b in self._bookings if b.bookingId == booking_id), None)
+
+    @staticmethod
+    def owns(booking: Booking, session: CustomerSession) -> bool:
+        if booking.customerId:
+            return booking.customerId == session.customer_id
+        # Legacy bookings predate accounts: the verified sign-in email must match.
+        return booking.contact.email.strip().lower() == session.email
+
+    def get_for_customer(self, booking_id: str, session: CustomerSession) -> Booking:
+        booking = self.get_booking(booking_id)
+        if booking is None or not self.owns(booking, session):
+            # Same answer whether it doesn't exist or isn't theirs.
+            raise HTTPException(status_code=404, detail="Booking not found.")
+        return booking
+
+    def list_for_customer(self, session: CustomerSession) -> list[Booking]:
+        mine = [b for b in self._bookings if self.owns(b, session)]
+        return sorted(mine, key=lambda b: b.createdAt, reverse=True)
+
+    def list_bookings(self) -> list[Booking]:
+        return sorted(self._bookings, key=lambda b: b.createdAt, reverse=True)
+
+    # ---- customer steps ---------------------------------------------------------
+
+    def _resolve_flights(self, flight_id: str, return_id: str | None) -> tuple[Flight, Flight | None]:
+        flight = self.provider.get_by_id(flight_id)
+        if flight is None:
+            raise HTTPException(status_code=404, detail="That flight is no longer available. Please search again.")
+        min_date, _ = self.provider.booking_window()
+        if flight.departureDate < min_date:
+            raise HTTPException(status_code=400, detail="This flight has already departed.")
+        if not return_id:
+            return flight, None
+        return_flight = self.provider.get_by_id(return_id)
+        if return_flight is None:
+            raise HTTPException(status_code=404, detail="The return flight is no longer available. Please search again.")
+        if (
+            return_flight.origin.code != flight.destination.code
+            or return_flight.destination.code != flight.origin.code
+        ):
+            raise HTTPException(status_code=400, detail="The return flight must fly the reverse route.")
+        if f"{return_flight.departureDate} {return_flight.departureTime}" <= f"{flight.arrivalDate} {flight.arrivalTime}":
+            raise HTTPException(status_code=400, detail="The return flight must depart after the outbound flight lands.")
+        return flight, return_flight
+
+    def save_draft(self, payload: BookingDraftRequest, session: CustomerSession) -> Booking:
+        """Create or update the draft for this checkout with validated traveller details."""
+        flight, return_flight = self._resolve_flights(payload.flightId, payload.returnFlightId)
+        types = [p.type for p in payload.passengers]
+        adults, children, infants = types.count("adult"), types.count("child"), types.count("infant")
+        validate_passenger_mix(adults, children, infants)
+        seated = adults + children
+        for leg in (flight, return_flight):
+            if leg is not None and leg.availableSeats < seated:
+                raise HTTPException(status_code=400, detail=f"Not enough seats left on {leg.flightNumber}.")
+        requirements = document_requirements(flight, return_flight)
+        validate_contact(payload.contact)
+        validate_passengers(payload.passengers, flight.departureDate, requirements, _today_ist())
+
+        fare, breakdown = price_booking(flight, return_flight, adults, children, infants)
+        passengers = [
+            BookingPassenger(
+                **p.model_dump(exclude={"passportNumber", "nationality", "passportExpiry"}),
+                # Only keep travel-document data the itinerary actually needs.
+                passportNumber=p.passportNumber.strip().upper() if requirements.passportRequired and p.passportNumber else None,
+                nationality=p.nationality.strip() if requirements.nationalityRequired and p.nationality else None,
+                passportExpiry=p.passportExpiry if requirements.passportRequired else None,
+            )
+            for p in payload.passengers
+        ]
+        contact = BookingContact(
+            email=str(payload.contact.email), countryCode=payload.contact.countryCode, phone=payload.contact.phone.strip()
+        )
+        fields = dict(
+            tripType="round_trip" if return_flight else "one_way",
+            flight=flight,
+            returnFlight=return_flight,
+            passengers=passengers,
+            contact=contact,
+            passengerCount=len(passengers),
+            adults=adults,
+            children=children,
+            infants=infants,
+            documentRequirements=requirements,
+            fare=fare,
+            fareBreakdown=breakdown,
+            seatCharges=0,
+            totalAmount=fare.totalFare,
+        )
+
+        with self._lock:
+            existing = next(
+                (b for b in self._bookings if b.checkoutKey == payload.checkoutKey and b.customerId == session.customer_id),
+                None,
+            )
+            if existing is not None:
+                if existing.state not in EDITABLE_STATES:
+                    raise HTTPException(status_code=409, detail="This booking was already submitted and can't be edited.")
+                return self._move(existing, "PASSENGERS_COMPLETED", "customer", "Traveller details updated", **fields)
+            now = _now()
+            booking_id = self._new_reference()
+            booking = Booking(
+                bookingId=booking_id,
+                createdAt=now,
+                updatedAt=now,
+                state="PASSENGERS_COMPLETED",
+                customerId=session.customer_id,
+                customerEmail=session.email,
+                checkoutKey=payload.checkoutKey,
+                invoiceNumber=f"INV-{booking_id}",
+                statusHistory=[
+                    StatusChange(at=now, toStatus="DRAFT", actor="customer", note="Draft created"),
+                    StatusChange(at=now, fromStatus="DRAFT", toStatus="PASSENGERS_COMPLETED", actor="customer",
+                                 note="Traveller details completed"),
+                ],
+                **fields,
+            )
+            self._bookings.append(booking)
+            self._save()
+            return booking
+
+    def _reprice(self, booking: Booking) -> tuple[Flight, Flight | None, BookingFare, list[FareLine]]:
+        flight, return_flight = self._resolve_flights(
+            booking.flight.id, booking.returnFlight.id if booking.returnFlight else None
+        )
+        fare, breakdown = price_booking(flight, return_flight, booking.adults, booking.children, booking.infants)
+        return flight, return_flight, fare, breakdown
+
+    def review(self, booking_id: str, session: CustomerSession, expected_total: int) -> tuple[Booking, bool]:
+        """Re-price from current provider fares. Returns (booking, price_changed).
+        A changed price leaves the booking un-reviewed so the traveller sees the new total."""
+        booking = self.get_for_customer(booking_id, session)
+        if booking.state not in EDITABLE_STATES:
+            raise HTTPException(status_code=409, detail="This booking was already submitted.")
+        flight, return_flight, fare, breakdown = self._reprice(booking)
+        changed = fare.totalFare != expected_total
+        update = dict(flight=flight, returnFlight=return_flight, fare=fare, fareBreakdown=breakdown, totalAmount=fare.totalFare)
         with self._lock:
             current = self._find(booking_id)
-            if current.paymentStatus == "paid":  # a concurrent request got there first
-                return current, None
-            succeeded = attempt.status == "SUCCESS"
-            new_status = "paid" if succeeded else "failed"
-            mode = " (test mode)" if attempt.testMode else ""
-            note = (
-                f"{attempt.method.upper()} payment {attempt.transactionId}{mode}"
-                if succeeded
-                else (attempt.failureReason or "Payment failed")
-                + ("" if "test mode" in (attempt.failureReason or "") else mode)
-            )
-            updated = current.model_copy(
-                update={
-                    "paymentStatus": new_status,
-                    "payment": attempt if succeeded else current.payment,
-                    "payments": [*current.payments, attempt],
-                    "statusHistory": [
-                        *current.statusHistory,
-                        StatusChange(at=attempt.paidAt, field="payment", fromStatus=current.paymentStatus,
-                                     toStatus=new_status, actor="payment-provider", note=note),
-                    ],
-                }
-            )
-            self._replace_locked(updated)
-        return updated, attempt
+            if changed:
+                return (
+                    self._move(current, "PASSENGERS_COMPLETED", "system",
+                               f"Fare changed from INR {expected_total:,} to INR {fare.totalFare:,}", **update),
+                    True,
+                )
+            return self._move(current, "REVIEWED", "customer", "Booking reviewed", **update), False
 
-    def cancel_booking(self, booking_id: str, reason: str = "") -> tuple[Booking, bool]:
-        """Cancel and release held seats. Returns (booking, newly_cancelled)."""
+    def submit_request(self, booking_id: str, session: CustomerSession) -> tuple[Booking, bool]:
+        """Submit the reviewed booking as a request. No payment is taken and no ticket
+        is created. Returns (booking, newly_submitted); repeating is a no-op."""
+        booking = self.get_for_customer(booking_id, session)
+        if booking.state not in EDITABLE_STATES:
+            return booking, False  # already submitted — don't notify twice
+        if booking.state != "REVIEWED":
+            raise HTTPException(status_code=409, detail="Please review your booking before submitting it.")
+        flight, return_flight, fare, breakdown = self._reprice(booking)
+        if fare.totalFare != booking.totalAmount:
+            with self._lock:
+                self._move(self._find(booking_id), "PASSENGERS_COMPLETED", "system",
+                           f"Fare changed to INR {fare.totalFare:,} before submission",
+                           flight=flight, returnFlight=return_flight, fare=fare, fareBreakdown=breakdown,
+                           totalAmount=fare.totalFare)
+            raise HTTPException(status_code=409, detail="The fare changed. Please review the new price before submitting.")
+        seated = booking.adults + booking.children
+        with self._lock:
+            current = self._find(booking_id)
+            if current.state != "REVIEWED":
+                return current, False
+            # Hold seats while the team works on the request; released on fail/cancel.
+            held = []
+            try:
+                for leg in (flight, return_flight):
+                    if leg is not None:
+                        self.provider.decrement_seats(leg.id, seated)
+                        held.append(leg.id)
+            except HTTPException:
+                for leg_id in held:
+                    self.provider.release_seats(leg_id, seated)
+                raise
+            updated = self._move(
+                current, "PAYMENT_PENDING", "customer",
+                "Booking request submitted — awaiting team verification and payment arrangement",
+                seatsHeld=True, submittedAt=_now(),
+            )
+        return updated, True
+
+    # ---- admin transitions -----------------------------------------------------
+
+    def _release(self, booking: Booking) -> None:
+        if booking.seatsHeld:
+            for leg in (booking.flight, booking.returnFlight):
+                if leg is not None:
+                    self.provider.release_seats(leg.id, booking.adults + booking.children)
+
+    def confirm_payment(self, booking_id: str, payload: ManualPaymentRequest, admin: str = "admin") -> Booking:
         with self._lock:
             booking = self._find(booking_id)
-            if booking.bookingStatus == "cancelled":
-                return booking, False
-            # Free the seats on every physical flight of every leg.
-            for flight in [booking.flight, booking.returnFlight]:
-                if flight is not None:
-                    self.provider.release_seats(flight.id, booking.adults + booking.children)
-            now = datetime.now(timezone.utc).isoformat()
-            note = reason or "Cancelled by admin"
-            if booking.paymentStatus == "paid":
-                note += " — payment was taken; refund needs to be processed"
-            updated = booking.model_copy(
-                update={
-                    "bookingStatus": "cancelled",
-                    "statusHistory": [
-                        *booking.statusHistory,
-                        StatusChange(at=now, field="booking", fromStatus=booking.bookingStatus,
-                                     toStatus="cancelled", actor="admin", note=note),
-                    ],
-                }
+            if payload.amount != booking.totalAmount:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Verified amount INR {payload.amount:,} doesn't match the booking total INR {booking.totalAmount:,}.",
+                )
+            if any(p.transactionId == payload.reference for b in self._bookings for p in b.payments):
+                raise HTTPException(status_code=409, detail="That payment reference is already recorded on a booking.")
+            record = BookingPayment(
+                paymentId=f"PAY-{secrets.token_hex(5).upper()}",
+                transactionId=payload.reference,
+                method=payload.method,
+                amount=payload.amount,
+                currency=booking.fare.currency,
+                status="SUCCESS",
+                paidAt=_now(),
+                provider="manual",
+                verifiedBy=admin,
+                note=payload.note,
             )
-            self._replace_locked(updated)
+            return self._move(
+                booking, "PAYMENT_CONFIRMED", "admin",
+                f"Payment verified manually ({payload.method.upper()} ref {payload.reference}). {payload.note}".strip(),
+                payment=record, payments=[*booking.payments, record],
+            )
+
+    def fail_payment(self, booking_id: str, note: str) -> Booking:
+        with self._lock:
+            return self._move(self._find(booking_id), "PAYMENT_FAILED", "admin", note or "Payment not received")
+
+    def reopen_payment(self, booking_id: str, note: str) -> Booking:
+        with self._lock:
+            return self._move(self._find(booking_id), "PAYMENT_PENDING", "admin", note or "Awaiting payment again")
+
+    def confirm_with_airline(self, booking_id: str, payload: AirlineConfirmationRequest) -> Booking:
+        with self._lock:
+            booking = self._find(booking_id)
+            return self._move(
+                booking, "BOOKING_CONFIRMED", "admin",
+                f"Airline confirmed — PNR {payload.airlinePnr.upper()}. {payload.note}".strip(),
+                pnr=payload.airlinePnr.upper(), confirmedAt=_now(),
+            )
+
+    def issue_ticket(self, booking_id: str, payload: TicketIssueRequest) -> Booking:
+        with self._lock:
+            booking = self._find(booking_id)
+            if not booking.pnr:
+                raise HTTPException(status_code=409, detail="Record the airline PNR before issuing tickets.")
+            return self._move(
+                booking, "TICKET_ISSUED", "admin",
+                f"Ticket(s) {', '.join(payload.ticketNumbers)} issued by the airline. {payload.note}".strip(),
+                ticketNumbers=payload.ticketNumbers, ticketedAt=_now(),
+            )
+
+    def fail_booking(self, booking_id: str, note: str) -> Booking:
+        with self._lock:
+            booking = self._find(booking_id)
+            updated = self._move(booking, "BOOKING_FAILED", "admin", note or "Airline booking failed", seatsHeld=False)
+            self._release(booking)
+            return updated
+
+    def cancel_booking(self, booking_id: str, reason: str = "", actor: str = "admin") -> tuple[Booking, bool]:
+        with self._lock:
+            booking = self._find(booking_id)
+            if booking.state == "CANCELLED":
+                return booking, False
+            note = reason or "Cancelled"
+            if booking.payment is not None and booking.payment.status == "SUCCESS" and not booking.legacy:
+                note += " — payment was received; a refund must be processed"
+            updated = self._move(booking, "CANCELLED", actor, note, seatsHeld=False)  # type: ignore[arg-type]
+            self._release(booking)
         return updated, True
 
     def record_notifications(self, booking_id: str, records: list[NotificationRecord]) -> None:
@@ -324,209 +444,20 @@ class BookingService:
             kept = [r for r in booking.notifications if r.key not in keys]
             self._replace_locked(booking.model_copy(update={"notifications": [*kept, *records]}))
 
-    def _find(self, booking_id: str) -> Booking:
-        booking = self.get_booking(booking_id)
-        if booking is None:
-            raise HTTPException(status_code=404, detail=f"Booking '{booking_id}' not found.")
-        return booking
-
-    def _resolve_flights(self, payload: BookingCreateRequest) -> tuple[Flight, Flight | None]:
-        flight = self.provider.get_by_id(payload.flightId)
-        if flight is None:
-            raise HTTPException(status_code=404, detail=f"Flight '{payload.flightId}' not found.")
-        min_date, _ = self.provider.booking_window()
-        if flight.departureDate < min_date:
-            raise HTTPException(status_code=400, detail="This flight has already departed.")
-        if not payload.returnFlightId:
-            return flight, None
-
-        return_flight = self.provider.get_by_id(payload.returnFlightId)
-        if return_flight is None:
-            raise HTTPException(status_code=404, detail=f"Flight '{payload.returnFlightId}' not found.")
-        if (
-            return_flight.origin.code != flight.destination.code
-            or return_flight.destination.code != flight.origin.code
-        ):
-            raise HTTPException(status_code=400, detail="The return flight must fly the reverse route.")
-        arrival = f"{flight.arrivalDate} {flight.arrivalTime}"
-        if f"{return_flight.departureDate} {return_flight.departureTime}" <= arrival:
-            raise HTTPException(
-                status_code=400, detail="The return flight must depart after the outbound flight lands."
-            )
-        return flight, return_flight
-
-    @staticmethod
-    def _validate_passenger_details(
-        payload: BookingCreateRequest, first_travel_date: str, last_travel_date: str
-    ) -> None:
-        for number, pax in enumerate(payload.passengers, start=1):
-            try:
-                dob = date.fromisoformat(pax.dateOfBirth)
-            except ValueError:
-                raise HTTPException(
-                    status_code=400, detail=f"Passenger {number}: date of birth must be YYYY-MM-DD."
-                ) from None
-            age = _age_on(dob, date.fromisoformat(first_travel_date))
-            if age < 0:
-                raise HTTPException(status_code=400, detail=f"Passenger {number}: date of birth is in the future.")
-            if pax.type == "adult" and age < 12:
-                raise HTTPException(status_code=400, detail=f"Passenger {number}: adults must be 12 or older.")
-            if pax.type == "child" and not 2 <= age < 12:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Passenger {number}: children must be 2-11 years old on the travel date.",
-                )
-            if pax.type == "infant" and _age_on(dob, date.fromisoformat(last_travel_date)) >= 2:
-                raise HTTPException(
-                    status_code=400, detail=f"Passenger {number}: infants must be under 2 for the whole trip."
-                )
-
-    @staticmethod
-    def _validate_passports(payload: BookingCreateRequest, last_travel_date: str) -> None:
-        min_expiry = date.fromisoformat(last_travel_date) + timedelta(days=182)
-        for number, pax in enumerate(payload.passengers, start=1):
-            passport = (pax.passportNumber or "").strip()
-            if not (6 <= len(passport) <= 9 and passport.isalnum()):
-                raise HTTPException(
-                    status_code=400,
-                    detail=(
-                        f"Passenger {number}: a valid passport number (6-9 letters/digits) "
-                        "is required for international travel."
-                    ),
-                )
-            if not (pax.nationality or "").strip():
-                raise HTTPException(status_code=400, detail=f"Passenger {number}: nationality is required.")
-            try:
-                expiry = date.fromisoformat(pax.passportExpiry or "")
-            except ValueError:
-                raise HTTPException(
-                    status_code=400, detail=f"Passenger {number}: passport expiry date is required."
-                ) from None
-            if expiry < min_expiry:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Passenger {number}: passport must be valid for 6 months after the trip.",
-                )
-
-    @staticmethod
-    def _validate_seats(
-        payload: BookingCreateRequest, seated: list[int], legs: list[tuple[str, int]]
-    ) -> dict[str, dict[int, str]]:
-        """One seat per seated passenger on every segment of every leg.
-        Returns leg -> passenger -> seat label ("2C", or "2C · 14A" across a connection)."""
-        expected = {(leg, segment) for leg, count in legs for segment in range(count)}
-        if {(s.leg, s.segment) for s in payload.seats} - expected:
-            raise HTTPException(status_code=400, detail="Seats were sent for a flight not in this booking.")
-        seats_by_leg: dict[str, dict[int, str]] = {}
-        for leg, count in legs:
-            labels: dict[int, list[str]] = {i: [] for i in seated}
-            for segment in range(count):
-                segment_seats = [s for s in payload.seats if s.leg == leg and s.segment == segment]
-                if sorted(s.passengerIndex for s in segment_seats) != seated:
-                    flight_part = f"{leg} flight {segment + 1}" if count > 1 else f"{leg} flight"
-                    raise HTTPException(
-                        status_code=400,
-                        detail=f"Choose a seat on the {flight_part} for every adult and child (infants sit on a lap).",
-                    )
-                numbers = [s.seatNumber for s in segment_seats]
-                if len(set(numbers)) != len(numbers):
-                    raise HTTPException(status_code=400, detail="Duplicate seat selections are not allowed.")
-                for s in sorted(segment_seats, key=lambda x: x.passengerIndex):
-                    labels[s.passengerIndex].append(s.seatNumber)
-            seats_by_leg[leg] = {i: " · ".join(parts) for i, parts in labels.items()}
-        return seats_by_leg
-
-    def get_booking(self, booking_id: str) -> Booking | None:
-        for booking in self._bookings:
-            if booking.bookingId == booking_id:
-                return booking
-        return None
-
-    def find_booking_by_reference(self, reference: str, contact: str) -> Booking | None:
-        """Look up a booking by booking ID or PNR, verified against the email/phone
-        on file. Used by the public "My Booking" page — deliberately requires both
-        pieces of information so booking IDs (which are sequential, not secret)
-        can't be enumerated to read other travellers' details."""
-        ref_normalized = reference.strip().upper()
-        contact_normalized = _normalize_contact(contact)
-        if not ref_normalized or not contact_normalized:
-            return None
-
-        for booking in self._bookings:
-            if ref_normalized not in {booking.bookingId.upper(), booking.pnr.upper()}:
-                continue
-            booking_email = _normalize_contact(booking.contact.email)
-            booking_phone = _normalize_contact(booking.contact.phone)
-            if contact_normalized in {booking_email, booking_phone}:
-                return booking
-        return None
-
-    def list_bookings(self) -> list[Booking]:
-        return sorted(self._bookings, key=lambda b: b.createdAt, reverse=True)
-
-    def confirm_booking(self, booking_id: str) -> tuple[Booking, bool]:
-        """Admin confirms (tickets) a paid booking. Returns (booking, newly_confirmed)."""
-        with self._lock:
-            booking = self._find(booking_id)
-            if booking.bookingStatus == "confirmed":
-                return booking, False
-            if booking.bookingStatus == "cancelled":
-                raise HTTPException(status_code=409, detail="A cancelled booking can't be confirmed.")
-            if booking.paymentStatus != "paid":
-                raise HTTPException(status_code=409, detail="Only paid bookings can be confirmed.")
-            now = datetime.now(timezone.utc).isoformat()
-            confirmed = booking.model_copy(
-                update={
-                    "bookingStatus": "confirmed",
-                    "confirmedAt": now,
-                    "statusHistory": [
-                        *booking.statusHistory,
-                        StatusChange(at=now, field="booking", fromStatus=booking.bookingStatus,
-                                     toStatus="confirmed", actor="admin", note="Ticket issued"),
-                    ],
-                }
-            )
-            self._replace_locked(confirmed)
-        return confirmed, True
+    # ---- invoice adjustments (admin) -------------------------------------------
 
     def update_invoice(self, booking_id: str, payload: InvoiceUpdateRequest) -> Booking:
-        """Save admin edits (notes, discount, extra charges) onto a booking's
-        invoice. These are layered onto the PDF at generation time — the
-        underlying booking/payment record itself is never altered."""
-        booking = self.get_booking(booking_id)
-        if booking is None:
-            raise HTTPException(status_code=404, detail=f"Booking '{booking_id}' not found.")
-
-        current_sent = booking.invoice.model_dump(include={"sentAt", "sentTo"})
-        invoice = InvoiceDetails(**payload.model_dump(), **current_sent)
-        updated = booking.model_copy(update={"invoice": invoice})
-        self._replace(updated)
-        return updated
+        with self._lock:
+            booking = self._find(booking_id)
+            current_sent = booking.invoice.model_dump(include={"sentAt", "sentTo"})
+            invoice = InvoiceDetails(**payload.model_dump(), **current_sent)
+            return self._replace_locked(booking.model_copy(update={"invoice": invoice}))
 
     def mark_invoice_sent(self, booking_id: str, sent_to: str) -> Booking:
-        booking = self.get_booking(booking_id)
-        if booking is None:
-            raise HTTPException(status_code=404, detail=f"Booking '{booking_id}' not found.")
-
-        now = datetime.now(timezone.utc).isoformat()
-        invoice = booking.invoice.model_copy(update={"sentAt": now, "sentTo": sent_to})
-        updated = booking.model_copy(update={"invoice": invoice})
-        self._replace(updated)
-        return updated
-
-    def _replace(self, updated: Booking) -> None:
         with self._lock:
-            self._replace_locked(updated)
-
-    def _replace_locked(self, updated: Booking) -> None:
-        # Pydantic's model_copy skips validators; re-validate so derived fields stay in sync.
-        updated = Booking.model_validate(updated.model_dump())
-        for index, existing in enumerate(self._bookings):
-            if existing.bookingId == updated.bookingId:
-                self._bookings[index] = updated
-                self._save()
-                return
-        raise HTTPException(status_code=404, detail=f"Booking '{updated.bookingId}' not found.")
+            booking = self._find(booking_id)
+            invoice = booking.invoice.model_copy(update={"sentAt": _now(), "sentTo": sent_to})
+            return self._replace_locked(booking.model_copy(update={"invoice": invoice}))
 
 
 _booking_service: BookingService | None = None

@@ -1,8 +1,8 @@
-"""Branded PDF documents for a booking: the tax invoice and the e-ticket.
+"""Branded PDF documents for a booking: the invoice/quote and the e-ticket.
 
-Both reflect the booking's real state. Until the server has recorded a
-successful payment they are stamped PENDING PAYMENT; test-mode payments are
-labelled as such; the e-ticket only reads CONFIRMED once an admin confirms.
+Both reflect the booking's real state. Until an admin has verified payment the
+invoice is a quote stamped PAYMENT PENDING. The e-ticket exists only once the
+airline's PNR and ticket numbers are recorded (TICKET_ISSUED).
 """
 
 from __future__ import annotations
@@ -116,23 +116,35 @@ def _header(title: str, number: str, width: float) -> Table:
     return table
 
 
+STATE_LABELS = {
+    "DRAFT": "Draft",
+    "PASSENGERS_COMPLETED": "Draft — travellers added",
+    "REVIEWED": "Draft — reviewed",
+    "PAYMENT_PENDING": "Booking request submitted — payment pending",
+    "PAYMENT_FAILED": "Payment not received",
+    "PAYMENT_CONFIRMED": "Payment verified — booking with airline",
+    "BOOKING_CONFIRMED": "Confirmed by airline — ticket pending",
+    "TICKET_ISSUED": "Ticket issued",
+    "BOOKING_FAILED": "Airline booking failed",
+    "CANCELLED": "Cancelled",
+}
+
+
 def _is_test(booking: Booking) -> bool:
-    latest = booking.payments[-1] if booking.payments else None
-    return latest.testMode if latest else True
+    return booking.legacy
 
 
 def _payment_rows(booking: Booking) -> list[list[str]]:
-    payment = booking.payment or (booking.payments[-1] if booking.payments else None)
+    payment = booking.payment
     rows = [["Payment status", booking.paymentStatus.upper()]]
-    if payment:
+    if payment and payment.status == "SUCCESS":
         rows += [
-            ["Payment method", payment.method.upper() + (" (TEST MODE)" if payment.testMode else "")],
-            ["Paid to", payment.payee or "—"],
-            ["Transaction ID", payment.transactionId],
-            ["Attempted at" if booking.paymentStatus != "paid" else "Paid at", payment.paidAt[:19].replace("T", " ") + " UTC"],
+            ["Payment method", payment.method.upper().replace("_", " ") + (" (TEST MODE)" if payment.testMode else "")],
+            ["Reference", payment.transactionId],
+            ["Verified", ("by Tripime team " if payment.provider == "manual" else "") + payment.paidAt[:19].replace("T", " ") + " UTC"],
         ]
     else:
-        rows.append(["Payment method", "Not paid yet"])
+        rows.append(["Payment", "Not paid. Our team will confirm availability and the final price before arranging payment."])
     return rows
 
 
@@ -187,16 +199,20 @@ def _itinerary(booking: Booking, width: float) -> list:
 
 def _passengers(booking: Booking, width: float) -> Table:
     round_trip = booking.returnFlight is not None
-    header = ["#", "Passenger", "Type", "Passport", "Seats (departing)"] + (["Seats (return)"] if round_trip else [])
+    has_seats = any(p.seatNumber for p in booking.passengers)
+    header = ["#", "Passenger", "Type", "Passport"]
+    if has_seats:
+        header += ["Seats (departing)"] + (["Seats (return)"] if round_trip else [])
     rows = [header]
     for i, pax in enumerate(booking.passengers, start=1):
         lap = "Lap infant" if pax.type == "infant" else "—"
-        row = [str(i), f"{pax.title} {pax.firstName} {pax.lastName}", pax.type.capitalize(), _masked(pax.passportNumber),
-               pax.seatNumber or lap]
-        if round_trip:
-            row.append(pax.returnSeatNumber or lap)
+        row = [str(i), f"{pax.title} {pax.firstName} {pax.lastName}", pax.type.capitalize(), _masked(pax.passportNumber)]
+        if has_seats:
+            row.append(pax.seatNumber or lap)
+            if round_trip:
+                row.append(pax.returnSeatNumber or lap)
         rows.append(row)
-    widths = [0.05, 0.33, 0.1, 0.16, 0.18] + ([0.18] if round_trip else [])
+    widths = [0.05, 0.43, 0.14, 0.2] + ([0.18] + ([0.18] if round_trip else []) if has_seats else [])
     scale = 1 / sum(widths)
     return _table(rows, [w * scale * width for w in widths], header=True)
 
@@ -232,9 +248,9 @@ def _document(build_story, watermark: str | None) -> bytes:
 def _meta(booking: Booking, width: float) -> Table:
     rows = [
         ["Booking reference", booking.bookingId, "Invoice number", booking.invoiceNumber],
-        ["PNR", booking.pnr, "Booked on", booking.createdAt[:10]],
-        ["Booking status", booking.bookingStatus.upper(), "Payment status", booking.paymentStatus.upper()],
-        ["Contact", f"{booking.contact.email} · {booking.contact.phone}", "", ""],
+        ["Airline PNR", booking.pnr or "Not issued yet", "Requested on", booking.createdAt[:10]],
+        ["Status", STATE_LABELS.get(booking.state, booking.state), "Payment status", booking.paymentStatus.upper()],
+        ["Contact", f"{booking.contact.email} · {booking.contact.countryCode} {booking.contact.phone}", "", ""],
     ]
     table = _table(rows, [width * 0.18, width * 0.34, width * 0.18, width * 0.3])
     table.setStyle(
@@ -253,18 +269,19 @@ def _meta(booking: Booking, width: float) -> Table:
 
 def build_invoice_pdf(booking: Booking) -> bytes:
     unpaid = booking.paymentStatus != "paid"
-    cancelled = booking.bookingStatus == "cancelled"
+    cancelled = booking.state in {"CANCELLED", "BOOKING_FAILED"}
 
     def story(width: float) -> list:
-        out: list = [_header("TAX INVOICE", booking.invoiceNumber, width), Spacer(1, 8)]
+        title = "QUOTE / BOOKING REQUEST" if unpaid else "INVOICE"
+        out: list = [_header(title, booking.invoiceNumber, width), Spacer(1, 8)]
         if cancelled:
-            out.append(_banner("BOOKING CANCELLED", "cancelled", width))
+            out.append(_banner(STATE_LABELS.get(booking.state, "CANCELLED").upper(), "cancelled", width))
         elif unpaid:
-            out.append(_banner("PENDING PAYMENT — this invoice is not a receipt", "pending", width))
+            out.append(_banner("PAYMENT PENDING — this is a quote, not a receipt. Not a ticket.", "pending", width))
         else:
-            out.append(_banner("PAID", "paid", width))
+            out.append(_banner("PAID — payment verified by Tripime", "paid", width))
         if _is_test(booking):
-            out += [Spacer(1, 4), _banner("TEST PAYMENT — mock checkout, no real money was charged", "info", width)]
+            out += [Spacer(1, 4), _banner("LEGACY TEST BOOKING — created by the earlier mock checkout; no real payment", "info", width)]
         out += [Spacer(1, 8), _meta(booking, width)]
         out += _itinerary(booking, width)
         out += [Paragraph("Passengers", H_SECTION), _passengers(booking, width)]
@@ -312,28 +329,17 @@ def build_invoice_pdf(booking: Booking) -> bytes:
         out += [Spacer(1, 10), Paragraph("Computer-generated invoice; no signature required.", SMALL)]
         return out
 
-    return _document(story, "CANCELLED" if cancelled else ("PENDING PAYMENT" if unpaid else None))
-
-
-def ticket_state(booking: Booking) -> tuple[str, str]:
-    """(banner text, tone) for the e-ticket."""
-    if booking.bookingStatus == "cancelled":
-        return "CANCELLED — not valid for travel", "cancelled"
-    if booking.paymentStatus != "paid":
-        return "PENDING PAYMENT — not valid for travel", "pending"
-    if booking.bookingStatus != "confirmed":
-        return "PAYMENT RECEIVED — ticket being issued, not yet valid for travel", "info"
-    return "CONFIRMED — e-ticket", "paid"
+    return _document(story, "CANCELLED" if cancelled else ("PAYMENT PENDING" if unpaid else None))
 
 
 def build_ticket_pdf(booking: Booking) -> bytes:
-    text, tone = ticket_state(booking)
+    """E-ticket for an issued booking. Raises ValueError before the airline has issued tickets."""
+    if booking.state != "TICKET_ISSUED" or not booking.pnr or not booking.ticketNumbers:
+        raise ValueError("No ticket has been issued for this booking yet.")
 
     def story(width: float) -> list:
-        out: list = [_header("E-TICKET / BOOKING CONFIRMATION", f"PNR {booking.pnr} · {booking.bookingId}", width), Spacer(1, 8)]
-        out.append(_banner(text, tone, width))
-        if _is_test(booking):
-            out += [Spacer(1, 4), _banner("TEST BOOKING — issued from mock checkout, not an airline ticket", "info", width)]
+        out: list = [_header("E-TICKET", f"Airline PNR {booking.pnr} · {booking.bookingId}", width), Spacer(1, 8)]
+        out.append(_banner(f"TICKET ISSUED — ticket number(s) {', '.join(booking.ticketNumbers)}", "paid", width))
         out += [Spacer(1, 8), _meta(booking, width)]
         out += _itinerary(booking, width)
         out += [Paragraph("Passengers", H_SECTION), _passengers(booking, width)]
@@ -342,13 +348,12 @@ def build_ticket_pdf(booking: Booking) -> bytes:
             _table(_payment_rows(booking) + [["Total", _money(booking.totalAmount)]], [width * 0.3, width * 0.7], bold_first_col=True),
             Paragraph("Before you fly", H_SECTION),
             Paragraph(
-                "Carry a government photo ID (passport for international travel). Arrive at the airport at least "
-                "2 hours before domestic and 3 hours before international departures. Check visa and transit "
-                "requirements for every country on your route, including connection airports.",
+                "Carry a government photo ID (a passport for international travel). Check in with the airline using "
+                "the PNR above. Seats are assigned by the airline at check-in. Check visa and transit requirements "
+                "for every country on your route, including connection airports.",
                 BODY,
             ),
         ]
         return out
 
-    watermark = None if tone == "paid" else ("CANCELLED" if tone == "cancelled" else "NOT VALID FOR TRAVEL" if tone == "info" else "PENDING PAYMENT")
-    return _document(story, watermark)
+    return _document(story, None)

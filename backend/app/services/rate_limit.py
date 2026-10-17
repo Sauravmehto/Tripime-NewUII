@@ -25,7 +25,7 @@ class IpRateLimiter:
             if len(q) >= self.max_calls:
                 raise HTTPException(
                     status_code=429,
-                    detail="Too many attempts. Please wait a minute and try again.",
+                    detail="Too many attempts. Please wait a few minutes and try again.",
                 )
             q.append(now)
 

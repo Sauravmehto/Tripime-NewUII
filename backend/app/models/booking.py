@@ -1,3 +1,11 @@
+"""Booking requests and their lifecycle.
+
+Without a payment gateway or ticketing API, a booking is a *request*: the
+traveller submits it, the Tripime team verifies availability and price,
+arranges and verifies payment, books with the airline, then records the
+airline's PNR and ticket numbers. Every state change is audited.
+"""
+
 from typing import Any, Literal
 
 from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
@@ -6,19 +14,34 @@ from app.models.flight import Flight
 
 PassengerType = Literal["adult", "child", "infant"]
 FlightLeg = Literal["outbound", "return"]
+
+BookingState = Literal[
+    "DRAFT",
+    "PASSENGERS_COMPLETED",
+    "REVIEWED",
+    "PAYMENT_PENDING",
+    "PAYMENT_CONFIRMED",
+    "BOOKING_CONFIRMED",
+    "TICKET_ISSUED",
+    "PAYMENT_FAILED",
+    "BOOKING_FAILED",
+    "CANCELLED",
+]
+# Coarse statuses kept for the admin list and older clients.
 PaymentStatus = Literal["pending", "paid", "failed"]
 BookingStatus = Literal["pending", "confirmed", "cancelled"]
-PaymentMethod = Literal["upi", "qr", "card"]
+
+PAID_STATES = {"PAYMENT_CONFIRMED", "BOOKING_CONFIRMED", "TICKET_ISSUED"}
 
 
 class PassengerInput(BaseModel):
     type: PassengerType = "adult"
     title: str = Field(..., min_length=1)
-    firstName: str = Field(..., min_length=1)
-    lastName: str = Field(..., min_length=1)
+    firstName: str = Field(..., min_length=1, max_length=60)
+    lastName: str = Field(..., min_length=1, max_length=60)
     gender: str = Field(..., min_length=1)
-    dateOfBirth: str = Field(..., min_length=1)
-    # Required by the booking service when either leg is international.
+    dateOfBirth: str = Field(..., min_length=10, max_length=10)
+    # Required by the booking service only when the itinerary needs them.
     passportNumber: str | None = Field(None, max_length=20)
     nationality: str | None = Field(None, max_length=60)
     passportExpiry: str | None = None
@@ -39,54 +62,69 @@ class PassengerInput(BaseModel):
             raise ValueError(f"gender must be one of: {', '.join(sorted(allowed))}")
         return value
 
-
-class ContactInput(BaseModel):
-    email: EmailStr
-    phone: str = Field(..., min_length=8, max_length=20)
-
-
-class SeatSelectionInput(BaseModel):
-    leg: FlightLeg = "outbound"
-    # Index into the leg's flight segments (0 for non-stop flights).
-    segment: int = Field(0, ge=0, le=3)
-    passengerIndex: int = Field(..., ge=0)
-    seatNumber: str = Field(..., min_length=2, max_length=4)
-    seatType: str
-    price: int = Field(..., ge=0)
-
-    @field_validator("seatType")
+    @field_validator("firstName", "lastName")
     @classmethod
-    def validate_seat_type(cls, value: str) -> str:
-        allowed = {"standard", "window", "preferred", "extra_legroom"}
-        if value not in allowed:
-            raise ValueError(f"seatType must be one of: {', '.join(sorted(allowed))}")
+    def validate_name(cls, value: str) -> str:
+        # Names must match travel documents: validate, never rewrite.
+        if not value.strip():
+            raise ValueError("Name is required")
+        if any(ch.isdigit() for ch in value):
+            raise ValueError("Names can't contain digits")
         return value
 
 
-class BookingCreateRequest(BaseModel):
-    """Creates a booking awaiting payment. Payment is never sent by the browser:
-    it's taken server-side via `POST /api/bookings/{id}/pay`."""
+class ContactInput(BaseModel):
+    email: EmailStr
+    countryCode: str = Field("+91", min_length=2, max_length=5, pattern=r"^\+\d{1,4}$")
+    phone: str = Field(..., min_length=6, max_length=20)
 
-    # Generated once per checkout by the client; repeating it returns the same booking.
+
+class BookingDraftRequest(BaseModel):
+    """Create (or update, for the same checkout) a booking draft with traveller details."""
+
+    # Generated once per checkout by the client; repeating it updates the same draft.
     checkoutKey: str = Field(..., min_length=8, max_length=64, pattern=r"^[A-Za-z0-9_-]+$")
-    flightId: str
-    returnFlightId: str | None = None
-    passengers: list[PassengerInput] = Field(..., min_length=1)
+    flightId: str = Field(..., max_length=200)
+    returnFlightId: str | None = Field(None, max_length=200)
+    passengers: list[PassengerInput] = Field(..., min_length=1, max_length=18)
     contact: ContactInput
-    seats: list[SeatSelectionInput] = Field(..., min_length=1)
 
 
-class BookingPayRequest(BaseModel):
-    method: PaymentMethod
-    # Safe card metadata only — never the full number or CVV.
-    cardLast4: str | None = Field(None, pattern=r"^\d{4}$")
-    # Mock mode only: exercise the failure path. Refused when a real gateway is active.
-    simulateFailure: bool = False
+class BookingReviewRequest(BaseModel):
+    """The total the traveller saw; the server re-prices and reports any change."""
+
+    expectedTotal: int = Field(..., ge=0)
 
 
-class BookingLookupRequest(BaseModel):
-    reference: str = Field(..., min_length=1, description="Booking ID or PNR")
-    contact: str = Field(..., min_length=1, description="Email or phone used to book")
+class ManualPaymentRequest(BaseModel):
+    """Admin records a payment they have verified (e.g. on the bank statement)."""
+
+    reference: str = Field(..., min_length=4, max_length=80)
+    method: Literal["upi", "bank_transfer", "card_link", "other"] = "upi"
+    amount: int = Field(..., ge=1)
+    note: str = Field("", max_length=300)
+
+
+class StateNoteRequest(BaseModel):
+    note: str = Field("", max_length=300)
+
+
+class AirlineConfirmationRequest(BaseModel):
+    airlinePnr: str = Field(..., min_length=5, max_length=8, pattern=r"^[A-Za-z0-9]+$")
+    note: str = Field("", max_length=300)
+
+
+class TicketIssueRequest(BaseModel):
+    ticketNumbers: list[str] = Field(..., min_length=1, max_length=18)
+    note: str = Field("", max_length=300)
+
+    @field_validator("ticketNumbers")
+    @classmethod
+    def validate_tickets(cls, value: list[str]) -> list[str]:
+        cleaned = [v.strip() for v in value if v.strip()]
+        if not cleaned or any(not (6 <= len(v) <= 20) for v in cleaned):
+            raise ValueError("Each ticket number must be 6–20 characters")
+        return cleaned
 
 
 class BookingPassenger(BaseModel):
@@ -99,12 +137,14 @@ class BookingPassenger(BaseModel):
     passportNumber: str | None = None
     nationality: str | None = None
     passportExpiry: str | None = None
+    # Legacy test bookings had mock seat numbers.
     seatNumber: str | None = None
     returnSeatNumber: str | None = None
 
 
 class BookingContact(BaseModel):
     email: str
+    countryCode: str = "+91"
     phone: str
 
 
@@ -133,7 +173,8 @@ class BookingSeat(BaseModel):
 
 
 class BookingPayment(BaseModel):
-    """One payment attempt as reported by the server-side payment provider."""
+    """A payment record. New records are manual verifications by an admin;
+    older records were mock test payments."""
 
     paymentId: str
     transactionId: str
@@ -141,16 +182,33 @@ class BookingPayment(BaseModel):
     amount: int
     currency: str = "INR"
     status: str  # SUCCESS | FAILED
-    paidAt: str  # time of the attempt (kept name for older records)
-    provider: str = "mock"
-    testMode: bool = True
+    paidAt: str
+    provider: str = "manual"
+    testMode: bool = False
     payee: str | None = None
     failureReason: str | None = None
+    verifiedBy: str | None = None
+    note: str = ""
+
+
+class DocumentRequirements(BaseModel):
+    """Traveller details the itinerary needs, derived from the route's airports."""
+
+    international: bool
+    passportRequired: bool
+    nationalityRequired: bool
+    genderRequired: bool = True
+    dateOfBirthRequired: bool = True
+    # Countries other than the departure country touched by the trip (incl. transit).
+    countries: list[str] = Field(default_factory=list)
+    lastTravelDate: str
+    # Advice, not a universal rule — shown only for international trips.
+    passportValidityAdvice: str | None = None
 
 
 class StatusChange(BaseModel):
     at: str
-    field: Literal["payment", "booking"]
+    field: Literal["state", "payment", "booking"] = "state"
     fromStatus: str | None = None
     toStatus: str
     actor: Literal["customer", "admin", "system", "payment-provider"]
@@ -197,15 +255,30 @@ class InvoiceUpdateRequest(BaseModel):
     extraCharges: list[InvoiceExtraCharge] = Field(default_factory=list)
 
 
+def _legacy_state(data: dict) -> str:
+    booking_status = data.get("bookingStatus")
+    payment_status = data.get("paymentStatus")
+    old = data.get("status")
+    payment = data.get("payment") or {}
+    if booking_status == "cancelled" or old == "CANCELLED":
+        return "CANCELLED"
+    if booking_status == "confirmed" or old == "CONFIRMED":
+        return "BOOKING_CONFIRMED"
+    if payment_status == "paid" or str(payment.get("status", "")).upper() == "SUCCESS":
+        return "PAYMENT_CONFIRMED"
+    if payment_status == "failed":
+        return "PAYMENT_FAILED"
+    return "PAYMENT_PENDING"
+
+
 class Booking(BaseModel):
+    # Booking-request reference (TRQ-…); legacy test bookings use BK-….
     bookingId: str
-    pnr: str
     createdAt: str
-    confirmedAt: str | None = None
-    paymentStatus: PaymentStatus = "pending"
-    bookingStatus: BookingStatus = "pending"
-    # Legacy single status ("PROCESSING"/"CONFIRMED"), mirrored from the fields above.
-    status: str = "PENDING"
+    updatedAt: str = ""
+    state: BookingState = "DRAFT"
+    customerId: str | None = None
+    customerEmail: str | None = None
     tripType: Literal["one_way", "round_trip"] = "one_way"
     flight: Flight
     returnFlight: Flight | None = None
@@ -215,21 +288,30 @@ class Booking(BaseModel):
     adults: int = 0
     children: int = 0
     infants: int = 0
-    seats: list[BookingSeat]
+    documentRequirements: DocumentRequirements | None = None
+    seats: list[BookingSeat] = Field(default_factory=list)
     fare: BookingFare
     fareBreakdown: list[FareLine] = Field(default_factory=list)
-    seatCharges: int
+    seatCharges: int = 0
     totalAmount: int
+    # Airline booking reference — only set from a real airline/provider confirmation.
+    pnr: str | None = None
+    ticketNumbers: list[str] = Field(default_factory=list)
+    confirmedAt: str | None = None
+    ticketedAt: str | None = None
+    submittedAt: str | None = None
+    seatsHeld: bool = False
     invoiceNumber: str = ""
-    # Latest successful payment (None until paid); every attempt is in `payments`.
     payment: BookingPayment | None = None
     payments: list[BookingPayment] = Field(default_factory=list)
     statusHistory: list[StatusChange] = Field(default_factory=list)
     notifications: list[NotificationRecord] = Field(default_factory=list)
-    # Secret for customer access to this booking and its documents.
-    accessToken: str = ""
     checkoutKey: str | None = None
+    legacy: bool = False
     invoice: InvoiceDetails = Field(default_factory=InvoiceDetails)
+    # Derived for lists/badges; always recomputed from `state`.
+    paymentStatus: PaymentStatus = "pending"
+    bookingStatus: BookingStatus = "pending"
 
     @model_validator(mode="before")
     @classmethod
@@ -237,41 +319,38 @@ class Booking(BaseModel):
         if not isinstance(data, dict):
             return data
         data = dict(data)
-        # Bookings saved before passenger types existed: everyone was an adult.
         if not data.get("adults"):
             data["adults"] = data.get("passengerCount", 0)
-        # Bookings saved before split statuses: payment was taken before creation.
-        if "paymentStatus" not in data:
-            payment = data.get("payment") or {}
-            paid = str(payment.get("status", "")).upper() == "SUCCESS"
-            confirmed = data.get("status") == "CONFIRMED"
-            data["paymentStatus"] = "paid" if paid else "pending"
-            data["bookingStatus"] = "confirmed" if confirmed else "pending"
-            history = [
-                {"at": data.get("createdAt", ""), "field": "booking", "toStatus": "pending", "actor": "system",
-                 "note": "Booking created (migrated record)"},
-            ]
-            if paid:
-                history.append({"at": payment.get("paidAt") or data.get("createdAt", ""), "field": "payment",
-                                "fromStatus": "pending", "toStatus": "paid", "actor": "payment-provider",
-                                "note": "Mock payment (migrated record)"})
-                data.setdefault("payments", [payment])
-            if confirmed:
-                history.append({"at": data.get("confirmedAt") or data.get("createdAt", ""), "field": "booking",
-                                "fromStatus": "pending", "toStatus": "confirmed", "actor": "admin",
-                                "note": "Confirmed (migrated record)"})
-            data.setdefault("statusHistory", history)
+        if "state" not in data:
+            # Records from the earlier mock-payment flow: they never had a real
+            # payment or airline PNR. Keep them visible but clearly marked.
+            data["state"] = _legacy_state(data)
+            data["legacy"] = True
+            if data.get("pnr"):
+                data["statusHistory"] = [
+                    *(data.get("statusHistory") or []),
+                    {"at": data.get("createdAt", ""), "field": "state", "toStatus": data["state"],
+                     "actor": "system", "note": f"Legacy test booking; mock reference {data['pnr']} is not an airline PNR"},
+                ]
+                data["pnr"] = None
+        for key in ("accessToken", "status"):
+            data.pop(key, None)
         if not data.get("invoiceNumber") and data.get("bookingId"):
             data["invoiceNumber"] = f"INV-{data['bookingId']}"
         return data
 
     @model_validator(mode="after")
-    def _mirror_status(self) -> "Booking":
-        self.status = {"confirmed": "CONFIRMED", "cancelled": "CANCELLED"}.get(
-            self.bookingStatus, "PROCESSING" if self.paymentStatus == "paid" else "PENDING_PAYMENT"
+    def _derive_statuses(self) -> "Booking":
+        self.paymentStatus = (
+            "paid" if self.state in PAID_STATES else "failed" if self.state == "PAYMENT_FAILED" else "pending"
+        )
+        self.bookingStatus = (
+            "cancelled"
+            if self.state in {"CANCELLED", "BOOKING_FAILED"}
+            else "confirmed" if self.state in {"BOOKING_CONFIRMED", "TICKET_ISSUED"} else "pending"
         )
         return self
 
     def public_view(self) -> "Booking":
-        """What customers see: no internal notification log or idempotency key."""
+        """What the owner sees: no internal notification log or idempotency key."""
         return self.model_copy(update={"notifications": [], "checkoutKey": None})

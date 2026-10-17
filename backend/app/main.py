@@ -5,6 +5,7 @@ from app import config
 from app.routes import (
     admin,
     bookings,
+    customer_auth,
     customer_profile,
     enquiries,
     flights,
@@ -40,6 +41,7 @@ app.include_router(
     prefix="/api/customer-profile",
     tags=["customer-profile"],
 )
+app.include_router(customer_auth.router, prefix="/api/auth", tags=["customer-auth"])
 app.include_router(website.router, prefix="/api/website", tags=["website"])
 app.include_router(admin.router, prefix="/api/admin", tags=["admin"])
 

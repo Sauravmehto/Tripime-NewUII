@@ -24,29 +24,45 @@ from app.services.whatsapp_service import send_whatsapp_text
 
 logger = logging.getLogger("tripime.notifications")
 
-Event = Literal["booking_created", "payment_paid", "payment_failed", "booking_confirmed", "booking_cancelled"]
+Event = Literal[
+    "booking_requested",
+    "payment_confirmed",
+    "payment_failed",
+    "booking_confirmed",
+    "ticket_issued",
+    "booking_failed",
+    "booking_cancelled",
+]
 
 ADMIN_HEADLINES: dict[str, str] = {
-    "booking_created": "New booking — awaiting payment",
-    "payment_paid": "Payment received — confirm the booking",
-    "payment_failed": "Payment failed",
-    "booking_confirmed": "Booking confirmed",
+    "booking_requested": "New booking request — verify availability and price",
+    "payment_confirmed": "Payment verified — book with the airline",
+    "payment_failed": "Payment marked as not received",
+    "booking_confirmed": "Airline confirmed — issue tickets",
+    "ticket_issued": "Tickets issued",
+    "booking_failed": "Airline booking failed",
     "booking_cancelled": "Booking cancelled",
 }
 CUSTOMER_SUBJECTS: dict[str, str] = {
-    "booking_created": "Booking received — complete your payment",
-    "payment_paid": "Payment received — we're issuing your ticket",
-    "payment_failed": "Your payment didn't go through",
-    "booking_confirmed": "Your booking is confirmed — e-ticket attached",
+    "booking_requested": "We've received your booking request",
+    "payment_confirmed": "Payment received — we're booking your flight",
+    "payment_failed": "We haven't received your payment",
+    "booking_confirmed": "Your flight is confirmed with the airline",
+    "ticket_issued": "Your e-ticket is ready",
+    "booking_failed": "We couldn't complete your booking",
     "booking_cancelled": "Your booking has been cancelled",
 }
 CUSTOMER_INTROS: dict[str, str] = {
-    "booking_created": "We've received your booking. It's held for you, but it isn't paid yet.",
-    "payment_paid": "Thanks — your payment was received. Our team is now issuing your ticket; "
-    "you'll get the confirmed e-ticket by email shortly.",
-    "payment_failed": "Your payment for this booking didn't go through. Nothing was charged. "
-    "You can try again from the payment page.",
-    "booking_confirmed": "Your booking is confirmed. Your e-ticket and invoice are attached.",
+    "booking_requested": "Thanks — your booking request has been submitted. It is NOT confirmed yet and no ticket "
+    "has been issued. Our team will check availability and the final price, then contact you to arrange payment.",
+    "payment_confirmed": "We've verified your payment. Our team is now booking your flight with the airline; "
+    "you'll receive your airline PNR once it's confirmed.",
+    "payment_failed": "We haven't been able to verify your payment for this booking. Please contact us if you "
+    "believe you've paid.",
+    "booking_confirmed": "The airline has confirmed your booking. Your e-ticket will follow once the tickets are issued.",
+    "ticket_issued": "Your tickets have been issued by the airline. Your e-ticket is attached.",
+    "booking_failed": "The airline couldn't confirm this booking. Our team will contact you about alternatives "
+    "or a refund of anything you've paid.",
     "booking_cancelled": "Your booking has been cancelled. If you paid, our team will contact you about the refund.",
 }
 
@@ -80,22 +96,31 @@ def _route(flight) -> str:
 
 
 def _summary_lines(booking: Booking) -> list[str]:
+    """Booking summary for notifications. Deliberately excludes passport numbers,
+    dates of birth and anything payment-credential related."""
     lead = booking.passengers[0]
-    test = booking.payments[-1].testMode if booking.payments else config.PAYMENT_PROVIDER == "mock"
     lines = [
-        f"Booking: {booking.bookingId} (PNR {booking.pnr})",
+        f"Booking request: {booking.bookingId}",
+        f"Status: {booking.state.replace('_', ' ').title()}",
+        f"Submitted: {(booking.submittedAt or booking.createdAt)[:19].replace('T', ' ')} UTC",
         f"Departing: {_route(booking.flight)}",
     ]
     if booking.returnFlight:
         lines.append(f"Return: {_route(booking.returnFlight)}")
     lines += [
-        f"Passengers: {booking.passengerCount} — {lead.title} {lead.firstName} {lead.lastName}"
-        + (f" + {booking.passengerCount - 1} more" if booking.passengerCount > 1 else ""),
-        f"Amount: INR {booking.totalAmount:,}",
-        f"Payment: {booking.paymentStatus.upper()} · Booking: {booking.bookingStatus.upper()}",
+        f"Travellers: {booking.passengerCount} ({booking.adults} adult, {booking.children} child, {booking.infants} infant)"
+        f" — lead {lead.title} {lead.firstName} {lead.lastName}",
+        f"Contact: {booking.contact.email} · {booking.contact.countryCode} {booking.contact.phone}",
     ]
-    if test:
-        lines.append("TEST MODE — mock payment, no real money involved.")
+    lines += [
+        f"  {line.leg.capitalize()} · {line.count} × {line.passengerType}: INR {line.total:,}"
+        for line in booking.fareBreakdown
+    ]
+    lines.append(f"Quoted total: INR {booking.totalAmount:,} (base INR {booking.fare.baseFare:,} + taxes INR {booking.fare.taxes:,})")
+    if booking.pnr:
+        lines.append(f"Airline PNR: {booking.pnr}")
+    if booking.ticketNumbers:
+        lines.append(f"Ticket numbers: {', '.join(booking.ticketNumbers)}")
     return lines
 
 
@@ -112,13 +137,10 @@ def _html(heading: str, intro: str, lines: list[str]) -> str:
 
 def _targets(booking: Booking, event: str, attempt: str | None) -> list[_Target]:
     lines = _summary_lines(booking)
-    if event == "payment_failed" and booking.payments:
-        reason = booking.payments[-1].failureReason or "Declined"
-        lines.append(f"Failure reason: {reason}")
     targets: list[_Target] = []
 
     # Team email
-    admin = config.ADMIN_NOTIFY_EMAIL
+    admin = config.BOOKING_NOTIFICATION_EMAIL
     if admin:
         subject = f"[Tripime] {ADMIN_HEADLINES[event]} — {booking.bookingId}"
         text = "\n".join([ADMIN_HEADLINES[event], "", *lines])
@@ -135,7 +157,7 @@ def _targets(booking: Booking, event: str, attempt: str | None) -> list[_Target]
         )
 
     # Team WhatsApp
-    phone = config.WHATSAPP_ALERT_PHONE
+    phone = config.BOOKING_WHATSAPP_NUMBER
     if phone:
         text = "\n".join([f"*Tripime: {ADMIN_HEADLINES[event]}*", *lines])
         targets.append(
@@ -157,11 +179,11 @@ def _targets(booking: Booking, event: str, attempt: str | None) -> list[_Target]
         intro = CUSTOMER_INTROS[event]
         text = "\n".join([intro, "", *lines])
         attachments: list[tuple[str, Callable[[], bytes]]] = []
-        if event == "payment_paid":
+        if event in {"booking_requested", "payment_confirmed"}:
+            # Quote before payment, invoice after; passports are masked in the PDF.
             attachments.append((f"Invoice-{booking.bookingId}.pdf", lambda: build_invoice_pdf(booking)))
-        if event == "booking_confirmed":
+        if event == "ticket_issued":
             attachments.append((f"E-ticket-{booking.bookingId}.pdf", lambda: build_ticket_pdf(booking)))
-            attachments.append((f"Invoice-{booking.bookingId}.pdf", lambda: build_invoice_pdf(booking)))
         targets.append(
             _Target(
                 key=_key(event, attempt, "email", customer),

@@ -1,7 +1,6 @@
-"""Booking → payment → documents → notifications, end to end on temporary data.
+"""Booking-request flow end to end on temporary data (no network, no real email/WhatsApp).
 
 Run from backend/:  .venv/Scripts/python -m unittest discover -s tests -v
-No network: SMTP/WhatsApp are unconfigured in tests unless a sender is patched.
 """
 
 from __future__ import annotations
@@ -14,49 +13,84 @@ from datetime import date, timedelta
 from pathlib import Path
 from unittest import mock
 
-from fastapi import BackgroundTasks, HTTPException
+from fastapi import BackgroundTasks, HTTPException, Response
 from reportlab import rl_config
+from starlette.requests import Request
 
 from app import config
-from app.models.booking import BookingCreateRequest, BookingPayRequest
+from app.models.admin_ops import CustomerLogin
+from app.models.booking import (
+    AirlineConfirmationRequest,
+    BookingDraftRequest,
+    BookingReviewRequest,
+    ManualPaymentRequest,
+    StateNoteRequest,
+    TicketIssueRequest,
+)
 from app.providers.mock_provider import MockFlightProvider
 from app.routes import admin as admin_routes
 from app.routes import bookings as booking_routes
+from app.routes import flights as flight_routes
 from app.services import booking_service as booking_module
+from app.services import customer_auth_service as auth
 from app.services import notification_service
+from app.services.booking_rules import document_requirements
+from app.services.customer_auth_service import CustomerSession
 from app.services.email_service import EmailResult
 from app.services.invoice_service import build_invoice_pdf, build_ticket_pdf
-from app.services.whatsapp_service import SendResult
 
 rl_config.pageCompression = 0  # keep PDF text searchable in assertions
+
+ME = CustomerSession(customer_id="cust_test01", email="traveller@example.com")
+SOMEONE_ELSE = CustomerSession(customer_id="cust_other1", email="other@example.com")
 
 
 def run_tasks(tasks: BackgroundTasks) -> None:
     asyncio.run(tasks())
 
 
-class BookingPaymentFlowTest(unittest.TestCase):
+def request_with_cookie(cookie: str | None) -> Request:
+    headers = [(b"cookie", f"{config.CUSTOMER_SESSION_COOKIE}={cookie}".encode())] if cookie else []
+    return Request({"type": "http", "headers": headers, "client": ("127.0.0.1", 1)})
+
+
+class FakeCustomers:
+    def __init__(self) -> None:
+        self.by_email: dict[str, CustomerLogin] = {}
+
+    def find_customer_by_email(self, email):
+        return self.by_email.get(email)
+
+    def upsert_customer(self, customer):
+        self.by_email[customer.email] = customer
+        return customer
+
+
+class FlowTestBase(unittest.TestCase):
     def setUp(self) -> None:
         self.tmp = Path(tempfile.mkdtemp())
         self.provider = MockFlightProvider(sales_path=self.tmp / "sales.json")
         self.service = booking_module.BookingService(provider=self.provider, path=self.tmp / "bookings.json")
-        # Routes and the notification service use the module-level singleton.
         self._previous = booking_module._booking_service
         booking_module._booking_service = self.service
-        # Never touch real SMTP/WhatsApp from tests.
         self.patches = [
             mock.patch.object(config, "SMTP_HOST", ""),
             mock.patch.object(config, "WHATSAPP_PROVIDER", ""),
             mock.patch.object(config, "WHATSAPP_CALLMEBOT_APIKEY", ""),
             mock.patch.object(config, "WHATSAPP_CLOUD_TOKEN", ""),
-            mock.patch.object(config, "ADMIN_NOTIFY_EMAIL", "tripimetrips@gmail.com"),
-            mock.patch.object(config, "WHATSAPP_ALERT_PHONE", "919899644177"),
+            mock.patch.object(config, "BOOKING_NOTIFICATION_EMAIL", "tripimetrips@gmail.com"),
+            mock.patch.object(config, "BOOKING_WHATSAPP_NUMBER", "919899640449"),
+            # The routes look the flight up through the module-level provider.
+            mock.patch.object(booking_routes, "get_flight_provider", return_value=self.provider),
+            # Fresh, generous limiters per test (the real ones are shared module state).
+            mock.patch.object(booking_routes, "draft_limiter", booking_routes.IpRateLimiter(max_calls=1000)),
+            mock.patch.object(booking_routes, "submit_limiter", booking_routes.IpRateLimiter(max_calls=1000)),
         ]
         for p in self.patches:
             p.start()
-
-        day = (date.today() + timedelta(days=12)).isoformat()
-        self.flight = self.provider.search("DEL", "BOM", day, 1)[0]
+        self.day = (date.today() + timedelta(days=12)).isoformat()
+        self.domestic = self.provider.search("DEL", "BOM", self.day, 1)[0]
+        self.international = next(f for f in self.provider.search("DEL", "DXB", self.day, 1) if f.stops == 0)
 
     def tearDown(self) -> None:
         for p in self.patches:
@@ -64,211 +98,298 @@ class BookingPaymentFlowTest(unittest.TestCase):
         booking_module._booking_service = self._previous
         shutil.rmtree(self.tmp, ignore_errors=True)
 
-    # ---- helpers ----------------------------------------------------------------
+    # helpers
+    def traveller(self, **extra):
+        return {"type": "adult", "title": "Ms", "firstName": "Asha", "lastName": "Rao", "gender": "Female",
+                "dateOfBirth": "1991-04-12", **extra}
 
-    def payload(self, key: str = "checkout-test-0001") -> BookingCreateRequest:
-        return BookingCreateRequest(
+    def draft(self, flight=None, passengers=None, key="checkout-test-0001", session=ME, phone="9876543210", cc="+91"):
+        payload = BookingDraftRequest(
             checkoutKey=key,
-            flightId=self.flight.id,
-            passengers=[
-                {"type": "adult", "title": "Mr", "firstName": "Test", "lastName": "Traveller",
-                 "gender": "Male", "dateOfBirth": "1990-05-01"}
-            ],
-            contact={"email": "customer@example.com", "phone": "9876543210"},
-            seats=[{"leg": "outbound", "segment": 0, "passengerIndex": 0, "seatNumber": "7C",
-                    "seatType": "standard", "price": 0}],
+            flightId=(flight or self.domestic).id,
+            passengers=passengers or [self.traveller()],
+            contact={"email": "traveller@example.com", "countryCode": cc, "phone": phone},
         )
+        return booking_routes.save_draft(payload, session)
 
-    def create(self, key: str = "checkout-test-0001"):
-        tasks = BackgroundTasks()
-        booking = booking_routes.create_booking(self.payload(key), tasks)
-        run_tasks(tasks)
-        return booking
+    def reviewed(self, **kw):
+        booking = self.draft(**kw)
+        result = booking_routes.review_booking(booking.bookingId, BookingReviewRequest(expectedTotal=booking.totalAmount), kw.get("session", ME))
+        self.assertFalse(result.priceChanged)
+        return result.booking
 
-    def pay(self, booking, fail: bool = False):
+    def submit(self, booking, session=ME):
         tasks = BackgroundTasks()
-        result = booking_routes.pay_booking(
-            booking.bookingId, BookingPayRequest(method="upi", simulateFailure=fail), tasks, token=booking.accessToken
-        )
+        result = booking_routes.submit_booking_request(booking.bookingId, tasks, session)
         run_tasks(tasks)
         return result
 
-    def stored(self, booking_id: str):
+    def stored(self, booking_id):
         return self.service.get_booking(booking_id)
 
-    # ---- booking creation -------------------------------------------------------
 
-    def test_create_is_pending_with_token_and_history(self) -> None:
-        seats_before = self.flight.availableSeats
-        booking = self.create()
-        self.assertEqual((booking.paymentStatus, booking.bookingStatus), ("pending", "pending"))
-        self.assertEqual(booking.invoiceNumber, f"INV-{booking.bookingId}")
-        self.assertGreaterEqual(len(booking.accessToken), 20)
-        self.assertEqual([h.toStatus for h in booking.statusHistory], ["pending", "pending"])
-        self.assertEqual(booking.notifications, [], "customers never see the notification log")
-        self.assertIsNone(booking.checkoutKey, "idempotency key isn't exposed")
-        self.assertEqual(self.provider.get_by_id(self.flight.id).availableSeats, seats_before - 1)
+class PublicSearchAndAuthTest(FlowTestBase):
+    def test_guest_can_search_without_signing_in(self) -> None:
+        with mock.patch.object(flight_routes.flight_service, "provider", self.provider):
+            result = flight_routes.search_flights("DEL", "BOM", self.day, None, 1, 0, 0, "Economy", 1)
+        self.assertGreater(result.count, 0)
 
-    def test_same_checkout_key_returns_same_booking(self) -> None:
-        first = self.create("checkout-dup-001")
-        second = self.create("checkout-dup-001")
-        self.assertEqual(first.bookingId, second.bookingId)
-        self.assertEqual(len(self.service.list_bookings()), 1)
-        created_notices = [r for r in self.stored(first.bookingId).notifications if r.event == "booking_created"]
-        self.assertEqual(len(created_notices), 3, "admin email + admin WhatsApp + customer email, once each")
-
-    def test_wrong_token_is_404(self) -> None:
-        booking = self.create()
+    def test_booking_endpoints_need_a_session(self) -> None:
         with self.assertRaises(HTTPException) as ctx:
-            booking_routes.get_booking(booking.bookingId, token="not-the-right-token")
-        self.assertEqual(ctx.exception.status_code, 404)
+            auth.require_session(request_with_cookie(None))
+        self.assertEqual(ctx.exception.status_code, 401)
+        self.assertIsNone(auth.optional_session(request_with_cookie("forged.token.value")))
 
-    # ---- payment ---------------------------------------------------------------
+    def test_email_code_sign_in_sets_http_only_session(self) -> None:
+        sent = {}
 
-    def test_failed_then_successful_payment(self) -> None:
-        booking = self.create()
-        failed = self.pay(booking, fail=True)
-        self.assertEqual((failed.paymentStatus, failed.bookingStatus), ("failed", "pending"))
-        self.assertIsNone(failed.payment)
-        self.assertEqual(failed.payments[-1].status, "FAILED")
+        def fake_send(to, subject, *_args, **_kw):
+            sent["code"] = subject.rsplit(" ", 1)[-1]
+            return EmailResult("sent", "ok")
 
-        paid = self.pay(booking)
-        self.assertEqual((paid.paymentStatus, paid.bookingStatus), ("paid", "pending"))
-        self.assertEqual(paid.payment.amount, paid.totalAmount, "amount comes from the server")
-        self.assertTrue(paid.payment.testMode)
-        self.assertEqual(paid.payment.payee, "tripimetrips@test.upi")
-        self.assertEqual(len(paid.payments), 2)
-        self.assertEqual([h.toStatus for h in paid.statusHistory if h.field == "payment"], ["pending", "failed", "paid"])
+        customers = FakeCustomers()
+        with mock.patch.object(auth, "send_email", side_effect=fake_send), \
+                mock.patch.object(config, "CUSTOMER_OTP_DEV_CODE", ""), \
+                mock.patch.object(auth, "get_admin_ops_service", return_value=customers):
+            self.assertEqual(auth.request_code("Traveller@Example.com", "10.0.0.1"), "email")
+            with self.assertRaises(HTTPException):
+                auth.verify_code("traveller@example.com", "000000" if sent["code"] != "000000" else "111111", "10.0.0.1")
+            customer = auth.verify_code("traveller@example.com", sent["code"], "10.0.0.1")
+            with self.assertRaises(HTTPException):  # single use
+                auth.verify_code("traveller@example.com", sent["code"], "10.0.0.1")
+        response = Response()
+        auth.start_session(response, customer)
+        cookie = response.headers["set-cookie"]
+        self.assertIn("HttpOnly", cookie)
+        token = cookie.split("=", 1)[1].split(";", 1)[0]
+        session = auth.optional_session(request_with_cookie(token))
+        self.assertEqual(session.email, "traveller@example.com")
 
-    def test_paying_twice_is_idempotent(self) -> None:
-        booking = self.create()
-        self.pay(booking)
-        again = self.pay(booking)
-        self.assertEqual(len(again.payments), 1)
-        paid_notices = [r for r in self.stored(booking.bookingId).notifications if r.event == "payment_paid"]
-        self.assertEqual(len(paid_notices), 3)
+    def test_fixed_dev_code_works_only_in_development_without_email(self) -> None:
+        customers = FakeCustomers()
+        with mock.patch.object(config, "CUSTOMER_OTP_DEV_CODE", "123456"), \
+                mock.patch.object(config, "IS_PRODUCTION", False), \
+                mock.patch.object(auth, "get_admin_ops_service", return_value=customers):
+            self.assertEqual(auth.request_code("dev-user@example.com", "10.0.1.1"), "dev_fixed")
+            with self.assertRaises(HTTPException):
+                auth.verify_code("dev-user@example.com", "654321", "10.0.1.1")
+            self.assertEqual(auth.verify_code("dev-user@example.com", "123456", "10.0.1.1").email, "dev-user@example.com")
+        # Production ignores the setting entirely.
+        with mock.patch.object(config, "CUSTOMER_OTP_DEV_CODE", "123456"), mock.patch.object(config, "IS_PRODUCTION", True):
+            self.assertIsNone(auth.fixed_dev_code())
+        # So does a configured email service.
+        with mock.patch.object(config, "CUSTOMER_OTP_DEV_CODE", "123456"), \
+                mock.patch.object(config, "SMTP_HOST", "smtp.example.com"), \
+                mock.patch.object(config, "SMTP_USERNAME", "u"), mock.patch.object(config, "SMTP_PASSWORD", "p"), \
+                mock.patch.object(config, "SMTP_FROM_EMAIL", "f@example.com"):
+            self.assertIsNone(auth.fixed_dev_code())
 
-    def test_simulated_failure_refused_outside_test_mode(self) -> None:
-        booking = self.create()
-        with mock.patch.object(booking_module, "get_payment_provider") as get_provider:
-            get_provider.return_value.can_simulate_failure = False
+    def test_production_without_email_refuses_codes(self) -> None:
+        with mock.patch.object(config, "IS_PRODUCTION", True), mock.patch.object(config, "CUSTOMER_OTP_DEV_CODE", ""):
             with self.assertRaises(HTTPException) as ctx:
-                self.pay(booking, fail=True)
-        self.assertEqual(ctx.exception.status_code, 400)
+                auth.request_code("prod-user@example.com", "10.0.0.2")
+        self.assertEqual(ctx.exception.status_code, 503)
 
-    # ---- admin status changes ---------------------------------------------------
 
-    def test_confirm_requires_payment_and_cancel_releases_seats(self) -> None:
-        booking = self.create()
+class TravellerValidationTest(FlowTestBase):
+    def test_domestic_needs_no_passport(self) -> None:
+        req = document_requirements(self.domestic, None)
+        self.assertFalse(req.international or req.passportRequired or req.nationalityRequired)
+        booking = self.draft(passengers=[self.traveller(passportNumber="Z1234567")])
+        self.assertIsNone(booking.passengers[0].passportNumber, "unneeded document data isn't stored")
+
+    def test_international_requires_documents(self) -> None:
+        req = document_requirements(self.international, None)
+        self.assertTrue(req.passportRequired and req.nationalityRequired)
+        self.assertIn("United Arab Emirates", req.countries)
+        self.assertIn("6 months", req.passportValidityAdvice)
         with self.assertRaises(HTTPException):
-            admin_routes.confirm_booking(booking.bookingId, BackgroundTasks())
-        self.pay(booking)
-        tasks = BackgroundTasks()
-        confirmed = admin_routes.confirm_booking(booking.bookingId, tasks)
-        run_tasks(tasks)
-        self.assertEqual(confirmed.bookingStatus, "confirmed")
+            self.draft(flight=self.international)
+        trip_end = date.fromisoformat(req.lastTravelDate)
+        with self.assertRaises(HTTPException):  # expires before the trip ends
+            self.draft(flight=self.international, passengers=[self.traveller(
+                passportNumber="Z1234567", nationality="Indian", passportExpiry=(trip_end - timedelta(days=1)).isoformat())])
+        # Valid through the trip but < 6 months after: allowed (advice, not a rule).
+        ok = self.draft(flight=self.international, key="checkout-intl-0002", passengers=[self.traveller(
+            passportNumber="z1234567", nationality="Indian", passportExpiry=(trip_end + timedelta(days=30)).isoformat())])
+        self.assertEqual(ok.passengers[0].passportNumber, "Z1234567")
 
-        seats_held = self.provider.get_by_id(self.flight.id).availableSeats
-        tasks = BackgroundTasks()
-        cancelled = admin_routes.cancel_booking(booking.bookingId, admin_routes.CancelRequest(reason="Test"), tasks)
-        run_tasks(tasks)
-        self.assertEqual(cancelled.bookingStatus, "cancelled")
-        self.assertIn("refund", cancelled.statusHistory[-1].note)
-        self.assertEqual(self.provider.get_by_id(self.flight.id).availableSeats, seats_held + 1)
-        # A cancelled, unpaid booking can't be paid.
-        other = self.create("checkout-other-2")
-        admin_routes.cancel_booking(other.bookingId, admin_routes.CancelRequest(), BackgroundTasks())
+    def test_invalid_contact_and_traveller_details(self) -> None:
+        for kwargs in ({"phone": "123456"}, {"phone": "5876543210"}, {"phone": "98765432", "cc": "+971"}):
+            if kwargs.get("cc") == "+971":
+                self.draft(key="checkout-ae-0001", **kwargs)  # 8 digits is valid for +971
+                continue
+            with self.assertRaises(HTTPException):
+                self.draft(**kwargs)
+        with self.assertRaises(HTTPException):  # child too old
+            self.draft(passengers=[self.traveller(), self.traveller(type="child", title="Mstr", firstName="Kid",
+                                                                    gender="Male", dateOfBirth="2005-01-01")])
+        with self.assertRaises(HTTPException):  # duplicate traveller
+            self.draft(passengers=[self.traveller(), self.traveller()])
+        with self.assertRaises(HTTPException):  # more infants than adults
+            self.draft(passengers=[self.traveller(), self.traveller(type="infant", firstName="Baby", dateOfBirth="2026-01-01"),
+                                   self.traveller(type="infant", firstName="Babe", dateOfBirth="2026-02-01")])
+
+
+class BookingRequestTest(FlowTestBase):
+    def test_draft_review_submit_never_pays_or_tickets(self) -> None:
+        seats_before = self.provider.get_by_id(self.domestic.id).availableSeats
+        booking = self.draft()
+        self.assertEqual(booking.state, "PASSENGERS_COMPLETED")
+        self.assertTrue(booking.bookingId.startswith("TRQ-"))
+        self.assertIsNone(booking.pnr)
+        with self.assertRaises(HTTPException):  # can't submit before review
+            self.submit(booking)
+        booking = self.reviewed(key="checkout-test-0001")
+        submitted = self.submit(booking)
+        self.assertEqual(submitted.state, "PAYMENT_PENDING")
+        self.assertEqual(submitted.paymentStatus, "pending")
+        self.assertIsNone(submitted.payment)
+        self.assertIsNone(submitted.pnr)
+        self.assertEqual(submitted.ticketNumbers, [])
+        self.assertEqual(self.provider.get_by_id(self.domestic.id).availableSeats, seats_before - 1, "seats held")
         with self.assertRaises(HTTPException) as ctx:
-            self.pay(other)
+            booking_routes.download_ticket(submitted.bookingId, ME)
         self.assertEqual(ctx.exception.status_code, 409)
+        self.assertIn(b"PAYMENT PENDING", build_invoice_pdf(self.stored(submitted.bookingId)))
 
-    # ---- documents -------------------------------------------------------------
+    def test_resubmitting_is_idempotent(self) -> None:
+        booking = self.reviewed()
+        self.submit(booking)
+        again = self.submit(booking)
+        self.assertEqual(again.state, "PAYMENT_PENDING")
+        requested = [r for r in self.stored(booking.bookingId).notifications if r.event == "booking_requested"]
+        self.assertEqual(len(requested), 3, "team email + team WhatsApp + traveller email, once each")
+        with self.assertRaises(HTTPException):  # submitted bookings can't be edited
+            self.draft()
 
-    def test_documents_reflect_payment_state(self) -> None:
-        booking = self.create()
-        invoice = build_invoice_pdf(self.stored(booking.bookingId))
+    def test_same_checkout_updates_and_references_are_unique(self) -> None:
+        first = self.draft()
+        second = self.draft(passengers=[self.traveller(firstName="Asha Devi")])
+        self.assertEqual(first.bookingId, second.bookingId)
+        self.assertEqual(second.passengers[0].firstName, "Asha Devi")
+        refs = {self.draft(key=f"checkout-unique-{i:04d}").bookingId for i in range(15)}
+        self.assertEqual(len(refs), 15)
+
+    def test_price_change_sends_traveller_back_to_review(self) -> None:
+        booking = self.draft()
+        result = booking_routes.review_booking(booking.bookingId, BookingReviewRequest(expectedTotal=booking.totalAmount - 500), ME)
+        self.assertTrue(result.priceChanged)
+        self.assertEqual(result.booking.state, "PASSENGERS_COMPLETED")
+
+    def test_only_the_owner_can_see_a_booking(self) -> None:
+        booking = self.draft()
+        with self.assertRaises(HTTPException) as ctx:
+            booking_routes.get_booking(booking.bookingId, SOMEONE_ELSE)
+        self.assertEqual(ctx.exception.status_code, 404)
+        self.assertEqual(booking_routes.my_bookings(SOMEONE_ELSE), [])
+        self.assertEqual(len(booking_routes.my_bookings(ME)), 1)
+
+
+class AdminLifecycleTest(FlowTestBase):
+    def submitted(self):
+        return self.submit(self.reviewed())
+
+    def test_manual_payment_airline_confirmation_and_ticket(self) -> None:
+        booking = self.submitted()
+        tasks = BackgroundTasks()
+        with self.assertRaises(HTTPException):  # wrong amount
+            admin_routes.confirm_payment(booking.bookingId, ManualPaymentRequest(reference="UPI123456", amount=1), tasks)
+        with self.assertRaises(HTTPException):  # can't confirm with airline before payment
+            admin_routes.confirm_booking(booking.bookingId, AirlineConfirmationRequest(airlinePnr="ABC123"), tasks)
+        paid = admin_routes.confirm_payment(
+            booking.bookingId, ManualPaymentRequest(reference="UPI123456", amount=booking.totalAmount), tasks)
+        self.assertEqual(paid.state, "PAYMENT_CONFIRMED")
+        self.assertEqual(paid.payment.verifiedBy, "admin")
+        other = self.submit(self.reviewed(key="checkout-second-01"))
+        with self.assertRaises(HTTPException):  # same bank reference twice
+            admin_routes.confirm_payment(other.bookingId, ManualPaymentRequest(reference="UPI123456", amount=other.totalAmount), tasks)
+        with self.assertRaises(HTTPException):  # tickets need the airline PNR first
+            admin_routes.issue_ticket(booking.bookingId, TicketIssueRequest(ticketNumbers=["0981234567890"]), tasks)
+        confirmed = admin_routes.confirm_booking(booking.bookingId, AirlineConfirmationRequest(airlinePnr="abc123"), tasks)
+        self.assertEqual((confirmed.state, confirmed.pnr), ("BOOKING_CONFIRMED", "ABC123"))
+        issued = admin_routes.issue_ticket(booking.bookingId, TicketIssueRequest(ticketNumbers=["0981234567890"]), tasks)
+        run_tasks(tasks)
+        self.assertEqual(issued.state, "TICKET_ISSUED")
         ticket = build_ticket_pdf(self.stored(booking.bookingId))
-        self.assertTrue(invoice.startswith(b"%PDF") and ticket.startswith(b"%PDF"))
-        self.assertIn(b"PENDING PAYMENT", invoice)
-        self.assertIn(b"not valid for travel", ticket)
-        self.assertIn(booking.invoiceNumber.encode(), invoice)
+        self.assertIn(b"0981234567890", ticket)
+        self.assertEqual(
+            [h.toStatus for h in issued.statusHistory],
+            ["DRAFT", "PASSENGERS_COMPLETED", "REVIEWED", "PAYMENT_PENDING", "PAYMENT_CONFIRMED", "BOOKING_CONFIRMED", "TICKET_ISSUED"],
+        )
 
-        self.pay(booking)
-        paid_invoice = build_invoice_pdf(self.stored(booking.bookingId))
-        self.assertNotIn(b"PENDING PAYMENT", paid_invoice)
-        self.assertIn(b"(PAID)", paid_invoice)
-        self.assertIn(b"TEST PAYMENT", paid_invoice)
-        self.assertIn(b"ticket being issued", build_ticket_pdf(self.stored(booking.bookingId)))
+    def test_payment_failure_and_cancellation_release_seats(self) -> None:
+        booking = self.submitted()
+        held = self.provider.get_by_id(self.domestic.id).availableSeats
+        failed = admin_routes.fail_payment(booking.bookingId, StateNoteRequest(note="No payment after 24h"), BackgroundTasks())
+        self.assertEqual((failed.state, failed.paymentStatus), ("PAYMENT_FAILED", "failed"))
+        cancelled = admin_routes.cancel_booking(booking.bookingId, admin_routes.CancelRequest(reason="Expired"), BackgroundTasks())
+        self.assertEqual(cancelled.state, "CANCELLED")
+        self.assertEqual(self.provider.get_by_id(self.domestic.id).availableSeats, held + 1)
 
-        admin_routes.confirm_booking(booking.bookingId, BackgroundTasks())
-        self.assertIn(b"CONFIRMED", build_ticket_pdf(self.stored(booking.bookingId)))
 
-    def test_customer_download_routes_need_token(self) -> None:
-        booking = self.create()
-        response = booking_routes.download_ticket(booking.bookingId, token=booking.accessToken)
-        self.assertEqual(response.media_type, "application/pdf")
-        with self.assertRaises(HTTPException):
-            booking_routes.download_invoice(booking.bookingId, token="wrong-token-123")
-
-    # ---- notifications ----------------------------------------------------------
-
-    def test_unconfigured_channels_are_logged_not_claimed(self) -> None:
-        booking = self.create()
+class NotificationTest(FlowTestBase):
+    def test_unconfigured_channels_are_logged_and_never_include_passports(self) -> None:
+        booking = self.draft(flight=self.international, passengers=[self.traveller(
+            passportNumber="Z9988776", nationality="Indian", passportExpiry="2034-01-01")])
+        booking = booking_routes.review_booking(booking.bookingId, BookingReviewRequest(expectedTotal=booking.totalAmount), ME).booking
+        self.submit(booking)
         records = self.stored(booking.bookingId).notifications
         self.assertEqual({r.status for r in records}, {"not_configured"})
-        self.assertEqual(
-            {(r.channel, r.recipient) for r in records},
-            {("email", "tripimetrips@gmail.com"), ("whatsapp", "+919899644177"), ("email", "customer@example.com")},
-        )
-        self.assertTrue(all(booking.bookingId in r.preview for r in records))
+        self.assertEqual({(r.channel, r.recipient) for r in records}, {
+            ("email", "tripimetrips@gmail.com"), ("whatsapp", "+919899640449"), ("email", "traveller@example.com")})
+        for record in records:
+            self.assertIn(booking.bookingId, record.preview)
+            self.assertNotIn("Z9988776", record.preview)
+            self.assertIn("NOT confirmed" if record.audience == "customer" else "verify availability", record.preview)
 
-    def test_failed_attempts_notify_separately_and_retry_updates_status(self) -> None:
-        booking = self.create()
-        self.pay(booking, fail=True)
-        self.pay(booking, fail=True)
-        failed = [r for r in self.stored(booking.bookingId).notifications if r.event == "payment_failed"]
-        self.assertEqual(len(failed), 6, "two attempts × three recipients")
+    def test_email_success_and_failure_are_recorded_honestly(self) -> None:
+        with mock.patch.object(notification_service, "send_email", return_value=EmailResult("sent", "accepted")):
+            ok = self.submit(self.reviewed())
+        emails = [r for r in self.stored(ok.bookingId).notifications if r.channel == "email"]
+        self.assertEqual({r.status for r in emails}, {"sent"})
+        whatsapp = [r for r in self.stored(ok.bookingId).notifications if r.channel == "whatsapp"]
+        self.assertEqual({r.status for r in whatsapp}, {"not_configured"}, "no WhatsApp API configured")
 
-        with mock.patch.object(notification_service, "send_email", return_value=EmailResult("sent", "ok")), \
-                mock.patch.object(notification_service, "send_whatsapp_text", return_value=SendResult("sent", "callmebot", "ok")):
-            admin_routes.retry_notifications(booking.bookingId)
-        records = self.stored(booking.bookingId).notifications
-        self.assertEqual({r.status for r in records}, {"sent"})
-        self.assertEqual(len(records), 9, "retries replace records instead of duplicating them")
-
-    def test_smtp_failure_is_reported_as_failed(self) -> None:
         with mock.patch.object(notification_service, "send_email", return_value=EmailResult("failed", "SMTP error: boom")):
-            booking = self.create()
-        emails = [r for r in self.stored(booking.bookingId).notifications if r.channel == "email"]
+            bad = self.submit(self.reviewed(key="checkout-fail-0001"))
+        emails = [r for r in self.stored(bad.bookingId).notifications if r.channel == "email"]
         self.assertEqual({r.status for r in emails}, {"failed"})
-        self.assertIn("boom", emails[0].detail)
 
 
-class LegacyBookingMigrationTest(unittest.TestCase):
-    def test_old_records_get_split_statuses(self) -> None:
+class LegacyMigrationTest(unittest.TestCase):
+    def test_old_mock_bookings_are_marked_and_lose_fake_pnr(self) -> None:
         from app.models.booking import Booking
 
         raw = {
             "bookingId": "BK-20260804-10001", "pnr": "ABC123", "status": "CONFIRMED",
-            "createdAt": "2026-08-04T05:00:00+00:00", "confirmedAt": "2026-08-04T06:00:00+00:00",
-            "flight": {"id": "FL-20260820-DEL-BOM-001", "airline": {"name": "IndiGo", "code": "6E"},
-                       "flightNumber": "6E 1", "origin": {"city": "Delhi", "airport": "DEL", "code": "DEL"},
+            "createdAt": "2026-08-04T05:00:00+00:00", "accessToken": "old-token",
+            "flight": {"id": "FL-1", "airline": {"name": "IndiGo", "code": "6E"}, "flightNumber": "6E 1",
+                       "origin": {"city": "Delhi", "airport": "DEL", "code": "DEL"},
                        "destination": {"city": "Mumbai", "airport": "BOM", "code": "BOM"},
                        "departureDate": "2026-08-20", "departureTime": "06:00", "arrivalDate": "2026-08-20",
                        "arrivalTime": "08:00", "durationMinutes": 120, "aircraft": "A320",
                        "fare": {"baseFare": 4000, "taxes": 800, "totalFare": 4800}, "availableSeats": 9,
                        "baggage": {"cabin": "7 KG", "checkIn": "15 KG"}, "refundable": False},
             "passengers": [{"title": "Mr", "firstName": "A", "lastName": "B", "gender": "Male", "dateOfBirth": "1990-01-01"}],
-            "contact": {"email": "a@b.com", "phone": "9999999999"}, "passengerCount": 1, "seats": [],
-            "fare": {"baseFare": 4000, "taxes": 800, "totalFare": 4800}, "seatCharges": 0, "totalAmount": 4800,
-            "payment": {"paymentId": "PAY-1", "transactionId": "TXN-1", "method": "upi", "amount": 4800,
-                        "status": "SUCCESS", "paidAt": "2026-08-04T05:00:00+00:00"},
+            "contact": {"email": "a@b.com", "phone": "9999999999"}, "passengerCount": 1,
+            "fare": {"baseFare": 4000, "taxes": 800, "totalFare": 4800}, "totalAmount": 4800,
         }
         booking = Booking.model_validate(raw)
-        self.assertEqual((booking.paymentStatus, booking.bookingStatus), ("paid", "confirmed"))
-        self.assertEqual(booking.status, "CONFIRMED")
-        self.assertEqual(booking.invoiceNumber, "INV-BK-20260804-10001")
-        self.assertEqual([h.toStatus for h in booking.statusHistory], ["pending", "paid", "confirmed"])
+        self.assertTrue(booking.legacy)
+        self.assertEqual(booking.state, "BOOKING_CONFIRMED")
+        self.assertIsNone(booking.pnr)
+        self.assertNotIn("accessToken", booking.model_dump())
+
+
+class RateLimitTest(unittest.TestCase):
+    def test_submissions_are_rate_limited(self) -> None:
+        limiter = booking_routes.IpRateLimiter(max_calls=2, window_seconds=60)
+        limiter.check("cust_x")
+        limiter.check("cust_x")
+        with self.assertRaises(HTTPException) as ctx:
+            limiter.check("cust_x")
+        self.assertEqual(ctx.exception.status_code, 429)
 
 
 if __name__ == "__main__":
