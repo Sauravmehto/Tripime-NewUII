@@ -9,7 +9,7 @@ Verdict as of 2026-10-17: **Not ready for real customers or real money.** Ready 
 - [x] Separate customer-session secret
 - [x] Admin login rate limit/lockout (REDIS_URL needed only for multi-instance)
 - [x] Admin token out of localStorage (HttpOnly cookie + CSRF)
-- [ ] CSP set
+- [ ] CSP: **Report-Only is implemented** and locally validated (no violations over 17 pages, also when built in enforce mode); NOT enforced in the shipped default and NOT validated on staging — see `docs/STAGING_VALIDATION_PLAN.md`. Baseline headers (nosniff, X-Frame-Options, Referrer-Policy, Permissions-Policy) are enforced.
 - [ ] `CUSTOMER_OTP_DEV_CODE` unset and `APP_ENV=production`
 - [ ] CORS restricted to real domains
 - [ ] Cookies: `Secure`, `SameSite` verified across Netlify↔Render

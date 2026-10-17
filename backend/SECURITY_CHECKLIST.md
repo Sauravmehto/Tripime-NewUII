@@ -41,7 +41,7 @@ This doc describes exactly what exists today and what to change before launch.
 
 ## Recommended hardening (do soon after launch)
 
-- [x] ~~Move the admin token out of `localStorage`~~ Done: HttpOnly cookie + CSRF. Still recommended: a strong Content-Security-Policy. (old note: or at
+- [x] ~~Move the admin token out of `localStorage`~~ Done: HttpOnly cookie + CSRF. CSP: a Report-Only policy plus baseline headers now ship from `frontend/next.config.ts` (locally validated; **enforcement and staging validation pending** — see `docs/STAGING_VALIDATION_PLAN.md`). Cookie auth and CSRF do not depend on CSP, and CSP does not replace CORS. (old note: or at
       least accept the XSS-token-theft risk knowingly and add a strong
       Content-Security-Policy to reduce it.
 - [ ] Add per-admin accounts (instead of one shared username/password) once more than

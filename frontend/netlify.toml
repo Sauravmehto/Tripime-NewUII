@@ -4,6 +4,8 @@
 #   Base directory = frontend
 #   Env (required): NEXT_PUBLIC_API_BASE_URL = https://YOUR-API.onrender.com
 #   (no trailing slash; rebuild after changing it)
+#   Optional: CSP_MODE=enforce turns the Content-Security-Policy from Report-Only into enforced.
+#   Only set it after docs/STAGING_VALIDATION_PLAN.md section 1 passes (read in next.config.ts).
 
 [build]
   command = "npm run build"

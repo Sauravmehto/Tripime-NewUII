@@ -9,7 +9,7 @@ Effort: S ≤ 1 day · M 2–5 days · L > 1 week. Nothing here is started; awai
 | 0.1 Commit current working tree in logical commits; tag `v0.1-request-flow` | ~70 uncommitted files | — | repo | Clean `git status`; tests/lint/build green | S |
 | 0.2 ✅ DONE — Fail startup in production on insecure defaults; separate `CUSTOMER_JWT_SECRET` | Forgeable sessions | — | `config.py`, `admin_auth.py`, `customer_auth_service.py` | App refuses `APP_ENV=production` with default secrets; tests | S |
 | 0.3 ✅ DONE — Admin login throttling + lockout | Brute force | — | `routes/admin.py`, `rate_limit.py` | 6th failed attempt in window → 429; test | S |
-| 0.4 ✅ DONE (cookie+CSRF); CSP still open — Move admin token to HttpOnly cookie; add CSP headers | XSS exposure | 0.2 | `admin-auth.ts`, `lib/api/client.ts`, `netlify.toml` | No token in localStorage; admin smoke passes | M |
+| 0.4 ✅ DONE (cookie+CSRF); CSP 🟡 Report-Only implemented, enforcement awaits staging validation — Move admin token to HttpOnly cookie; add CSP headers | XSS exposure | 0.2 | `admin-auth.ts`, `lib/api/client.ts`, `netlify.toml` | No token in localStorage; admin smoke passes | M |
 | 0.5 🟡 WORKFLOW WRITTEN, not yet run on GitHub (runs `unittest` — the repo has no pytest — plus tsc, eslint, build; verified locally in a clean clone) — Add GitHub Actions CI | No regression net | — | `.github/workflows/ci.yml` | CI green on PR | S |
 
 ## Phase 1 — Real data layer (P0)

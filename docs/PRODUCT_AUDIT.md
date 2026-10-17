@@ -61,7 +61,7 @@ Status: Complete · Partial · Missing · Broken · Unverified. "V" = verified b
 
 ## 4a. Update — 2026-10-17, admin authentication hardening
 
-Findings 1, 2 and 8 above are addressed: production refuses weak/default/identical secrets; customer and admin sessions use separate keys; admin login is throttled with expiring progressive lockouts (per IP and per username, spoof-resistant client IP); the admin session is an HttpOnly cookie with CSRF protection and no token in localStorage. Backend tests: 61 passing. Still open: shared store is optional (`REDIS_URL`) and only exercised against a fake Redis; no per-admin accounts, 2FA, CSP or admin audit log; admin login limits are not tested against a real proxy chain.
+Findings 1, 2 and 8 above are addressed: production refuses weak/default/identical secrets; customer and admin sessions use separate keys; admin login is throttled with expiring progressive lockouts (per IP and per username, spoof-resistant client IP); the admin session is an HttpOnly cookie with CSRF protection and no token in localStorage. Backend tests: 61 passing. CSP update: Report-Only CSP + baseline headers added (not enforced, not staging-validated; known exceptions `unsafe-inline` for scripts/styles and `https:` for images/media). Still open: shared store is optional (`REDIS_URL`) and only exercised against a fake Redis; no per-admin accounts, 2FA, CSP or admin audit log; admin login limits are not tested against a real proxy chain.
 
 ## 5. What is solid
 
