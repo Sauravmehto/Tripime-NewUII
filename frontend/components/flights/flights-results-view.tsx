@@ -2,7 +2,18 @@
 
 import { Fragment, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowRight, CircleCheck, PlaneLanding, PlaneTakeoff, SearchX, SlidersHorizontal, X } from "lucide-react";
+import {
+  ArrowRight,
+  ArrowUpDown,
+  Check,
+  CircleCheck,
+  PlaneLanding,
+  PlaneTakeoff,
+  SearchX,
+  SlidersHorizontal,
+  X,
+} from "lucide-react";
+import { cn } from "@/lib/cn";
 import { searchFlights } from "@/lib/api/flights";
 import { getErrorMessage } from "@/lib/api/client";
 import { useBooking } from "@/context/booking-provider";
@@ -24,6 +35,7 @@ import { InventoryNotice } from "@/components/marketing/inventory-notice";
 import { FaqList } from "@/components/marketing/faq-list";
 import {
   EMPTY_FILTERS,
+  SORT_OPTIONS,
   applyFilters,
   countActiveFilters,
   flightFacets,
@@ -32,7 +44,6 @@ import {
   type SortKey,
 } from "@/lib/flights/flight-filters";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/card";
 import { addDays } from "@/lib/airports";
 import { friendlyDate, monthOf, nightsBetween, shiftMonth, todayISO } from "@/lib/flights/calendar";
 import { useFareCalendar } from "@/lib/flights/use-fare-calendar";
@@ -44,7 +55,8 @@ import {
   toQueryString,
   travellersLabel,
 } from "@/lib/flights/search-params";
-import { formatINR } from "@/lib/format";
+import { formatDuration, formatINR } from "@/lib/format";
+import { clock12, minutesOf } from "@/lib/flights/segments";
 import type { Flight, FlightSearchResponse, SearchParams } from "@/types";
 
 const FLIGHT_FAQS = [
@@ -97,6 +109,7 @@ export function FlightsResultsView() {
   const [sort, setSort] = useState<SortKey>("recommended");
   const [filters, setFilters] = useState<FlightFilters>(EMPTY_FILTERS);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [sortSheetOpen, setSortSheetOpen] = useState(false);
   const [fareHint, setFareHint] = useState<NeighborFareHint | null>(null);
 
   function go(next: SearchParams) {
@@ -180,12 +193,22 @@ export function FlightsResultsView() {
     };
   }, [loading, step, result, search, roundTrip]);
 
+  const sheetOpen = drawerOpen || sortSheetOpen;
   useEffect(() => {
-    document.body.style.overflow = drawerOpen ? "hidden" : "";
+    if (!sheetOpen) return;
+    document.body.style.overflow = "hidden";
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        setDrawerOpen(false);
+        setSortSheetOpen(false);
+      }
+    }
+    window.addEventListener("keydown", onKey);
     return () => {
       document.body.style.overflow = "";
+      window.removeEventListener("keydown", onKey);
     };
-  }, [drawerOpen]);
+  }, [sheetOpen]);
 
   const facets = useMemo(() => flightFacets(flights), [flights]);
   const airlineCodes = useMemo(
@@ -197,8 +220,24 @@ export function FlightsResultsView() {
     () => sortFlights(applyFilters(flights, filters), sort),
     [flights, filters, sort],
   );
-  const cheapestId = flights.length ? sortFlights(flights, "cheapest")[0].id : undefined;
-  const fastestId = flights.length > 1 ? sortFlights(flights, "shortest")[0].id : undefined;
+  const cheapestFlight = flights.length ? sortFlights(flights, "cheapest")[0] : undefined;
+  const fastestFlight = flights.length > 1 ? sortFlights(flights, "shortest")[0] : undefined;
+  const cheapestId = cheapestFlight?.id;
+  const fastestId = fastestFlight?.id;
+  const sortInsights = useMemo(() => {
+    if (!visible.length) return {};
+    const times = visible.map((f) => minutesOf(f.departureTime));
+    const cheapestVisible = Math.min(...visible.map((f) => f.fare.totalFare));
+    const fastestVisible = Math.min(...visible.map((f) => f.durationMinutes));
+    return {
+      recommended: "Best value",
+      cheapest: formatINR(cheapestVisible),
+      shortest: formatDuration(fastestVisible),
+      earliest: clock12(Math.min(...times)),
+      latest: clock12(Math.max(...times)),
+    } satisfies Record<SortKey, string>;
+  }, [visible]);
+  const sortLabel = SORT_OPTIONS.find((o) => o.id === sort)?.label ?? "Sort";
 
   const legFrom = step === "outbound" ? search.origin : search.destination;
   const legTo = step === "outbound" ? search.destination : search.origin;
@@ -232,18 +271,16 @@ export function FlightsResultsView() {
     }
   }
 
-  const sidebar = (
-    <FlightFiltersSidebar
-      filters={filters}
-      onChange={setFilters}
-      facets={facets}
-      fromLabel={legFrom}
-      toLabel={legTo}
-      airlineCodes={airlineCodes}
-      activeCount={activeCount}
-      onClear={() => setFilters(EMPTY_FILTERS)}
-    />
-  );
+  const sidebarProps = {
+    filters,
+    onChange: setFilters,
+    facets,
+    fromLabel: legFrom,
+    toLabel: legTo,
+    airlineCodes,
+    activeCount,
+    onClear: () => setFilters(EMPTY_FILTERS),
+  };
 
   const otherCabins = CABIN_CLASSES.filter((c) => c !== search.cabin);
 
@@ -277,33 +314,51 @@ export function FlightsResultsView() {
       )}
 
       <div className="grid gap-5 lg:grid-cols-[268px_minmax(0,1fr)] lg:items-start">
-        <aside className="hidden lg:sticky lg:top-20 lg:block">{sidebar}</aside>
+        <aside className="no-scrollbar hidden lg:sticky lg:top-20 lg:block lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto lg:pb-2">
+          <FlightFiltersSidebar {...sidebarProps} />
+        </aside>
 
         <div className="space-y-4">
           {loading ? (
-            <p className="flex items-center gap-1.5 px-1 text-sm text-ink-muted">
-              {step === "outbound" ? (
-                <PlaneTakeoff className="size-4 text-primary-600" aria-hidden />
-              ) : (
-                <PlaneLanding className="size-4 text-primary-600" aria-hidden />
-              )}
-              Searching flights…
+            <p className="flex items-center gap-2 px-1 text-sm text-ink-muted" role="status">
+              <span className="relative flex size-6 items-center justify-center rounded-full bg-primary-50">
+                <span className="absolute inset-0 animate-ping rounded-full bg-primary-200/60 motion-reduce:hidden" aria-hidden />
+                {step === "outbound" ? (
+                  <PlaneTakeoff className="relative size-3.5 text-primary-600" aria-hidden />
+                ) : (
+                  <PlaneLanding className="relative size-3.5 text-primary-600" aria-hidden />
+                )}
+              </span>
+              Finding the best {legFrom} → {legTo} fares…
             </p>
           ) : (
-            <FlightSortBar
-              value={sort}
-              onChange={setSort}
-              shown={visible.length}
-              total={flights.length}
-              label={`${roundTrip ? (step === "outbound" ? "Departing " : "Return ") : ""}${legFrom} → ${legTo} · ${friendlyDate(legDate)} · ${travellersLabel(search)} · ${search.cabin}`}
-            />
+            flights.length > 0 && (
+              <div className="hidden sm:block">
+                <FlightSortBar
+                  value={sort}
+                  onChange={setSort}
+                  shown={visible.length}
+                  total={flights.length}
+                  insights={sortInsights}
+                  label={`${roundTrip ? (step === "outbound" ? "Departing " : "Return ") : ""}${legFrom} → ${legTo} · ${friendlyDate(legDate)} · ${travellersLabel(search)} · ${search.cabin}`}
+                />
+              </div>
+            )
+          )}
+
+          {!loading && flights.length > 0 && (
+            <p className="px-1 text-sm text-ink-muted sm:hidden" aria-live="polite">
+              <span className="font-bold text-ink">{visible.length}</span>
+              {visible.length !== flights.length && <> of {flights.length}</>} flights ·{" "}
+              <span className="font-semibold text-ink">{sortLabel}</span>
+            </p>
           )}
 
           {loading && (
-            <div className="space-y-4">
-              <Skeleton className="h-36" />
-              <Skeleton className="h-36" />
-              <Skeleton className="h-36" />
+            <div className="space-y-3" aria-hidden>
+              {[0, 1, 2].map((i) => (
+                <FlightCardSkeleton key={i} />
+              ))}
             </div>
           )}
 
@@ -382,56 +437,103 @@ export function FlightsResultsView() {
         </div>
       </div>
 
-      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-neutral-200 bg-white/95 pb-[env(safe-area-inset-bottom)] shadow-elevated backdrop-blur lg:hidden">
-        <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3">
-          <div className="min-w-0 flex-1">
-            <p className="text-xs text-ink-muted">
-              {loading ? "Searching…" : `${visible.length} flights`}
-              {roundTrip ? ` · step ${step === "outbound" ? 1 : 2} of 2` : ""}
-            </p>
-            <p className="truncate text-sm font-semibold text-ink">
+      <div
+        data-mobile-bottom-bar
+        className="fixed inset-x-0 bottom-0 z-40 border-t border-neutral-200/80 bg-white/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_24px_-12px_rgb(16_16_16/0.15)] backdrop-blur-md lg:hidden"
+      >
+        <div className="mx-auto flex max-w-3xl items-center gap-2 px-3 py-2.5">
+          <div className="min-w-0 flex-1 pl-1">
+            <p className="truncate text-sm font-bold text-ink">
               {legFrom} → {legTo}
             </p>
+            <p className="truncate text-[11px] text-ink-muted">
+              {loading ? "Searching…" : `${visible.length} flight${visible.length === 1 ? "" : "s"}`}
+              {!loading && cheapestFlight ? ` · from ${formatINR(cheapestFlight.fare.totalFare)}` : ""}
+              {roundTrip ? ` · step ${step === "outbound" ? 1 : 2} of 2` : ""}
+            </p>
           </div>
-          <Button size="lg" className="h-12 shrink-0" onClick={() => setDrawerOpen(true)}>
+          <BarButton onClick={() => setSortSheetOpen(true)} disabled={loading || flights.length === 0} label={`Sort: ${sortLabel}`}>
+            <ArrowUpDown className="size-4" aria-hidden />
+            Sort
+          </BarButton>
+          <BarButton onClick={() => setDrawerOpen(true)} disabled={loading || flights.length === 0} primary label="Filters">
             <SlidersHorizontal className="size-4" aria-hidden />
-            Filters
+            Filter
             {activeCount > 0 && (
-              <span className="rounded-full bg-white/20 px-1.5 text-xs">{activeCount}</span>
+              <span className="flex size-5 items-center justify-center rounded-full bg-white text-[10px] font-bold text-primary-700">
+                {activeCount}
+              </span>
             )}
-          </Button>
+          </BarButton>
         </div>
       </div>
 
       {drawerOpen && (
-        <div className="fixed inset-0 z-50 flex flex-col justify-end lg:hidden">
-          <button
-            type="button"
-            aria-label="Close filters"
-            onClick={() => setDrawerOpen(false)}
-            className="absolute inset-0 bg-ink/50"
-          />
-          <div className="relative max-h-[85vh] overflow-y-auto rounded-t-3xl bg-neutral-50 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
-            <div className="mb-3 flex items-center justify-between">
-              <p className="flex items-center gap-2 text-base font-bold text-ink">
-                <PlaneTakeoff className="size-4 text-primary-600" aria-hidden />
-                Filter flights
-              </p>
+        <BottomSheet title="Filter flights" onClose={() => setDrawerOpen(false)}
+          action={
+            activeCount > 0 ? (
               <button
                 type="button"
-                onClick={() => setDrawerOpen(false)}
-                aria-label="Close"
-                className="flex size-9 items-center justify-center rounded-xl border border-neutral-200 bg-white"
+                onClick={() => setFilters(EMPTY_FILTERS)}
+                className="rounded-md text-xs font-semibold text-primary-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
               >
-                <X className="size-4" />
+                Clear all ({activeCount})
               </button>
-            </div>
-            {sidebar}
-            <Button size="lg" className="mt-4 w-full" onClick={() => setDrawerOpen(false)}>
+            ) : null
+          }
+          footer={
+            <Button size="lg" className="w-full" onClick={() => setDrawerOpen(false)}>
               Show {visible.length} flight{visible.length === 1 ? "" : "s"}
             </Button>
-          </div>
-        </div>
+          }
+        >
+          <FlightFiltersSidebar {...sidebarProps} hideHeader />
+        </BottomSheet>
+      )}
+
+      {sortSheetOpen && (
+        <BottomSheet title="Sort flights" onClose={() => setSortSheetOpen(false)}>
+          <ul role="radiogroup" aria-label="Sort flights by" className="space-y-1.5">
+            {SORT_OPTIONS.map((option) => {
+              const active = option.id === sort;
+              return (
+                <li key={option.id}>
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={active}
+                    onClick={() => {
+                      setSort(option.id);
+                      setSortSheetOpen(false);
+                    }}
+                    className={cn(
+                      "flex w-full items-center justify-between gap-3 rounded-2xl border px-4 py-3.5 text-left transition",
+                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500",
+                      active ? "border-primary-500 bg-primary-50" : "border-neutral-200 bg-white hover:border-primary-300",
+                    )}
+                  >
+                    <span>
+                      <span className="block text-sm font-bold text-ink">{option.label}</span>
+                      {sortInsights[option.id as keyof typeof sortInsights] && (
+                        <span className="block text-xs text-ink-muted">
+                          {sortInsights[option.id as keyof typeof sortInsights]}
+                        </span>
+                      )}
+                    </span>
+                    <span
+                      className={cn(
+                        "flex size-5 shrink-0 items-center justify-center rounded-full border-2",
+                        active ? "border-primary-600 bg-primary-600 text-white" : "border-neutral-300",
+                      )}
+                    >
+                      {active && <Check className="size-3" aria-hidden />}
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </BottomSheet>
       )}
     </Container>
   );
@@ -523,6 +625,121 @@ function StepNumber({ n, active }: { n: number; active: boolean }) {
     >
       {n}
     </span>
+  );
+}
+
+function BarButton({
+  children,
+  onClick,
+  disabled,
+  primary,
+  label,
+}: {
+  children: ReactNode;
+  onClick: () => void;
+  disabled?: boolean;
+  primary?: boolean;
+  label: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={label}
+      className={cn(
+        "inline-flex h-11 shrink-0 items-center gap-1.5 rounded-xl px-3.5 text-sm font-bold transition active:scale-[0.98]",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 disabled:opacity-50",
+        primary
+          ? "bg-primary-600 text-white shadow-medium hover:bg-primary-700"
+          : "border border-neutral-200 bg-white text-ink hover:bg-neutral-50",
+      )}
+    >
+      {children}
+    </button>
+  );
+}
+
+/** Mobile bottom sheet with a sticky header and optional sticky footer. */
+function BottomSheet({
+  title,
+  onClose,
+  action,
+  footer,
+  children,
+}: {
+  title: string;
+  onClose: () => void;
+  action?: ReactNode;
+  footer?: ReactNode;
+  children: ReactNode;
+}) {
+  const titleId = `sheet-${title.replace(/\s+/g, "-").toLowerCase()}`;
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col justify-end lg:hidden" role="dialog" aria-modal="true" aria-labelledby={titleId}>
+      <button
+        type="button"
+        aria-label="Close"
+        tabIndex={-1}
+        onClick={onClose}
+        className="animate-overlay-in absolute inset-0 bg-ink/50 backdrop-blur-[2px]"
+      />
+      <div className="animate-sheet-up relative flex max-h-[88vh] flex-col rounded-t-3xl bg-neutral-50 shadow-elevated">
+        <div className="flex justify-center pt-2.5" aria-hidden>
+          <span className="h-1 w-10 rounded-full bg-neutral-300" />
+        </div>
+        <div className="flex items-center justify-between gap-3 px-4 pb-3 pt-2">
+          <p id={titleId} className="text-base font-bold text-ink">
+            {title}
+          </p>
+          <div className="flex items-center gap-3">
+            {action}
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label={`Close ${title.toLowerCase()}`}
+              autoFocus
+              className="flex size-9 items-center justify-center rounded-xl border border-neutral-200 bg-white text-ink transition hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+            >
+              <X className="size-4" aria-hidden />
+            </button>
+          </div>
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-4">{children}</div>
+        {footer && (
+          <div className="border-t border-neutral-200 bg-white px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">{footer}</div>
+        )}
+        {!footer && <div className="pb-[env(safe-area-inset-bottom)]" />}
+      </div>
+    </div>
+  );
+}
+
+function FlightCardSkeleton() {
+  return (
+    <div className="overflow-hidden rounded-2xl border border-neutral-200/80 bg-white shadow-soft">
+      <div className="grid md:grid-cols-[minmax(0,1fr)_200px]">
+        <div className="space-y-4 p-5">
+          <div className="flex items-center gap-3">
+            <span className="size-11 animate-pulse rounded-xl bg-neutral-100" />
+            <span className="space-y-1.5">
+              <span className="block h-3.5 w-28 animate-pulse rounded bg-neutral-100" />
+              <span className="block h-3 w-16 animate-pulse rounded bg-neutral-100" />
+            </span>
+          </div>
+          <div className="flex items-center gap-4">
+            <span className="h-7 w-16 animate-pulse rounded bg-neutral-100" />
+            <span className="h-px flex-1 bg-neutral-100" />
+            <span className="h-7 w-16 animate-pulse rounded bg-neutral-100" />
+          </div>
+          <span className="block h-3 w-40 animate-pulse rounded bg-neutral-100" />
+        </div>
+        <div className="flex items-center justify-between gap-3 border-t border-neutral-100 bg-neutral-50 p-5 md:flex-col md:items-end md:justify-center md:border-l md:border-t-0">
+          <span className="h-7 w-24 animate-pulse rounded bg-neutral-200/70" />
+          <span className="h-11 w-32 animate-pulse rounded-xl bg-neutral-200/70" />
+        </div>
+      </div>
+    </div>
   );
 }
 

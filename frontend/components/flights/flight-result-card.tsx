@@ -5,10 +5,15 @@ import {
   ChevronDown,
   ChevronRight,
   Clock,
+  Luggage,
   MessageCircle,
   Phone,
+  Plane,
   PlaneTakeoff,
+  ShieldCheck,
+  ShieldOff,
   Sparkles,
+  Tag as TagIcon,
   Timer,
 } from "lucide-react";
 import { AirlineMark } from "./airline-mark";
@@ -23,9 +28,9 @@ import type { Airport, Flight, TravellerCounts } from "@/types";
 type DetailTab = "flight" | "baggage" | "fare" | "cancellation";
 
 const DETAIL_TABS: { id: DetailTab; label: string }[] = [
-  { id: "flight", label: "Flight" },
+  { id: "flight", label: "Itinerary" },
   { id: "baggage", label: "Baggage" },
-  { id: "fare", label: "Fare" },
+  { id: "fare", label: "Fare breakup" },
   { id: "cancellation", label: "Cancellation" },
 ];
 
@@ -53,133 +58,167 @@ export function FlightResultCard({
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<DetailTab>("flight");
   const detailId = useId();
+  const tabsId = useId();
   const segments = segmentsOf(flight);
   const stops = stopsOf(flight);
   const discount = flight.fare.discount ?? 0;
+  const original = flight.fare.originalFare ?? flight.fare.totalFare + discount;
   const dayShift = nightsBetween(flight.departureDate, flight.arrivalDate);
   const via = (flight.layovers ?? []).map((l) => l.airport.code).join(", ");
+  const fewSeats = flight.availableSeats > 0 && flight.availableSeats <= 5;
 
   return (
     <article
+      aria-label={`${flight.airline.name} ${flight.flightNumber}, ${flight.departureTime} to ${flight.arrivalTime}, ${formatINR(flight.fare.totalFare)}`}
       className={cn(
-        "animate-fade-up relative rounded-2xl border bg-white shadow-soft transition hover:shadow-medium",
-        open ? "border-primary-400" : "border-neutral-200 hover:border-primary-200",
+        "animate-fade-up group/card relative overflow-hidden rounded-2xl border bg-white shadow-soft transition duration-300",
+        "hover:-translate-y-0.5 hover:shadow-elevated motion-reduce:hover:translate-y-0",
+        open ? "border-primary-300 ring-4 ring-primary-500/5" : "border-neutral-200/80 hover:border-primary-200",
       )}
       style={{ animationDelay: `${Math.min(index, 6) * 45}ms` }}
     >
-      {discount > 0 && (
-        <span className="absolute -top-2 right-3 z-[1] rounded-full bg-primary-600 px-2 py-0.5 text-[10px] font-extrabold tracking-wide text-white shadow-soft">
-          SALE
-        </span>
+      {/* A thin accent rail marks the stand-out results. */}
+      {(cheapest || fastest) && (
+        <span
+          aria-hidden
+          className={cn("absolute inset-y-0 left-0 w-1", cheapest ? "bg-success-500" : "bg-primary-500")}
+        />
       )}
 
-      <div className="grid sm:grid-cols-[minmax(0,1fr)_170px]">
-        <div className="min-w-0 p-4 pb-3">
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-            <div className="flex flex-wrap items-center gap-1.5">
-              <Tag tone={discount > 0 ? "violet" : "primary"}>{discount > 0 ? "Discounted fare" : "Regular deal"}</Tag>
-              {cheapest && (
-                <Tag tone="success">
-                  <Sparkles className="size-3" aria-hidden /> Cheapest
-                </Tag>
-              )}
-              {fastest && (
-                <Tag tone="primary">
-                  <Clock className="size-3" aria-hidden /> Fastest
-                </Tag>
-              )}
-            </div>
-            {discount > 0 && <Tag tone="accent">{formatINR(discount)} already discounted</Tag>}
-          </div>
-
-          <div className="grid gap-3 sm:grid-cols-[minmax(150px,0.9fr)_minmax(0,1.8fr)] sm:items-center sm:gap-4">
-            <div className="flex min-w-0 items-center gap-2.5">
-              <AirlineMark code={flight.airline.code} name={flight.airline.name} />
+      <div className="grid md:grid-cols-[minmax(0,1fr)_200px]">
+        <div className="min-w-0 p-4 sm:p-5">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-3">
+              <AirlineMark code={flight.airline.code} name={flight.airline.name} size="lg" className="rounded-xl shadow-soft" />
               <div className="min-w-0">
-                <p className="truncate text-sm font-semibold text-ink">{flight.airline.name}</p>
-                <p className="truncate text-[11px] text-ink-muted">{flight.flightNumber}</p>
+                <p className="truncate text-[15px] font-bold text-ink">{flight.airline.name}</p>
+                <p className="truncate text-xs text-ink-muted">
+                  {flight.flightNumber}
+                  {segments.length === 1 && flight.aircraft ? <span className="text-ink-subtle"> · {flight.aircraft}</span> : null}
+                </p>
               </div>
             </div>
+            <div className="flex shrink-0 flex-wrap justify-end gap-1.5">
+              {cheapest && (
+                <Badge tone="success">
+                  <Sparkles className="size-3" aria-hidden /> Cheapest
+                </Badge>
+              )}
+              {fastest && (
+                <Badge tone="primary">
+                  <Clock className="size-3" aria-hidden /> Fastest
+                </Badge>
+              )}
+              {discount > 0 && (
+                <Badge tone="accent">
+                  <TagIcon className="size-3" aria-hidden /> Deal
+                </Badge>
+              )}
+            </div>
+          </div>
 
-            <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2">
-              <Endpoint time={flight.departureTime} airport={flight.origin} />
-              <div className="flex flex-col items-center px-1 text-center" title={via ? `Via ${via}` : undefined}>
-                <p className="text-[11px] font-semibold text-ink-muted">{formatDuration(flight.durationMinutes)}</p>
-                <div className="relative my-1.5 flex w-20 items-center justify-center sm:w-28" aria-hidden>
-                  <div className="h-px w-full bg-neutral-300" />
+          <div className="mt-4 grid grid-cols-[minmax(0,1fr)_minmax(96px,1.3fr)_minmax(0,1fr)] items-center gap-2 sm:gap-4">
+            <Endpoint time={flight.departureTime} airport={flight.origin} />
+
+            <div className="flex flex-col items-center text-center" title={via ? `Via ${via}` : undefined}>
+              <p className="text-[11px] font-semibold text-ink-muted">{formatDuration(flight.durationMinutes)}</p>
+              <div className="relative my-1.5 flex w-full items-center" aria-hidden>
+                <span className="size-1.5 shrink-0 rounded-full border border-neutral-300 bg-white" />
+                <span className="relative h-px flex-1 bg-linear-to-r from-neutral-300 via-primary-300 to-neutral-300">
                   {Array.from({ length: stops }, (_, i) => (
                     <span
                       key={i}
-                      className="absolute size-2 rounded-full border-2 border-white bg-accent"
-                      style={{ left: `calc(${((i + 1) / (stops + 1)) * 100}% - 4px)` }}
+                      className="absolute top-1/2 size-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-accent ring-2 ring-white"
+                      style={{ left: `${((i + 1) / (stops + 1)) * 100}%` }}
                     />
                   ))}
-                </div>
-                <p
-                  className={cn(
-                    "text-[11px] font-semibold",
-                    stops ? "text-ink-muted" : "uppercase tracking-wide text-success-700",
-                  )}
-                >
-                  {stopsLabel(stops)}
-                  {via && <span className="text-ink-subtle"> · {via}</span>}
-                </p>
+                </span>
+                <Plane className="size-3.5 shrink-0 rotate-45 text-primary-600 transition-transform duration-500 group-hover/card:translate-x-0.5" />
               </div>
-              <Endpoint time={flight.arrivalTime} airport={flight.destination} dayShift={dayShift} alignRight />
+              <p
+                className={cn(
+                  "text-[11px] font-semibold",
+                  stops ? "text-accent-dark" : "text-success-700",
+                )}
+              >
+                {stopsLabel(stops)}
+                {via && <span className="font-medium text-ink-subtle"> · {via}</span>}
+              </p>
             </div>
+
+            <Endpoint time={flight.arrivalTime} airport={flight.destination} dayShift={dayShift} alignRight />
           </div>
 
-          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-neutral-100 pt-2.5">
-            <p className="flex items-center gap-3 text-[11px] font-semibold">
-              <span className={flight.refundable ? "text-success-700" : "text-danger-700"}>
-                {flight.refundable ? "Refundable" : "Non-Refundable"}
-              </span>
-              {flight.availableSeats <= 5 && (
-                <span className="text-accent">Only {flight.availableSeats} seats left</span>
+          <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-dashed border-neutral-200 pt-3 text-[11px] font-semibold">
+            <span className={cn("inline-flex items-center gap-1", flight.refundable ? "text-success-700" : "text-ink-muted")}>
+              {flight.refundable ? (
+                <ShieldCheck className="size-3.5" aria-hidden />
+              ) : (
+                <ShieldOff className="size-3.5" aria-hidden />
               )}
-            </p>
+              {flight.refundable ? "Refundable" : "Non-refundable"}
+            </span>
+            {flight.baggage?.checkIn && (
+              <span className="inline-flex items-center gap-1 text-ink-muted">
+                <Luggage className="size-3.5" aria-hidden />
+                {flight.baggage.checkIn}
+              </span>
+            )}
+            {fewSeats && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-accent-soft px-2 py-0.5 text-accent-dark">
+                Only {flight.availableSeats} seat{flight.availableSeats === 1 ? "" : "s"} left
+              </span>
+            )}
             <button
               type="button"
               onClick={() => setOpen((v) => !v)}
               aria-expanded={open}
               aria-controls={detailId}
-              className="inline-flex items-center gap-1 text-xs font-semibold text-primary-700 transition hover:text-primary-800"
+              className="ml-auto inline-flex items-center gap-1 rounded-md px-1 text-xs font-semibold text-primary-700 transition hover:text-primary-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
             >
-              Flight Detail
-              <ChevronDown className={cn("size-3.5 transition", open && "rotate-180")} aria-hidden />
+              {open ? "Hide details" : "Flight details"}
+              <ChevronDown className={cn("size-3.5 transition-transform duration-200", open && "rotate-180")} aria-hidden />
             </button>
           </div>
         </div>
 
-        <div className="flex items-center justify-between gap-3 rounded-b-2xl border-t border-neutral-100 bg-neutral-50/80 px-4 py-3 sm:flex-col sm:items-end sm:justify-center sm:rounded-b-none sm:rounded-r-2xl sm:border-l sm:border-t-0">
-          <div className="text-left sm:text-right">
+        <div className="flex items-center justify-between gap-3 border-t border-neutral-100 bg-linear-to-b from-neutral-50/40 to-neutral-50 px-4 py-3.5 sm:px-5 md:flex-col md:items-stretch md:justify-center md:border-l md:border-t-0 md:py-5">
+          <div className="min-w-0 md:text-right">
             {discount > 0 && (
-              <p className="text-xs text-ink-subtle line-through tabular-nums">
-                {formatINR(flight.fare.originalFare ?? flight.fare.totalFare + discount)}
+              <p className="flex items-center gap-1.5 md:justify-end">
+                <span className="text-xs text-ink-subtle line-through tabular-nums">{formatINR(original)}</span>
+                <span className="rounded-md bg-success-50 px-1.5 py-px text-[10px] font-bold text-success-700">
+                  Save {formatINR(discount)}
+                </span>
               </p>
             )}
-            <p className="text-2xl font-extrabold leading-tight tabular-nums text-ink">
+            <p className="text-2xl font-extrabold leading-tight tracking-tight tabular-nums text-ink">
               {formatINR(flight.fare.totalFare)}
             </p>
-            <p className="text-[11px] text-ink-subtle">per adult</p>
+            <p className="text-[11px] text-ink-subtle">per adult · incl. taxes</p>
           </div>
           <button
             type="button"
             onClick={onSelect}
-            className="inline-flex min-w-[124px] items-center justify-center gap-1 rounded-xl bg-linear-to-b from-accent to-accent-dark px-4 py-2.5 text-sm font-extrabold uppercase tracking-wide text-white shadow-[0_10px_20px_-10px_rgb(225_77_85/0.9)] transition hover:-translate-y-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 motion-reduce:hover:translate-y-0"
+            className={cn(
+              "inline-flex h-11 min-w-[128px] shrink-0 items-center justify-center gap-1 rounded-xl px-5 text-sm font-bold text-white transition duration-200 md:w-full",
+              "bg-linear-to-b from-accent to-accent-dark shadow-[0_10px_20px_-10px_rgb(225_77_85/0.9)]",
+              "hover:-translate-y-px hover:shadow-[0_14px_24px_-10px_rgb(225_77_85/0.95)] active:translate-y-0",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 motion-reduce:hover:translate-y-0",
+            )}
           >
             {ctaLabel}
-            <ChevronRight className="size-4" aria-hidden />
+            <ChevronRight className="size-4 transition-transform duration-200 group-hover/card:translate-x-0.5" aria-hidden />
           </button>
         </div>
       </div>
 
       {open && (
-        <div id={detailId} className="animate-fade-up border-t border-neutral-100 px-4 pb-4 pt-3">
-          <div className="mb-3 flex items-center justify-between rounded-xl bg-primary-50 px-4 py-3">
+        <div id={detailId} className="animate-fade-up border-t border-neutral-100 bg-neutral-50/40 px-4 pb-4 pt-3 sm:px-5">
+          <div className="mb-3 flex items-center justify-between rounded-xl bg-primary-50 px-4 py-2.5">
             <p className="flex items-center gap-2 text-sm font-bold text-ink">
               <PlaneTakeoff className="size-4 text-primary-600" aria-hidden />
-              {flight.origin.code} – {flight.destination.code}
+              {flight.origin.city} → {flight.destination.city}
             </p>
             <p className="flex items-center gap-1.5 text-sm font-bold text-ink">
               <Timer className="size-4 text-primary-600" aria-hidden />
@@ -187,19 +226,20 @@ export function FlightResultCard({
             </p>
           </div>
 
-          <div role="tablist" aria-label="Flight details" className="no-scrollbar flex gap-1 overflow-x-auto">
+          <div role="tablist" aria-label="Flight details" className="no-scrollbar flex gap-1 overflow-x-auto rounded-xl bg-neutral-100 p-1">
             {DETAIL_TABS.map((detail) => (
               <button
                 key={detail.id}
+                id={`${tabsId}-${detail.id}`}
                 type="button"
                 role="tab"
                 aria-selected={tab === detail.id}
+                aria-controls={`${tabsId}-panel`}
                 onClick={() => setTab(detail.id)}
                 className={cn(
-                  "shrink-0 rounded-t-lg border border-b-0 px-4 py-2 text-xs font-semibold transition",
-                  tab === detail.id
-                    ? "border-neutral-200 bg-white text-ink"
-                    : "border-transparent text-ink-muted hover:text-ink",
+                  "flex-1 shrink-0 whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-semibold transition",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500",
+                  tab === detail.id ? "bg-white text-ink shadow-soft" : "text-ink-muted hover:text-ink",
                 )}
               >
                 {detail.label}
@@ -207,7 +247,12 @@ export function FlightResultCard({
             ))}
           </div>
 
-          <div role="tabpanel" className="rounded-b-xl rounded-tr-xl border border-neutral-200 p-4 text-sm text-ink-muted">
+          <div
+            id={`${tabsId}-panel`}
+            role="tabpanel"
+            aria-labelledby={`${tabsId}-${tab}`}
+            className="mt-2 rounded-xl border border-neutral-200 bg-white p-4 text-sm text-ink-muted"
+          >
             {tab === "flight" && <SegmentsDetail flight={flight} />}
             {tab === "baggage" && <BaggageDetail flight={flight} />}
             {tab === "fare" && <FareBreakup flight={flight} counts={counts} />}
@@ -221,7 +266,7 @@ export function FlightResultCard({
             <div className="flex items-center gap-3">
               <a
                 href={telLink()}
-                className="inline-flex items-center gap-1 text-xs font-semibold text-primary-700 hover:text-primary-800"
+                className="inline-flex items-center gap-1 rounded-md text-xs font-semibold text-primary-700 hover:text-primary-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
               >
                 <Phone className="size-3.5" aria-hidden /> Call an expert
               </a>
@@ -231,7 +276,7 @@ export function FlightResultCard({
                 )}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-1 text-xs font-semibold text-success-700 hover:text-success-700/80"
+                className="inline-flex items-center gap-1 rounded-md text-xs font-semibold text-success-700 hover:text-success-700/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-success-500"
               >
                 <MessageCircle className="size-3.5" aria-hidden /> WhatsApp
               </a>
@@ -256,18 +301,33 @@ function Endpoint({
 }) {
   return (
     <div className={cn("min-w-0", alignRight && "text-right")}>
-      <p className="text-base font-bold leading-tight text-ink sm:text-lg">
-        <span className="mr-1 text-xs font-semibold text-ink-muted">{alignRight ? "" : airport.code}</span>
+      <p className="text-xl font-extrabold leading-none tracking-tight tabular-nums text-ink sm:text-2xl">
         {time}
         {dayShift > 0 && (
-          <sup className="ml-0.5 text-[10px] font-bold text-accent" title="Arrives the next day">
+          <sup className="ml-0.5 text-[10px] font-bold text-accent" title={`Arrives ${dayShift} day${dayShift > 1 ? "s" : ""} later`}>
             +{dayShift}
           </sup>
         )}
-        {alignRight && <span className="ml-1 text-xs font-semibold text-ink-muted">{airport.code}</span>}
       </p>
-      <p className="truncate text-xs text-ink-muted">{airport.city}</p>
+      <p className="mt-1 truncate text-xs text-ink-muted">
+        <span className="font-bold text-ink">{airport.code}</span> · {airport.city}
+      </p>
     </div>
+  );
+}
+
+function Badge({ children, tone }: { children: ReactNode; tone: "success" | "primary" | "accent" }) {
+  const tones = {
+    success: "bg-success-50 text-success-700 ring-success-500/20",
+    primary: "bg-primary-50 text-primary-700 ring-primary-500/20",
+    accent: "bg-accent-soft text-accent-dark ring-accent/20",
+  };
+  return (
+    <span
+      className={`inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ring-1 ${tones[tone]}`}
+    >
+      {children}
+    </span>
   );
 }
 
@@ -436,27 +496,5 @@ function Row({ label, value, highlight }: { label: string; value: string; highli
       <dt>{label}</dt>
       <dd className="shrink-0 tabular-nums">{value}</dd>
     </div>
-  );
-}
-
-function Tag({
-  children,
-  tone,
-}: {
-  children: ReactNode;
-  tone: "success" | "primary" | "violet" | "accent";
-}) {
-  const tones = {
-    success: "bg-success-50 text-success-700",
-    primary: "bg-primary-50 text-primary-700",
-    violet: "bg-violet-50 text-violet-700",
-    accent: "bg-accent-soft text-accent-dark",
-  };
-  return (
-    <span
-      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${tones[tone]}`}
-    >
-      {children}
-    </span>
   );
 }

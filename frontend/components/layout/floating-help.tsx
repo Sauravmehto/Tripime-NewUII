@@ -9,7 +9,7 @@ export function FloatingHelp() {
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="fixed bottom-4 right-4 z-40 flex flex-col items-end gap-2">
+    <div data-floating-help className="fixed bottom-4 right-4 z-40 flex flex-col items-end gap-2 transition-[bottom] duration-300">
       {open && (
         <div className="animate-fade-up flex flex-col gap-2 rounded-xl border border-neutral-200 bg-white p-2 shadow-medium">
           <a
