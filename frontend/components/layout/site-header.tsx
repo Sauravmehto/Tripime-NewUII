@@ -10,18 +10,16 @@ import {
   Info,
   Menu,
   Package,
-  Phone,
   Plane,
-  Search,
   Ticket,
   X,
   type LucideProps,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
-import { telLink } from "@/lib/contact";
 import { Logo } from "@/components/brand/logo";
 import { Button } from "@/components/ui/button";
 import { MobileNavDrawer } from "@/components/layout/mobile-nav-drawer";
+import { UserMenu } from "@/components/layout/user-menu";
 import { useCustomerProfileOptional } from "@/context/customer-profile-provider";
 import { useCustomerSession } from "@/context/customer-session-provider";
 import { loginHref } from "@/lib/safe-redirect";
@@ -50,6 +48,13 @@ export function SiteHeader() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const profile = useCustomerProfileOptional();
   const { session, logout } = useCustomerSession();
+
+  // The lead-capture profile may know the traveller's real name; only trust it for the same email.
+  const profileCustomer = profile?.customer;
+  const displayName =
+    profileCustomer && session?.email && profileCustomer.email.toLowerCase() === session.email.toLowerCase()
+      ? profileCustomer.name
+      : null;
 
   async function handleLogout() {
     await logout();
@@ -111,22 +116,8 @@ export function SiteHeader() {
         </nav>
 
         <div className="hidden items-center gap-2 sm:flex">
-          {session?.authenticated ? (
-            <div className="mr-1 flex items-center gap-2 text-xs text-ink-muted">
-              <Link href="/my-booking" className="max-w-[11rem] truncate font-semibold text-ink hover:text-primary-700">
-                {session.email}
-              </Link>
-              <span className="text-neutral-300" aria-hidden>
-                ·
-              </span>
-              <button
-                type="button"
-                onClick={() => void handleLogout()}
-                className="font-semibold text-primary-700 transition hover:text-primary-800"
-              >
-                Log out
-              </button>
-            </div>
+          {session?.authenticated && session.email ? (
+            <UserMenu email={session.email} name={displayName} onLogout={handleLogout} />
           ) : (
             <Link href={loginHref(pathname || "/")}>
               <Button type="button" variant="outline" size="sm">
@@ -134,28 +125,11 @@ export function SiteHeader() {
               </Button>
             </Link>
           )}
-          <Link href="/flights?origin=DEL&destination=BOM">
-            <Button variant="ghost" size="sm" aria-label="Search flights">
-              <Search className="size-4" />
-            </Button>
-          </Link>
-          <a href={telLink()}>
-            <Button variant="outline" size="sm">
-              <Phone className="size-3.5" />
-              Call
-            </Button>
-          </a>
         </div>
 
         <div className="flex items-center gap-2 sm:hidden">
-          {session?.authenticated ? (
-            <button
-              type="button"
-              onClick={() => void handleLogout()}
-              className="max-w-[7.5rem] truncate text-[11px] font-semibold text-primary-700"
-            >
-              Log out
-            </button>
+          {session?.authenticated && session.email ? (
+            <UserMenu email={session.email} name={displayName} onLogout={handleLogout} />
           ) : (
             <Link
               href={loginHref(pathname || "/")}
