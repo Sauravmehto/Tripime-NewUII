@@ -115,7 +115,7 @@ export function SiteHeader() {
           })}
         </nav>
 
-        <div className="hidden items-center gap-2 sm:flex">
+        <div className="hidden items-center gap-2 sm:ml-auto sm:flex lg:ml-0">
           {session?.authenticated && session.email ? (
             <UserMenu email={session.email} name={displayName} onLogout={handleLogout} />
           ) : (
