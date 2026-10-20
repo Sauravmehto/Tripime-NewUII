@@ -230,12 +230,11 @@ export function FlightsResultsView() {
     const cheapestVisible = Math.min(...visible.map((f) => f.fare.totalFare));
     const fastestVisible = Math.min(...visible.map((f) => f.durationMinutes));
     return {
-      recommended: "Best value",
       cheapest: formatINR(cheapestVisible),
       shortest: formatDuration(fastestVisible),
       earliest: clock12(Math.min(...times)),
       latest: clock12(Math.max(...times)),
-    } satisfies Record<SortKey, string>;
+    } satisfies Partial<Record<SortKey, string>>;
   }, [visible]);
   const sortLabel = SORT_OPTIONS.find((o) => o.id === sort)?.label ?? "Sort";
 
@@ -285,10 +284,10 @@ export function FlightsResultsView() {
   const otherCabins = CABIN_CLASSES.filter((c) => c !== search.cabin);
 
   return (
-    <Container className="space-y-4 py-6 pb-24 lg:pb-8">
+    <Container className="space-y-3 py-3 pb-20 sm:py-4 lg:pb-6">
       <FlightSearchModifyBar search={search} onSearch={go} />
 
-      {result && <InventoryNotice minDate={result.minDate} maxDate={result.maxDate} />}
+      {result && <InventoryNotice compact className="px-0.5" minDate={result.minDate} maxDate={result.maxDate} />}
 
       {roundTrip && <RoundTripProgress step={step} search={search} outbound={outbound} onChangeOutbound={() => {
         setStep("outbound");
@@ -313,15 +312,15 @@ export function FlightsResultsView() {
         />
       )}
 
-      <div className="grid gap-5 lg:grid-cols-[268px_minmax(0,1fr)] lg:items-start">
-        <aside className="no-scrollbar hidden lg:sticky lg:top-20 lg:block lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto lg:pb-2">
+      <div className="grid gap-4 lg:grid-cols-[232px_minmax(0,1fr)] lg:items-start">
+        <aside className="no-scrollbar hidden lg:sticky lg:top-16 lg:block lg:max-h-[calc(100vh-5rem)] lg:overflow-y-auto lg:pb-2">
           <FlightFiltersSidebar {...sidebarProps} />
         </aside>
 
-        <div className="space-y-4">
+        <div className="space-y-2.5">
           {loading ? (
-            <p className="flex items-center gap-2 px-1 text-sm text-ink-muted" role="status">
-              <span className="relative flex size-6 items-center justify-center rounded-full bg-primary-50">
+            <p className="flex items-center gap-2 px-0.5 text-xs text-ink-muted" role="status">
+              <span className="relative flex size-5 items-center justify-center rounded-full bg-primary-50">
                 <span className="absolute inset-0 animate-ping rounded-full bg-primary-200/60 motion-reduce:hidden" aria-hidden />
                 {step === "outbound" ? (
                   <PlaneTakeoff className="relative size-3.5 text-primary-600" aria-hidden />
@@ -347,16 +346,16 @@ export function FlightsResultsView() {
           )}
 
           {!loading && flights.length > 0 && (
-            <p className="px-1 text-sm text-ink-muted sm:hidden" aria-live="polite">
-              <span className="font-bold text-ink">{visible.length}</span>
+            <p className="px-0.5 text-xs text-ink-muted sm:hidden" aria-live="polite">
+              <span className="font-semibold text-ink">{visible.length}</span>
               {visible.length !== flights.length && <> of {flights.length}</>} flights ·{" "}
               <span className="font-semibold text-ink">{sortLabel}</span>
             </p>
           )}
 
           {loading && (
-            <div className="space-y-3" aria-hidden>
-              {[0, 1, 2].map((i) => (
+            <div className="space-y-2.5" aria-hidden>
+              {[0, 1, 2, 3].map((i) => (
                 <FlightCardSkeleton key={i} />
               ))}
             </div>
@@ -429,8 +428,8 @@ export function FlightsResultsView() {
             ))}
 
           {!loading && (
-            <div className="pt-2">
-              <p className="mb-2 px-1 text-sm font-semibold text-ink">Frequently asked questions</p>
+            <div className="pt-3">
+              <p className="mb-2 px-0.5 text-sm font-semibold text-ink">Frequently asked questions</p>
               <FaqList items={FLIGHT_FAQS} />
             </div>
           )}
@@ -441,9 +440,9 @@ export function FlightsResultsView() {
         data-mobile-bottom-bar
         className="fixed inset-x-0 bottom-0 z-40 border-t border-neutral-200/80 bg-white/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_24px_-12px_rgb(16_16_16/0.15)] backdrop-blur-md lg:hidden"
       >
-        <div className="mx-auto flex max-w-3xl items-center gap-2 px-3 py-2.5">
+        <div className="mx-auto flex max-w-3xl items-center gap-2 px-3 py-2">
           <div className="min-w-0 flex-1 pl-1">
-            <p className="truncate text-sm font-bold text-ink">
+            <p className="truncate text-[13px] font-semibold text-ink">
               {legFrom} → {legTo}
             </p>
             <p className="truncate text-[11px] text-ink-muted">
@@ -507,13 +506,13 @@ export function FlightsResultsView() {
                       setSortSheetOpen(false);
                     }}
                     className={cn(
-                      "flex w-full items-center justify-between gap-3 rounded-2xl border px-4 py-3.5 text-left transition",
+                      "flex min-h-12 w-full items-center justify-between gap-3 rounded-xl border px-3.5 py-2.5 text-left transition",
                       "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500",
                       active ? "border-primary-500 bg-primary-50" : "border-neutral-200 bg-white hover:border-primary-300",
                     )}
                   >
                     <span>
-                      <span className="block text-sm font-bold text-ink">{option.label}</span>
+                      <span className="block text-sm font-semibold text-ink">{option.label}</span>
                       {sortInsights[option.id as keyof typeof sortInsights] && (
                         <span className="block text-xs text-ink-muted">
                           {sortInsights[option.id as keyof typeof sortInsights]}
@@ -554,8 +553,8 @@ function RoundTripProgress({
   return (
     <ol className="grid gap-2 sm:grid-cols-2" aria-label="Round trip steps">
       <li
-        className={`flex items-center gap-3 rounded-2xl border bg-white px-4 py-3 shadow-xs ${
-          step === "outbound" ? "border-primary-500 ring-4 ring-primary-500/10" : "border-neutral-200"
+        className={`flex items-center gap-3 rounded-xl border bg-white px-3 py-2 ${
+          step === "outbound" ? "border-primary-500 ring-2 ring-primary-500/10" : "border-neutral-200"
         }`}
         aria-current={step === "outbound" ? "step" : undefined}
       >
@@ -590,8 +589,8 @@ function RoundTripProgress({
         )}
       </li>
       <li
-        className={`flex items-center gap-3 rounded-2xl border bg-white px-4 py-3 shadow-xs ${
-          step === "return" ? "border-primary-500 ring-4 ring-primary-500/10" : "border-neutral-200 opacity-80"
+        className={`flex items-center gap-3 rounded-xl border bg-white px-3 py-2 ${
+          step === "return" ? "border-primary-500 ring-2 ring-primary-500/10" : "border-neutral-200 opacity-80"
         }`}
         aria-current={step === "return" ? "step" : undefined}
       >
@@ -648,10 +647,10 @@ function BarButton({
       disabled={disabled}
       aria-label={label}
       className={cn(
-        "inline-flex h-11 shrink-0 items-center gap-1.5 rounded-xl px-3.5 text-sm font-bold transition active:scale-[0.98]",
+        "inline-flex h-10 shrink-0 items-center gap-1.5 rounded-lg px-3 text-[13px] font-semibold transition active:scale-[0.98]",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 disabled:opacity-50",
         primary
-          ? "bg-primary-600 text-white shadow-medium hover:bg-primary-700"
+          ? "bg-primary-600 text-white hover:bg-primary-700"
           : "border border-neutral-200 bg-white text-ink hover:bg-neutral-50",
       )}
     >
@@ -684,12 +683,12 @@ function BottomSheet({
         onClick={onClose}
         className="animate-overlay-in absolute inset-0 bg-ink/50 backdrop-blur-[2px]"
       />
-      <div className="animate-sheet-up relative flex max-h-[88vh] flex-col rounded-t-3xl bg-neutral-50 shadow-elevated">
+      <div className="animate-sheet-up relative flex max-h-[88vh] flex-col rounded-t-2xl bg-neutral-50 shadow-elevated">
         <div className="flex justify-center pt-2.5" aria-hidden>
           <span className="h-1 w-10 rounded-full bg-neutral-300" />
         </div>
-        <div className="flex items-center justify-between gap-3 px-4 pb-3 pt-2">
-          <p id={titleId} className="text-base font-bold text-ink">
+        <div className="flex items-center justify-between gap-3 px-4 pb-2 pt-1.5">
+          <p id={titleId} className="text-[15px] font-semibold text-ink">
             {title}
           </p>
           <div className="flex items-center gap-3">
@@ -717,11 +716,11 @@ function BottomSheet({
 
 function FlightCardSkeleton() {
   return (
-    <div className="overflow-hidden rounded-2xl border border-neutral-200/80 bg-white shadow-soft">
-      <div className="grid md:grid-cols-[minmax(0,1fr)_200px]">
-        <div className="space-y-4 p-5">
+    <div className="overflow-hidden rounded-xl border border-neutral-200 bg-white">
+      <div className="grid md:grid-cols-[minmax(0,1fr)_164px]">
+        <div className="space-y-3 px-4 py-3">
           <div className="flex items-center gap-3">
-            <span className="size-11 animate-pulse rounded-xl bg-neutral-100" />
+            <span className="size-9 animate-pulse rounded-lg bg-neutral-100" />
             <span className="space-y-1.5">
               <span className="block h-3.5 w-28 animate-pulse rounded bg-neutral-100" />
               <span className="block h-3 w-16 animate-pulse rounded bg-neutral-100" />
@@ -734,9 +733,9 @@ function FlightCardSkeleton() {
           </div>
           <span className="block h-3 w-40 animate-pulse rounded bg-neutral-100" />
         </div>
-        <div className="flex items-center justify-between gap-3 border-t border-neutral-100 bg-neutral-50 p-5 md:flex-col md:items-end md:justify-center md:border-l md:border-t-0">
-          <span className="h-7 w-24 animate-pulse rounded bg-neutral-200/70" />
-          <span className="h-11 w-32 animate-pulse rounded-xl bg-neutral-200/70" />
+        <div className="flex items-center justify-between gap-2 border-t border-neutral-100 bg-neutral-50 px-3 py-3 md:flex-col md:items-stretch md:justify-center md:border-l md:border-t-0">
+          <span className="h-6 w-24 animate-pulse rounded bg-neutral-200/70 md:ml-auto" />
+          <span className="h-9 w-28 animate-pulse rounded-lg bg-neutral-200/70 md:w-full" />
         </div>
       </div>
     </div>
@@ -753,9 +752,9 @@ function EmptyState({
   actions?: ReactNode;
 }) {
   return (
-    <div className="flex flex-col items-center rounded-xl border border-neutral-200 bg-white px-4 py-12 text-center shadow-xs">
-      <SearchX className="size-10 text-warning-500" aria-hidden />
-      <p className="mt-4 font-semibold text-ink">{title}</p>
+    <div className="flex flex-col items-center rounded-xl border border-neutral-200 bg-white px-4 py-8 text-center">
+      <SearchX className="size-8 text-warning-500" aria-hidden />
+      <p className="mt-3 text-sm font-semibold text-ink">{title}</p>
       {body && <p className="mt-1 max-w-md text-sm text-ink-muted">{body}</p>}
       {actions && <div className="mt-4 flex flex-wrap justify-center gap-2">{actions}</div>}
     </div>

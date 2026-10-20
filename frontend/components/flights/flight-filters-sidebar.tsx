@@ -91,11 +91,11 @@ export function FlightFiltersSidebar({
   ];
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-neutral-200/80 bg-white shadow-soft">
+    <div className="overflow-hidden rounded-xl border border-neutral-200 bg-white">
       {!hideHeader && (
-        <div className="flex items-center justify-between px-4 py-3.5">
-          <p className="flex items-center gap-2 text-sm font-bold text-ink">
-            <SlidersHorizontal className="size-4 text-primary-600" aria-hidden />
+        <div className="flex items-center justify-between px-3 py-2.5">
+          <p className="flex items-center gap-1.5 text-sm font-semibold text-ink">
+            <SlidersHorizontal className="size-3.5 text-primary-600" aria-hidden />
             Filters
             {activeCount > 0 && (
               <span className="rounded-full bg-primary-600 px-1.5 py-0.5 text-[10px] font-bold leading-none text-white">
@@ -115,14 +115,14 @@ export function FlightFiltersSidebar({
       )}
 
       {chips.length > 0 && (
-        <ul className="flex flex-wrap gap-1.5 border-t border-neutral-100 px-4 py-3" aria-label="Active filters">
+        <ul className="flex flex-wrap gap-1 border-t border-neutral-100 px-3 py-2" aria-label="Active filters">
           {chips.map((chip) => (
             <li key={chip.key}>
               <button
                 type="button"
                 onClick={chip.remove}
                 aria-label={`Remove filter: ${chip.label}`}
-                className="group inline-flex max-w-full items-center gap-1 rounded-full bg-primary-50 py-1 pl-2.5 pr-1.5 text-[11px] font-semibold text-primary-800 ring-1 ring-primary-200 transition hover:bg-primary-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+                className="group inline-flex max-w-full items-center gap-1 rounded-full bg-primary-50 py-0.5 pl-2 pr-1 text-[11px] font-medium text-primary-800 ring-1 ring-primary-200 transition hover:bg-primary-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
               >
                 <span className="truncate">{chip.label}</span>
                 <X className="size-3 shrink-0 opacity-70 group-hover:opacity-100" aria-hidden />
@@ -144,20 +144,18 @@ export function FlightFiltersSidebar({
                   aria-pressed={active}
                   onClick={() => set({ stops: toggleValue(filters.stops, stop.key) })}
                   className={cn(
-                    "relative rounded-xl border px-3 py-2.5 text-left transition duration-200",
-                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-1",
-                    active
-                      ? "border-primary-500 bg-primary-50 shadow-[0_0_0_3px_rgb(59_130_246/0.12)]"
-                      : "border-neutral-200 hover:border-primary-300 hover:bg-neutral-50",
+                    "relative min-h-9 rounded-lg border px-2.5 py-1.5 text-left transition",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500",
+                    active ? "border-primary-500 bg-primary-50" : "border-neutral-200 hover:border-primary-300",
                   )}
                 >
                   {active && (
-                    <span className="absolute right-2 top-2 flex size-4 items-center justify-center rounded-full bg-primary-600 text-white">
+                    <span className="absolute right-1.5 top-1.5 flex size-3.5 items-center justify-center rounded-full bg-primary-600 text-white">
                       <Check className="size-2.5" aria-hidden />
                     </span>
                   )}
-                  <span className="block text-xs font-bold text-ink">{stop.label}</span>
-                  <span className="mt-0.5 block text-[11px] text-ink-muted">
+                  <span className="block text-xs font-semibold text-ink">{stop.label}</span>
+                  <span className="block text-[11px] text-ink-muted">
                     from <span className="font-semibold text-ink">{formatINR(stop.cheapest)}</span>
                   </span>
                 </button>
@@ -171,7 +169,7 @@ export function FlightFiltersSidebar({
         title={`Departure from ${fromLabel}`}
         onReset={filters.depart ? () => set({ depart: null }) : undefined}
       >
-        <div className="grid grid-cols-4 gap-1.5">
+        <div className="grid grid-cols-4 gap-1">
           {DAY_PARTS.map((part) => {
             const lo = Math.max(part.range[0], facets.depart[0]);
             const hi = Math.min(part.range[1], facets.depart[1]);
@@ -187,21 +185,21 @@ export function FlightFiltersSidebar({
                 title={part.hint}
                 onClick={() => set({ depart: active ? null : [lo, hi] })}
                 className={cn(
-                  "flex flex-col items-center gap-1 rounded-xl border px-1 py-2 text-[10px] font-semibold transition duration-200",
-                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-1",
+                  "flex min-h-11 flex-col items-center justify-center gap-0.5 rounded-lg border px-0.5 py-1 text-[10px] font-medium transition",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500",
                   "disabled:cursor-not-allowed disabled:opacity-35",
                   active
                     ? "border-primary-500 bg-primary-50 text-primary-800"
                     : "border-neutral-200 text-ink-muted hover:border-primary-300 hover:text-ink",
                 )}
               >
-                <Icon className={cn("size-4", active ? "text-primary-600" : "text-ink-subtle")} aria-hidden />
+                <Icon className={cn("size-3.5", active ? "text-primary-600" : "text-ink-subtle")} aria-hidden />
                 {part.label}
               </button>
             );
           })}
         </div>
-        <div className="mt-4">
+        <div className="mt-3">
           <SliderLabel icon={<PlaneTakeoff className="size-3.5 text-primary-600" aria-hidden />}>
             Departure time
           </SliderLabel>
@@ -218,14 +216,14 @@ export function FlightFiltersSidebar({
       </Section>
 
       <Section title="Airlines" onReset={filters.airlines.length ? () => set({ airlines: [] }) : undefined}>
-        <ul className="-mx-1.5 max-h-64 space-y-0.5 overflow-y-auto px-1.5">
+        <ul className="-mx-1 max-h-56 overflow-y-auto px-1">
           {facets.airlines.map((airline) => {
             const checked = filters.airlines.includes(airline.key);
             return (
               <li key={airline.key} className="group relative">
                 <label
                   className={cn(
-                    "flex cursor-pointer items-center gap-2.5 rounded-xl px-2 py-2 text-sm transition",
+                    "flex min-h-8 cursor-pointer items-center gap-2 rounded-md px-1.5 py-1 text-xs transition",
                     checked ? "bg-primary-50/70" : "hover:bg-neutral-50",
                   )}
                 >
@@ -236,13 +234,13 @@ export function FlightFiltersSidebar({
                     className="size-4 shrink-0 cursor-pointer rounded border-neutral-300 accent-primary-600 focus-visible:ring-2 focus-visible:ring-primary-500"
                   />
                   <AirlineMark code={airlineCodes[airline.key] ?? "?"} name={airline.key} size="sm" />
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-[13px] font-semibold text-ink">{airline.key}</span>
-                    <span className="block text-[11px] text-ink-subtle">
-                      {airline.count} flight{airline.count === 1 ? "" : "s"}
+                  <span className="min-w-0 flex-1 truncate font-medium text-ink">
+                    {airline.key}
+                    <span className="ml-1 font-normal text-ink-subtle" aria-label={`${airline.count} flights`}>
+                      ({airline.count})
                     </span>
                   </span>
-                  <span className="shrink-0 text-xs font-bold tabular-nums text-ink transition group-hover:opacity-0 group-focus-within:opacity-0">
+                  <span className="shrink-0 font-semibold tabular-nums text-ink transition group-hover:opacity-0 group-focus-within:opacity-0">
                     {formatINR(airline.cheapest)}
                   </span>
                 </label>
@@ -251,7 +249,7 @@ export function FlightFiltersSidebar({
                     type="button"
                     onClick={() => set({ airlines: [airline.key] })}
                     aria-label={`Show only ${airline.key}`}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md bg-white px-2 py-1 text-[11px] font-semibold text-primary-700 opacity-0 shadow-xs ring-1 ring-primary-200 transition hover:bg-primary-50 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 group-hover:opacity-100 group-focus-within:opacity-100"
+                    className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded bg-white px-1.5 py-0.5 text-[11px] font-semibold text-primary-700 opacity-0 shadow-xs ring-1 ring-primary-200 transition hover:bg-primary-50 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 group-hover:opacity-100 group-focus-within:opacity-100"
                   >
                     Only
                   </button>
@@ -300,13 +298,13 @@ export function FlightFiltersSidebar({
 }
 
 function SliderLabel({ icon, children }: { icon: ReactNode; children: ReactNode }) {
-  return <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-ink">{icon}{children}</p>;
+  return <p className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-ink-muted">{icon}{children}</p>;
 }
 
 function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label: string }) {
   return (
-    <label className="mt-4 flex cursor-pointer items-center justify-between gap-3 rounded-xl bg-neutral-50 px-3 py-2.5">
-      <span className="text-xs font-semibold text-ink">{label}</span>
+    <label className="mt-3 flex min-h-9 cursor-pointer items-center justify-between gap-3 rounded-lg bg-neutral-50 px-2.5 py-1.5">
+      <span className="text-xs font-medium text-ink">{label}</span>
       <input
         type="checkbox"
         role="switch"
@@ -347,13 +345,13 @@ function Section({
   const bodyId = useId();
   return (
     <section className="border-t border-neutral-100">
-      <div className="flex items-center justify-between gap-2 px-4 py-3">
+      <div className="flex items-center justify-between gap-2 px-3 py-2.5">
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
           aria-expanded={open}
           aria-controls={bodyId}
-          className="flex min-w-0 flex-1 items-center justify-between gap-2 rounded-md text-left text-[13px] font-bold text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+          className="flex min-w-0 flex-1 items-center justify-between gap-2 rounded-md text-left text-[13px] font-semibold text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
         >
           <span className="truncate">{title}</span>
           <ChevronDown
@@ -381,7 +379,7 @@ function Section({
         )}
       >
         <div className="overflow-hidden">
-          <div className="px-4 pb-4">{children}</div>
+          <div className="px-3 pb-3">{children}</div>
         </div>
       </div>
     </section>

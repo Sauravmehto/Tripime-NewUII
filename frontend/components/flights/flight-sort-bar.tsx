@@ -31,9 +31,9 @@ export function FlightSortBar({ value, onChange, shown, total, label, insights =
   }
 
   return (
-    <div className="space-y-2.5">
-      <p className="px-1 text-sm text-ink-muted" aria-live="polite">
-        <span className="font-bold text-ink">{shown}</span>
+    <div className="space-y-2">
+      <p className="truncate px-0.5 text-xs text-ink-muted" aria-live="polite">
+        <span className="font-semibold text-ink">{shown}</span>
         {shown !== total && <> of {total}</>} flight{total === 1 ? "" : "s"}
         {label && <span className="text-ink-subtle"> · {label}</span>}
       </p>
@@ -43,7 +43,7 @@ export function FlightSortBar({ value, onChange, shown, total, label, insights =
         role="radiogroup"
         aria-label="Sort flights by"
         onKeyDown={onKeyDown}
-        className="no-scrollbar flex gap-1 overflow-x-auto rounded-2xl border border-neutral-200/80 bg-white p-1 shadow-soft"
+        className="no-scrollbar flex gap-0.5 overflow-x-auto rounded-lg border border-neutral-200 bg-white p-0.5"
       >
         {SORT_OPTIONS.map((option) => {
           const active = option.id === value;
@@ -57,15 +57,17 @@ export function FlightSortBar({ value, onChange, shown, total, label, insights =
               tabIndex={active ? 0 : -1}
               onClick={() => onChange(option.id)}
               className={cn(
-                "flex min-w-[7.5rem] flex-1 shrink-0 flex-col items-center justify-center rounded-xl px-3 py-2 text-center transition duration-200",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-1",
-                active ? "bg-primary-600 text-white shadow-medium" : "text-ink-muted hover:bg-neutral-50 hover:text-ink",
+                "flex h-8 flex-1 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-md px-3 text-xs transition",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500",
+                active ? "bg-primary-600 font-semibold text-white" : "font-medium text-ink-muted hover:bg-neutral-50 hover:text-ink",
               )}
             >
-              <span className="whitespace-nowrap text-xs font-bold">{option.label}</span>
-              <span className={cn("h-4 whitespace-nowrap text-[11px] tabular-nums", active ? "text-white/85" : "text-ink-subtle")}>
-                {insight ?? ""}
-              </span>
+              {option.label}
+              {insight && (
+                <span className={cn("text-[11px] font-normal tabular-nums", active ? "text-white/80" : "text-ink-subtle")}>
+                  {insight}
+                </span>
+              )}
             </button>
           );
         })}

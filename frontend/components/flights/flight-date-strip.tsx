@@ -65,7 +65,7 @@ export function FlightDateStrip({ date, minDate, maxDate, fares = {}, onChange }
   }
 
   return (
-    <section aria-label="Choose a departure date" className="rounded-2xl border border-neutral-200/80 bg-white shadow-soft">
+    <section aria-label="Choose a departure date" className="rounded-xl border border-neutral-200 bg-white">
       <div className="relative flex items-stretch">
         <PageButton label="Earlier dates" disabled={edges.start} onClick={() => page(-1)} side="left">
           <ChevronLeft className="size-4" aria-hidden />
@@ -74,7 +74,7 @@ export function FlightDateStrip({ date, minDate, maxDate, fares = {}, onChange }
         <div
           ref={scrollerRef}
           onScroll={updateEdges}
-          className="no-scrollbar flex flex-1 snap-x snap-proximity gap-1.5 overflow-x-auto scroll-px-2 px-1 pb-2 pt-3"
+          className="no-scrollbar flex flex-1 snap-x snap-proximity gap-1 overflow-x-auto scroll-px-2 px-1 py-1.5"
         >
           {days.map((day) => {
             const active = day === selected;
@@ -88,36 +88,24 @@ export function FlightDateStrip({ date, minDate, maxDate, fares = {}, onChange }
                 aria-current={active ? "date" : undefined}
                 aria-label={`${weekdayOf(day)} ${shortDate(day)}${fare !== undefined ? `, from ${formatINR(fare)}` : ""}${isLowest ? ", lowest fare" : ""}`}
                 className={cn(
-                  "relative flex w-[84px] shrink-0 snap-center flex-col items-center rounded-xl border px-2 pb-2 pt-2.5 text-center transition duration-200",
-                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-1",
+                  "relative flex min-h-11 w-[66px] shrink-0 snap-center flex-col items-center rounded-lg border px-1 py-1 text-center leading-tight transition",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500",
                   active
-                    ? "border-primary-600 bg-linear-to-b from-primary-600 to-primary-700 text-white shadow-medium"
-                    : isLowest
-                      ? "border-success-500/40 bg-success-50/70 text-ink hover:border-success-500"
-                      : "border-transparent text-ink hover:border-primary-200 hover:bg-primary-50/60",
+                    ? "border-primary-600 bg-primary-50 text-primary-800"
+                    : "border-transparent text-ink hover:bg-neutral-50",
                 )}
               >
-                {isLowest && (
-                  <span
-                    className={cn(
-                      "absolute -top-2 left-1/2 inline-flex -translate-x-1/2 items-center gap-0.5 whitespace-nowrap rounded-full px-1.5 py-px text-[9px] font-bold uppercase tracking-wide",
-                      active ? "bg-white text-success-700 shadow-xs" : "bg-success-700 text-white",
-                    )}
-                  >
-                    <TrendingDown className="size-2.5" aria-hidden />
-                    Lowest
-                  </span>
-                )}
-                <span className={cn("text-[10px] font-semibold uppercase tracking-wider", active ? "text-white/80" : "text-ink-subtle")}>
+                <span className={cn("text-[11px]", active ? "font-medium text-primary-700" : "text-ink-subtle")}>
                   {weekdayOf(day)}
                 </span>
-                <span className="text-sm font-bold leading-tight">{shortDate(day)}</span>
+                <span className="text-[13px] font-semibold">{shortDate(day)}</span>
                 <span
                   className={cn(
-                    "mt-0.5 h-4 text-[11px] font-semibold tabular-nums",
-                    active ? "text-white/90" : isLowest ? "text-success-700" : "text-ink-muted",
+                    "inline-flex h-4 items-center gap-0.5 text-[11px] tabular-nums",
+                    isLowest ? "font-semibold text-success-700" : active ? "font-medium text-primary-700" : "text-ink-muted",
                   )}
                 >
+                  {isLowest && <TrendingDown className="size-3" aria-hidden />}
                   {fare !== undefined ? formatINR(fare) : <span className="text-ink-subtle">—</span>}
                 </span>
               </button>
@@ -153,10 +141,10 @@ function PageButton({
       disabled={disabled}
       onClick={onClick}
       className={cn(
-        "hidden w-10 shrink-0 items-center justify-center text-ink-muted transition sm:flex",
+        "hidden w-8 shrink-0 items-center justify-center text-ink-muted transition sm:flex",
         "hover:bg-neutral-50 hover:text-primary-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-500",
         "disabled:cursor-default disabled:opacity-30 disabled:hover:bg-transparent",
-        side === "left" ? "rounded-l-2xl border-r border-neutral-100" : "rounded-r-2xl border-l border-neutral-100",
+        side === "left" ? "rounded-l-xl border-r border-neutral-100" : "rounded-r-xl border-l border-neutral-100",
       )}
     >
       {children}
