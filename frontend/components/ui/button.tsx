@@ -30,19 +30,23 @@ const sizes: Record<Size, string> = {
   lg: "h-10 px-4 text-sm rounded-xl gap-2",
 };
 
+/** Button styling for elements that must stay links (`<a>`, `<Link>`), so no button is nested in a link. */
+export function buttonClasses({
+  variant = "primary",
+  size = "md",
+  className,
+}: { variant?: Variant; size?: Size; className?: string } = {}) {
+  return cn(
+    "inline-flex items-center justify-center font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+    variants[variant],
+    sizes[size],
+    className,
+  );
+}
+
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant = "primary", size = "md", type = "button", ...props }, ref) => (
-    <button
-      ref={ref}
-      type={type}
-      className={cn(
-        "inline-flex items-center justify-center font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
-        variants[variant],
-        sizes[size],
-        className,
-      )}
-      {...props}
-    />
+    <button ref={ref} type={type} className={buttonClasses({ variant, size, className })} {...props} />
   ),
 );
 Button.displayName = "Button";
