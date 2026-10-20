@@ -6,7 +6,7 @@ Audit date: 2026-10-17 · Branch `main` @ `c8f81c6` + a large uncommitted workin
 
 Tripime is a travel-agency website: customers search flights, browse holiday packages and send enquiries; staff run everything from an admin console. Flights are **not** bought online — a signed-in customer submits a **booking request** and the agency verifies payment off-platform, books with the airline, and records the PNR/ticket.
 
-**Users:** (1) anonymous visitors, (2) signed-in customers (email one-time code), (3) a single shared admin.
+**Users:** (1) anonymous visitors, (2) signed-in customers (email + password; changed from email one-time code on 2026-10-20), (3) a single shared admin.
 
 **Stack:** Next.js 16.3 / React 19 / Tailwind 4 (Netlify) · FastAPI 0.128 / pydantic 2 (Render) · **JSON files in `backend/data/` as the database** · SMTP email, optional WhatsApp (CallMeBot / Cloud API) · reportlab PDFs.
 

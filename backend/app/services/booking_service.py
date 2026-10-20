@@ -108,6 +108,7 @@ class BookingService:
         self._path = path
         self._lock = Lock()
         self._bookings = self._load()
+        self._link_legacy_owners()
 
     # ---- storage ----------------------------------------------------------------
 
@@ -122,6 +123,30 @@ class BookingService:
             # Persist migrated legacy records (drops old access tokens and mock PNRs).
             self._path.write_text(json.dumps([b.model_dump() for b in bookings], indent=2), encoding="utf-8")
         return bookings
+
+    def _link_legacy_owners(self) -> None:
+        """One-time: give bookings made before accounts existed the customer id of the
+        (email-verified) customer record with the same email. Ownership is by id only, so an
+        unverified sign-up with someone else's email can never see their bookings."""
+        orphans = [b for b in self._bookings if not b.customerId and b.contact.email.strip()]
+        if not orphans:
+            return
+        try:
+            from app.services.admin_ops_service import get_admin_ops_service
+
+            ops = get_admin_ops_service()
+        except Exception:  # noqa: BLE001 - linking is best-effort; bookings stay admin-visible
+            return
+        changed = False
+        for index, booking in enumerate(self._bookings):
+            if booking.customerId or not booking.contact.email.strip():
+                continue
+            customer = ops.find_customer_by_email(booking.contact.email.strip().lower())
+            if customer is not None:
+                self._bookings[index] = booking.model_copy(update={"customerId": customer.id})
+                changed = True
+        if changed:
+            self._save()
 
     def _save(self) -> None:
         self._path.write_text(json.dumps([b.model_dump() for b in self._bookings], indent=2), encoding="utf-8")
@@ -170,10 +195,8 @@ class BookingService:
 
     @staticmethod
     def owns(booking: Booking, session: CustomerSession) -> bool:
-        if booking.customerId:
-            return booking.customerId == session.customer_id
-        # Legacy bookings predate accounts: the verified sign-in email must match.
-        return booking.contact.email.strip().lower() == session.email
+        # By account id only: emails aren't verified at sign-up, so a matching email proves nothing.
+        return bool(booking.customerId) and booking.customerId == session.customer_id
 
     def get_for_customer(self, booking_id: str, session: CustomerSession) -> Booking:
         booking = self.get_booking(booking_id)

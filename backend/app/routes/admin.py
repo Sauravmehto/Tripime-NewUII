@@ -64,6 +64,7 @@ from app.services.admin_auth import (
 from app.services.login_throttle import login_throttle
 from app.services.rate_limit import client_ip
 from app.services.agency_profile_service import get_agency_profile_service
+from app.services.customer_account_service import get_customer_account_service
 from app.services.booking_service import get_booking_service
 from app.services.email_service import send_invoice_email
 from app.services.notification_service import notify_booking_event, retry_undelivered
@@ -302,6 +303,28 @@ def admin_update_marketing_videos(payload: MarketingVideosPayload) -> list[Marke
 )
 def admin_list_customers() -> list[CustomerLogin]:
     return get_admin_ops_service().list_customers()
+
+
+class TemporaryPasswordResponse(BaseModel):
+    customerId: str
+    email: str
+    # Shown to the admin once; only its hash is stored.
+    temporaryPassword: str
+
+
+@router.post(
+    "/customers/{customer_id}/password",
+    response_model=TemporaryPasswordResponse,
+    dependencies=[Depends(require_admin)],
+)
+def admin_reset_customer_password(customer_id: str) -> TemporaryPasswordResponse:
+    """Give a customer a one-time password (forgotten password, or claiming bookings made
+    before accounts existed). They must choose their own password after signing in."""
+    customer = get_admin_ops_service().find_customer_by_id(customer_id)
+    if customer is None:
+        raise HTTPException(status_code=404, detail="Customer not found.")
+    password = get_customer_account_service().admin_set_temporary_password(customer)
+    return TemporaryPasswordResponse(customerId=customer.id, email=customer.email, temporaryPassword=password)
 
 
 @router.get(

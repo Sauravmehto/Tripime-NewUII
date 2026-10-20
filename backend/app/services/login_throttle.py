@@ -108,13 +108,13 @@ return secs
 
 
 class RedisStore:
-    def __init__(self, client) -> None:  # redis.Redis-compatible
+    def __init__(self, client, prefix: str = "tripime:login") -> None:  # redis.Redis-compatible
         self._r = client
+        self._prefix = prefix
         self._script = client.register_script(_REDIS_RECORD)
 
-    @staticmethod
-    def _k(kind: str, key: str) -> str:
-        return f"tripime:login:{kind}:{key}"
+    def _k(self, kind: str, key: str) -> str:
+        return f"{self._prefix}:{kind}:{key}"
 
     def locked_for(self, key: str) -> int:
         ttl = self._r.ttl(self._k("lock", key))
@@ -133,9 +133,18 @@ class RedisStore:
 
 
 class LoginThrottle:
-    def __init__(self, primary: ThrottleStore) -> None:
+    def __init__(
+        self,
+        primary: ThrottleStore,
+        *,
+        ip_max_failures: int | None = None,
+        account_max_failures: int | None = None,
+    ) -> None:
+        """Thresholds default to the admin settings; customer sign-in passes its own."""
         self._primary = primary
         self._fallback = MemoryStore()
+        self._ip_max = ip_max_failures
+        self._account_max = account_max_failures
 
     def _call(self, name: str, *args):
         try:
@@ -156,23 +165,26 @@ class LoginThrottle:
     def record_failure(self, ip: str, username: str) -> None:
         ip_key, acct_key = self.keys(ip, username)
         w, base, cap = config.ADMIN_LOGIN_WINDOW_SECONDS, config.ADMIN_LOGIN_LOCK_BASE_SECONDS, config.ADMIN_LOGIN_LOCK_MAX_SECONDS
-        self._call("record_failure", ip_key, config.ADMIN_LOGIN_IP_MAX_FAILURES, w, base, cap)
-        self._call("record_failure", acct_key, config.ADMIN_LOGIN_ACCOUNT_MAX_FAILURES, w, base, cap)
+        ip_max = self._ip_max if self._ip_max is not None else config.ADMIN_LOGIN_IP_MAX_FAILURES
+        account_max = self._account_max if self._account_max is not None else config.ADMIN_LOGIN_ACCOUNT_MAX_FAILURES
+        self._call("record_failure", ip_key, ip_max, w, base, cap)
+        self._call("record_failure", acct_key, account_max, w, base, cap)
 
     def record_success(self, ip: str, username: str) -> None:
         for key in self.keys(ip, username):
             self._call("reset", key)
 
 
-def _build_store() -> ThrottleStore:
+def _build_store(prefix: str = "tripime:login") -> ThrottleStore:
     if config.REDIS_URL:
         try:
             import redis  # optional dependency
 
-            return RedisStore(redis.Redis.from_url(config.REDIS_URL, socket_timeout=2, socket_connect_timeout=2))
+            return RedisStore(redis.Redis.from_url(config.REDIS_URL, socket_timeout=2, socket_connect_timeout=2), prefix)
         except Exception as exc:  # noqa: BLE001
             log.warning("REDIS_URL set but unusable (%s); using in-process login counters", type(exc).__name__)
     return MemoryStore()
 
 
+build_store = _build_store
 login_throttle = LoginThrottle(_build_store())

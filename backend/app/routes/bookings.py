@@ -1,5 +1,5 @@
 """Customer booking-request endpoints. All but `requirements` need a signed-in
-customer (email one-time code session) and only expose that customer's bookings."""
+customer (email + password session) and only expose that customer's bookings."""
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from fastapi.responses import Response

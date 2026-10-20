@@ -85,13 +85,12 @@ ADMIN_NOTIFY_EMAIL = BOOKING_NOTIFICATION_EMAIL  # older name
 # Click-to-chat number for travellers and the booking-alert WhatsApp recipient.
 BOOKING_WHATSAPP_NUMBER = os.getenv("BOOKING_WHATSAPP_NUMBER", "919899640449").strip().lstrip("+")
 
-# Customer sign-in (email one-time code) and session cookie.
+# Customer session cookie (sign-in is email + password).
 CUSTOMER_SESSION_HOURS = _get_int("CUSTOMER_SESSION_HOURS", 12)
 CUSTOMER_SESSION_COOKIE = "tripime_session"
 # "lax" when the site proxies /api (same origin); "none" for a cross-site API (requires HTTPS).
 COOKIE_SAMESITE = os.getenv("COOKIE_SAMESITE", "lax").strip().lower()
 COOKIE_SECURE = _get_bool("COOKIE_SECURE", IS_PRODUCTION or COOKIE_SAMESITE == "none")
-OTP_TTL_SECONDS = _get_int("OTP_TTL_SECONDS", 600)
 
 # Admin session: HttpOnly cookie (JS can never read it) + CSRF token checked on writes.
 ADMIN_SESSION_COOKIE = "tripime_admin_session"
@@ -111,11 +110,6 @@ REDIS_URL = os.getenv("REDIS_URL", "").strip()
 # Reverse proxies in front of the app whose X-Forwarded-For entries we trust (Render = 1).
 # 0 = ignore the header and use the socket address. Never trust more hops than really exist.
 TRUSTED_PROXY_HOPS = _get_int("TRUSTED_PROXY_HOPS", 1 if os.getenv("RENDER", "").strip() else 0)
-# Development only: when SMTP isn't set, print sign-in codes to the backend log.
-CUSTOMER_OTP_DEV_LOG = _get_bool("CUSTOMER_OTP_DEV_LOG", not IS_PRODUCTION)
-# Development only: a fixed sign-in code for any email, so login works before email is set up.
-# Ignored in production and whenever SMTP is configured. Set empty to turn it off.
-CUSTOMER_OTP_DEV_CODE = os.getenv("CUSTOMER_OTP_DEV_CODE", "" if IS_PRODUCTION else "123456").strip()
 
 # WhatsApp alerts to the Tripime team (enquiries + bookings).
 #   WHATSAPP_PROVIDER = "callmebot" | "cloud_api" (blank = callmebot if its key is set)

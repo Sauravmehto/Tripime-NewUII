@@ -9,3 +9,6 @@ __pycache__/
 data/bookings.json
 data/enquiries.json
 data/flight_seat_sales.json
+# Customer accounts (emails + password hashes).
+data/customer_accounts.json
+data/.accounts-*.tmp

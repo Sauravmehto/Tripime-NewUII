@@ -18,6 +18,19 @@ This doc describes exactly what exists today and what to change before launch.
 - The browser never sees the JWT: it is an HttpOnly cookie (`SameSite`/`Secure` from `COOKIE_SAMESITE`/`COOKIE_SECURE`, path `/api/admin`). The frontend keeps only the CSRF token, in memory, re-read from `GET /api/admin/session` after a reload (`frontend/lib/admin-auth.ts`). Legacy `localStorage` tokens are purged.
 - Login is throttled (`backend/app/services/login_throttle.py`): 5 failures per IP / 20 per username in 15 min lock that key for 60 s, doubling per repeat up to 15 min; locks always expire; a successful login clears counters; locked requests are refused before the password is checked; errors are identical for unknown user and wrong password. Client IP comes from the Nth-from-right `X-Forwarded-For` entry (`TRUSTED_PROXY_HOPS`), never the client-controlled left side.
 
+## Customer accounts (email + password)
+
+- Passwords are hashed with scrypt (random salt per account) in `data/customer_accounts.json`
+  (git-ignored). Plain passwords are never stored, returned or logged.
+- Sign-in errors are identical for an unknown email and a wrong password; failures are throttled
+  per IP (20) and per email (8) with expiring, progressive locks (`routes/customer_auth.py`).
+- Emails are not verified at sign-up, so bookings belong to the **account id**, never to a
+  matching email. Sign-up with an email that already has an (earlier, email-verified) customer
+  record is refused; support links the owner with **Admin → Customers → Reset password**, which
+  issues a one-time password the customer must replace.
+- ⚠️ On Render's free plan the disk is wiped on redeploy: accounts are lost until they move to a
+  database. Customers can register again; existing bookings stay visible to admins.
+
 ## ⚠️ Must fix before go-live
 
 - [x] **Startup guard (implemented):** with `APP_ENV=production` (or on Render) the app refuses to start if `ADMIN_PASSWORD` is a default or under 12 chars, if `ADMIN_JWT_SECRET`/`CUSTOMER_JWT_SECRET` are defaults or under 32 chars, or if the two secrets are equal. Customer sessions use `CUSTOMER_JWT_SECRET`; admin tokens use `ADMIN_JWT_SECRET`.

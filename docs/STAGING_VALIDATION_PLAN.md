@@ -26,7 +26,8 @@ Header: `Content-Security-Policy-Report-Only`, set in `frontend/next.config.ts`.
 - [ ] An admin write from the UI (e.g. enquiry status change) succeeds; the same request replayed without `X-CSRF-Token` returns 403.
 - [ ] Logout clears the cookie; `/admin/*` redirects to login; API returns 401.
 - [ ] Session expiry: with a short `ADMIN_TOKEN_TTL_HOURS` on staging, an expired session redirects to login cleanly.
-- [ ] Customer sign-in (real email delivery configured) works, the fixed dev code does **not** (it must be off), and a booking request can be submitted.
+- [ ] Customer create-account and sign-in (email + password) work, a wrong password gets the generic message, repeated failures lock briefly, and a booking request can be submitted.
+- [ ] After a redeploy, note that accounts were reset (free-tier disk) and existing bookings are still visible in admin.
 
 ## 3. CORS and cross-site cookies over HTTPS
 - [ ] Browser requests from the staging Netlify origin succeed with credentials; from any other origin they are rejected.

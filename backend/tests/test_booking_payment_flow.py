@@ -54,18 +54,6 @@ def request_with_cookie(cookie: str | None) -> Request:
     return Request({"type": "http", "headers": headers, "client": ("127.0.0.1", 1)})
 
 
-class FakeCustomers:
-    def __init__(self) -> None:
-        self.by_email: dict[str, CustomerLogin] = {}
-
-    def find_customer_by_email(self, email):
-        return self.by_email.get(email)
-
-    def upsert_customer(self, customer):
-        self.by_email[customer.email] = customer
-        return customer
-
-
 class FlowTestBase(unittest.TestCase):
     def setUp(self) -> None:
         self.tmp = Path(tempfile.mkdtemp())
@@ -140,55 +128,14 @@ class PublicSearchAndAuthTest(FlowTestBase):
         self.assertEqual(ctx.exception.status_code, 401)
         self.assertIsNone(auth.optional_session(request_with_cookie("forged.token.value")))
 
-    def test_email_code_sign_in_sets_http_only_session(self) -> None:
-        sent = {}
-
-        def fake_send(to, subject, *_args, **_kw):
-            sent["code"] = subject.rsplit(" ", 1)[-1]
-            return EmailResult("sent", "ok")
-
-        customers = FakeCustomers()
-        with mock.patch.object(auth, "send_email", side_effect=fake_send), \
-                mock.patch.object(config, "CUSTOMER_OTP_DEV_CODE", ""), \
-                mock.patch.object(auth, "get_admin_ops_service", return_value=customers):
-            self.assertEqual(auth.request_code("Traveller@Example.com", "10.0.0.1"), "email")
-            with self.assertRaises(HTTPException):
-                auth.verify_code("traveller@example.com", "000000" if sent["code"] != "000000" else "111111", "10.0.0.1")
-            customer = auth.verify_code("traveller@example.com", sent["code"], "10.0.0.1")
-            with self.assertRaises(HTTPException):  # single use
-                auth.verify_code("traveller@example.com", sent["code"], "10.0.0.1")
+    def test_session_cookie_is_http_only_and_round_trips(self) -> None:
         response = Response()
-        auth.start_session(response, customer)
+        auth.start_session(response, CustomerLogin(id="cust_test01", email="Traveller@Example.com"))
         cookie = response.headers["set-cookie"]
         self.assertIn("HttpOnly", cookie)
         token = cookie.split("=", 1)[1].split(";", 1)[0]
         session = auth.optional_session(request_with_cookie(token))
-        self.assertEqual(session.email, "traveller@example.com")
-
-    def test_fixed_dev_code_works_only_in_development_without_email(self) -> None:
-        customers = FakeCustomers()
-        with mock.patch.object(config, "CUSTOMER_OTP_DEV_CODE", "123456"), \
-                mock.patch.object(config, "IS_PRODUCTION", False), \
-                mock.patch.object(auth, "get_admin_ops_service", return_value=customers):
-            self.assertEqual(auth.request_code("dev-user@example.com", "10.0.1.1"), "dev_fixed")
-            with self.assertRaises(HTTPException):
-                auth.verify_code("dev-user@example.com", "654321", "10.0.1.1")
-            self.assertEqual(auth.verify_code("dev-user@example.com", "123456", "10.0.1.1").email, "dev-user@example.com")
-        # Production ignores the setting entirely.
-        with mock.patch.object(config, "CUSTOMER_OTP_DEV_CODE", "123456"), mock.patch.object(config, "IS_PRODUCTION", True):
-            self.assertIsNone(auth.fixed_dev_code())
-        # So does a configured email service.
-        with mock.patch.object(config, "CUSTOMER_OTP_DEV_CODE", "123456"), \
-                mock.patch.object(config, "SMTP_HOST", "smtp.example.com"), \
-                mock.patch.object(config, "SMTP_USERNAME", "u"), mock.patch.object(config, "SMTP_PASSWORD", "p"), \
-                mock.patch.object(config, "SMTP_FROM_EMAIL", "f@example.com"):
-            self.assertIsNone(auth.fixed_dev_code())
-
-    def test_production_without_email_refuses_codes(self) -> None:
-        with mock.patch.object(config, "IS_PRODUCTION", True), mock.patch.object(config, "CUSTOMER_OTP_DEV_CODE", ""):
-            with self.assertRaises(HTTPException) as ctx:
-                auth.request_code("prod-user@example.com", "10.0.0.2")
-        self.assertEqual(ctx.exception.status_code, 503)
+        self.assertEqual((session.customer_id, session.email), ("cust_test01", "traveller@example.com"))
 
 
 class TravellerValidationTest(FlowTestBase):
