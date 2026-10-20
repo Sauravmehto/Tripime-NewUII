@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
-import { ChevronDown, LogOut, Ticket } from "lucide-react";
+import { ChevronDown, KeyRound, LogOut, Ticket } from "lucide-react";
 import { cn } from "@/lib/cn";
 
 /** "sauravmehto.98@gmail.com" → "Sauravmehto"; used when we have no real name. */
@@ -190,6 +190,18 @@ export function UserMenu({
               <Ticket className="size-3.5" aria-hidden />
             </span>
             My Bookings
+          </Link>
+          <Link
+            href="/account/password"
+            role="menuitem"
+            tabIndex={-1}
+            onClick={() => setOpen(false)}
+            className="flex items-center gap-2.5 rounded-xl px-2.5 py-2 text-sm font-medium text-ink outline-none transition hover:bg-neutral-50 focus-visible:bg-primary-50 focus-visible:text-primary-800"
+          >
+            <span className="flex size-7 items-center justify-center rounded-lg bg-neutral-100 text-ink-muted">
+              <KeyRound className="size-3.5" aria-hidden />
+            </span>
+            Change password
           </Link>
         </div>
 

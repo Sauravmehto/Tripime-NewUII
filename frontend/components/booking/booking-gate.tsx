@@ -40,7 +40,8 @@ export function BookingGate({ children }: { children: ReactNode }) {
   const { hydrated, selectedFlight, search, progress } = useBooking();
 
   const ready = hydrated && session !== null;
-  const signedIn = Boolean(session?.authenticated);
+  // A temporary password from support must be replaced first; the login page shows that step.
+  const signedIn = Boolean(session?.authenticated && !session.mustChangePassword);
   const redirect = ready && signedIn ? blockedRedirect(pathname, Boolean(selectedFlight && search), progress) : null;
 
   useEffect(() => {

@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useRef, useState, type FormEvent } from "react";
-import axios from "axios";
+import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, Lock, Mail, ShieldCheck } from "lucide-react";
-import { requestSignInCode, verifySignInCode } from "@/lib/api/auth";
+import { KeyRound, Lock, MessageCircle, Phone, ShieldCheck } from "lucide-react";
+import { registerAccount, signIn, PASSWORD_MIN } from "@/lib/api/auth";
 import { getErrorMessage } from "@/lib/api/client";
 import { safeNextPath } from "@/lib/safe-redirect";
+import { telLink, whatsappLink } from "@/lib/contact";
+import { cn } from "@/lib/cn";
 import { useCustomerSession } from "@/context/customer-session-provider";
 import { useBooking } from "@/context/booking-provider";
 import { Container } from "@/components/layout/container";
@@ -14,8 +15,13 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { ChangePasswordForm } from "./change-password-form";
+import { PasswordInput } from "./password-input";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
+type Mode = "signin" | "register";
+type Errors = Partial<Record<"name" | "email" | "password" | "confirm" | "form", string>>;
 
 export function LoginView() {
   const router = useRouter();
@@ -23,206 +29,274 @@ export function LoginView() {
   const next = safeNextPath(params.get("next"));
   const { session, refresh } = useCustomerSession();
   const { selectedFlight } = useBooking();
-  const [step, setStep] = useState<"email" | "code">("email");
+  const [mode, setMode] = useState<Mode>(params.get("mode") === "register" ? "register" : "signin");
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [code, setCode] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [errors, setErrors] = useState<Errors>({});
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  const [devHint, setDevHint] = useState<{ kind: "dev_fixed" | "dev_log"; code?: string | null } | null>(null);
-  const codeRef = useRef<HTMLInputElement>(null);
-  // Seconds until another code can be requested (matches the server's cooldown).
-  const [cooldown, setCooldown] = useState(0);
+  const [showHelp, setShowHelp] = useState(false);
+  const tabsRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (cooldown <= 0) return;
-    const id = window.setTimeout(() => setCooldown((n) => n - 1), 1000);
-    return () => window.clearTimeout(id);
-  }, [cooldown]);
+  const mustChange = Boolean(session?.authenticated && session.mustChangePassword);
 
-  // Already signed in: carry on straight away.
+  // Already signed in (and no password to change): carry on straight away.
   useEffect(() => {
-    if (session?.authenticated) router.replace(next);
+    if (session?.authenticated && !session.mustChangePassword) router.replace(next);
   }, [session, next, router]);
 
-  useEffect(() => {
-    if (step === "code") codeRef.current?.focus();
-  }, [step]);
+  function switchMode(to: Mode) {
+    setMode(to);
+    setErrors({});
+    setShowHelp(false);
+  }
 
-  async function sendCode(event?: FormEvent) {
-    event?.preventDefault();
-    const value = email.trim();
-    if (!EMAIL_RE.test(value)) {
-      setError("Enter a valid email address.");
-      return;
+  function onTabsKey(e: KeyboardEvent<HTMLDivElement>) {
+    if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+    e.preventDefault();
+    const to: Mode = mode === "signin" ? "register" : "signin";
+    switchMode(to);
+    requestAnimationFrame(() => tabsRef.current?.querySelector<HTMLElement>('[aria-selected="true"]')?.focus());
+  }
+
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    const found: Errors = {};
+    const cleanEmail = email.trim();
+    if (mode === "register" && !name.trim()) found.name = "Enter your name.";
+    if (!EMAIL_RE.test(cleanEmail)) found.email = "Enter a valid email address.";
+    if (mode === "register") {
+      if (password.length < PASSWORD_MIN) found.password = `Use at least ${PASSWORD_MIN} characters.`;
+      if (confirm !== password) found.confirm = "The passwords don't match.";
+    } else if (!password) {
+      found.password = "Enter your password.";
     }
+    setErrors(found);
+    if (Object.keys(found).length) return;
+
     setBusy(true);
-    setError("");
     try {
-      const result = await requestSignInCode(value);
-      setDevHint(result.delivery === "email" ? null : { kind: result.delivery, code: result.devCode });
-      setCooldown(45);
-      setStep("code");
+      if (mode === "register") await registerAccount(name.trim(), cleanEmail, password);
+      else await signIn(cleanEmail, password);
+      const now = await refresh();
+      // A temporary password from support: the change step renders instead of redirecting.
+      if (!now.mustChangePassword) router.replace(next);
     } catch (err) {
-      const status = axios.isAxiosError(err) ? err.response?.status : undefined;
-      // Already sent recently: stay on / move to the code step instead of showing an error.
-      if (status === 429 && /just sent/i.test(getErrorMessage(err))) {
-        setStep("code");
-        setCooldown(20);
-      }
-      setError(getErrorMessage(err));
+      const message = getErrorMessage(err);
+      setErrors({ form: message });
+      if (/contact support/i.test(message)) setShowHelp(true);
     } finally {
       setBusy(false);
     }
   }
 
-  async function verify(event: FormEvent) {
-    event.preventDefault();
-    if (!/^\d{6}$/.test(code)) {
-      setError("Enter the 6-digit code from the email.");
-      return;
-    }
-    setBusy(true);
-    setError("");
-    try {
-      await verifySignInCode(email.trim(), code);
-      await refresh();
-      router.replace(next);
-    } catch (err) {
-      setError(getErrorMessage(err));
-      setBusy(false);
-    }
-  }
-
   const bookingNext = next.startsWith("/booking/");
+  const title = mustChange
+    ? "Set a new password"
+    : bookingNext
+      ? mode === "register"
+        ? "Create an account to book"
+        : "Sign in to continue your booking"
+      : mode === "register"
+        ? "Create your Tripime account"
+        : "Sign in to Tripime";
 
   return (
-    <Container narrow className="py-10">
+    <Container narrow className="py-8">
       <Card padded={false} className="mx-auto max-w-md overflow-hidden">
-        <div className="bg-linear-to-r from-primary-800 to-primary-600 px-6 py-6 text-white">
-          <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-white/75">
+        <div className="bg-linear-to-r from-primary-800 to-primary-600 px-6 py-5 text-white">
+          <p className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-white/75">
             <Lock className="size-3.5" aria-hidden /> Secure sign-in
           </p>
-          <h1 className="mt-1 text-2xl font-bold">
-            {bookingNext ? "Sign in to continue your booking" : "Sign in to Tripime"}
-          </h1>
-          {bookingNext && selectedFlight && (
-            <p className="mt-2 text-sm text-white/85">
+          <h1 className="mt-1 text-xl font-bold">{title}</h1>
+          {bookingNext && selectedFlight && !mustChange && (
+            <p className="mt-1.5 text-[13px] text-white/85">
               Your {selectedFlight.origin.code} → {selectedFlight.destination.code} flight on{" "}
               {selectedFlight.departureDate} is saved — you won&apos;t need to search again.
             </p>
           )}
         </div>
 
-        <div className="p-6">
-          {step === "email" ? (
-            <form onSubmit={sendCode} noValidate className="space-y-4">
-              <Field label="Email address">
-                <Input
-                  type="email"
-                  autoComplete="email"
-                  inputMode="email"
-                  placeholder="you@example.com"
-                  value={email}
-                  aria-invalid={error ? true : undefined}
-                  aria-describedby={error ? "login-error" : "login-hint"}
-                  onChange={(e) => {
-                    setEmail(e.target.value);
-                    setError("");
-                  }}
-                  autoFocus
-                />
-              </Field>
-              <p id="login-hint" className="flex items-start gap-1.5 text-xs text-ink-muted">
-                <Mail className="mt-0.5 size-3.5 shrink-0" aria-hidden />
-                We&apos;ll email you a 6-digit code. No password needed.
+        <div className="p-5 sm:p-6">
+          {mustChange ? (
+            <>
+              <p className="mb-4 flex items-start gap-2 rounded-lg bg-primary-50 px-3 py-2 text-[13px] text-primary-800">
+                <KeyRound className="mt-0.5 size-4 shrink-0" aria-hidden />
+                You signed in with a temporary password from our team. Choose your own password to continue.
               </p>
-              {error && <Err id="login-error" msg={error} />}
-              <Button type="submit" size="lg" variant="accent" className="w-full" disabled={busy}>
-                {busy ? "Sending code…" : "Email me a code"}
-              </Button>
-            </form>
+              <ChangePasswordForm
+                currentLabel="Temporary password"
+                submitLabel="Save and continue"
+                onDone={async () => {
+                  await refresh();
+                  router.replace(next);
+                }}
+              />
+            </>
           ) : (
-            <form onSubmit={verify} noValidate className="space-y-4">
-              <p className="text-sm text-ink-muted">
-                {devHint?.kind === "dev_fixed" ? (
-                  <>Signing in as <strong className="text-ink">{email.trim()}</strong>.</>
-                ) : (
-                  <>
-                    We sent a code to <strong className="text-ink">{email.trim()}</strong>. It expires in 10 minutes.
-                  </>
-                )}
-              </p>
-              {devHint?.kind === "dev_fixed" && (
-                <p role="status" className="rounded-lg bg-warning-50 px-3 py-2 text-xs text-ink">
-                  <strong>Development mode:</strong> email isn&apos;t set up yet, so no email was sent. Enter the
-                  test code <strong className="font-mono text-sm">{devHint.code}</strong>.
-                </p>
-              )}
-              {devHint?.kind === "dev_log" && (
-                <p role="status" className="rounded-lg bg-warning-50 px-3 py-2 text-xs text-ink">
-                  <strong>Development mode:</strong> email isn&apos;t configured, so the code was printed in the
-                  backend server log instead of being emailed.
-                </p>
-              )}
-              <Field label="6-digit code">
-                <Input
-                  ref={codeRef}
-                  inputMode="numeric"
-                  autoComplete="one-time-code"
-                  maxLength={6}
-                  placeholder="123456"
-                  value={code}
-                  aria-invalid={error ? true : undefined}
-                  aria-describedby={error ? "login-error" : undefined}
-                  onChange={(e) => {
-                    setCode(e.target.value.replace(/\D/g, "").slice(0, 6));
-                    setError("");
-                  }}
-                  className="text-center font-mono text-lg tracking-[0.4em]"
-                />
-              </Field>
-              {error && <Err id="login-error" msg={error} />}
-              <Button type="submit" size="lg" variant="accent" className="w-full" disabled={busy}>
-                {busy ? "Checking…" : "Sign in"}
-              </Button>
-              <div className="flex items-center justify-between text-xs">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setStep("email");
-                    setCode("");
-                    setError("");
-                  }}
-                  className="inline-flex items-center gap-1 font-semibold text-primary-700"
-                >
-                  <ArrowLeft className="size-3.5" aria-hidden /> Use another email
-                </button>
-                <button
-                  type="button"
-                  disabled={busy || cooldown > 0}
-                  onClick={() => void sendCode()}
-                  className="font-semibold text-primary-700 disabled:cursor-not-allowed disabled:text-ink-subtle"
-                >
-                  {cooldown > 0 ? `Resend code in ${cooldown}s` : "Resend code"}
-                </button>
+            <>
+              <div
+                ref={tabsRef}
+                role="tablist"
+                aria-label="Sign in or create an account"
+                onKeyDown={onTabsKey}
+                className="mb-5 grid grid-cols-2 gap-1 rounded-lg bg-neutral-100 p-1"
+              >
+                {(
+                  [
+                    ["signin", "Sign in"],
+                    ["register", "Create account"],
+                  ] as const
+                ).map(([id, label]) => (
+                  <button
+                    key={id}
+                    type="button"
+                    role="tab"
+                    id={`auth-tab-${id}`}
+                    aria-selected={mode === id}
+                    aria-controls="auth-panel"
+                    tabIndex={mode === id ? 0 : -1}
+                    onClick={() => switchMode(id)}
+                    className={cn(
+                      "h-9 rounded-md text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500",
+                      mode === id ? "bg-white text-ink shadow-xs" : "text-ink-muted hover:text-ink",
+                    )}
+                  >
+                    {label}
+                  </button>
+                ))}
               </div>
-            </form>
+
+              <form
+                id="auth-panel"
+                role="tabpanel"
+                aria-labelledby={`auth-tab-${mode}`}
+                onSubmit={submit}
+                noValidate
+                className="space-y-3"
+              >
+                {mode === "register" && (
+                  <Field label="Full name" error={errors.name}>
+                    <Input
+                      autoComplete="name"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      maxLength={120}
+                      aria-invalid={errors.name ? true : undefined}
+                      autoFocus
+                    />
+                  </Field>
+                )}
+                <Field label="Email address" error={errors.email}>
+                  <Input
+                    type="email"
+                    autoComplete="email"
+                    inputMode="email"
+                    placeholder="you@example.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    aria-invalid={errors.email ? true : undefined}
+                    autoFocus={mode === "signin"}
+                  />
+                </Field>
+                <Field
+                  label="Password"
+                  hint={mode === "register" ? `At least ${PASSWORD_MIN} characters.` : undefined}
+                  error={errors.password}
+                >
+                  <PasswordInput
+                    aria-label="Password"
+                    autoComplete={mode === "register" ? "new-password" : "current-password"}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    aria-invalid={errors.password ? true : undefined}
+                  />
+                </Field>
+                {mode === "register" && (
+                  <Field label="Confirm password" error={errors.confirm}>
+                    <PasswordInput
+                      aria-label="Confirm password"
+                      autoComplete="new-password"
+                      value={confirm}
+                      onChange={(e) => setConfirm(e.target.value)}
+                      aria-invalid={errors.confirm ? true : undefined}
+                    />
+                  </Field>
+                )}
+
+                {mode === "signin" && (
+                  <div className="-mt-1 text-right">
+                    <button
+                      type="button"
+                      onClick={() => setShowHelp((v) => !v)}
+                      aria-expanded={showHelp}
+                      className="rounded text-xs font-semibold text-primary-700 hover:text-primary-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+                    >
+                      Forgot password?
+                    </button>
+                  </div>
+                )}
+
+                {errors.form && (
+                  <p role="alert" className="text-sm text-danger-700">
+                    {errors.form}
+                  </p>
+                )}
+
+                {showHelp && (
+                  <div className="rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-[13px] text-ink-muted">
+                    <p>Contact our team and we&apos;ll set a temporary password for you.</p>
+                    <div className="mt-2 flex flex-wrap gap-3">
+                      <a
+                        href={whatsappLink(`Hi Tripime, please reset the password for my account${email.trim() ? ` (${email.trim()})` : ""}.`)}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1 rounded font-semibold text-success-700 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-success-500"
+                      >
+                        <MessageCircle className="size-4" aria-hidden /> WhatsApp us
+                      </a>
+                      <a
+                        href={telLink()}
+                        className="inline-flex items-center gap-1 rounded font-semibold text-primary-700 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+                      >
+                        <Phone className="size-4" aria-hidden /> Call us
+                      </a>
+                    </div>
+                  </div>
+                )}
+
+                <Button type="submit" size="lg" variant="accent" className="w-full" disabled={busy}>
+                  {busy
+                    ? mode === "register"
+                      ? "Creating account…"
+                      : "Signing in…"
+                    : mode === "register"
+                      ? "Create account"
+                      : "Sign in"}
+                </Button>
+
+                <p className="text-center text-xs text-ink-muted">
+                  {mode === "signin" ? "New to Tripime? " : "Already have an account? "}
+                  <button
+                    type="button"
+                    onClick={() => switchMode(mode === "signin" ? "register" : "signin")}
+                    className="rounded font-semibold text-primary-700 hover:text-primary-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+                  >
+                    {mode === "signin" ? "Create an account" : "Sign in"}
+                  </button>
+                </p>
+              </form>
+            </>
           )}
-          <p className="mt-6 flex items-start gap-1.5 border-t border-neutral-100 pt-4 text-[11px] text-ink-subtle">
+
+          <p className="mt-5 flex items-start gap-1.5 border-t border-neutral-100 pt-4 text-[11px] text-ink-subtle">
             <ShieldCheck className="mt-px size-3.5 shrink-0 text-success-700" aria-hidden />
-            Searching flights never needs an account. We ask you to sign in only to book, so your booking
-            stays private to you.
+            Searching flights never needs an account. We ask you to sign in only to book, so your booking stays
+            private to you.
           </p>
         </div>
       </Card>
     </Container>
-  );
-}
-
-function Err({ id, msg }: { id: string; msg: string }) {
-  return (
-    <p id={id} role="alert" className="text-sm text-danger-700">
-      {msg}
-    </p>
   );
 }

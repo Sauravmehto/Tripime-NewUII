@@ -52,9 +52,10 @@ export function SiteHeader() {
   // The lead-capture profile may know the traveller's real name; only trust it for the same email.
   const profileCustomer = profile?.customer;
   const displayName =
-    profileCustomer && session?.email && profileCustomer.email.toLowerCase() === session.email.toLowerCase()
+    session?.name ||
+    (profileCustomer && session?.email && profileCustomer.email.toLowerCase() === session.email.toLowerCase()
       ? profileCustomer.name
-      : null;
+      : null);
 
   async function handleLogout() {
     await logout();

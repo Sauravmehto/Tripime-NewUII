@@ -572,6 +572,23 @@ export async function getAdminCustomers(): Promise<CustomerLogin[]> {
   return data;
 }
 
+export interface TemporaryPasswordResult {
+  customerId: string;
+  email: string;
+  /** Shown once; the server keeps only its hash. */
+  temporaryPassword: string;
+}
+
+/** Gives a customer a one-time password; they must choose their own after signing in. */
+export async function resetAdminCustomerPassword(customerId: string): Promise<TemporaryPasswordResult> {
+  const { data } = await apiClient.post<TemporaryPasswordResult>(
+    `/api/admin/customers/${encodeURIComponent(customerId)}/password`,
+    undefined,
+    { headers: authHeaders() },
+  );
+  return data;
+}
+
 export async function getAdminFlightSearches(): Promise<FlightSearchLog[]> {
   const { data } = await apiClient.get<FlightSearchLog[]>("/api/admin/flight-searches", {
     headers: authHeaders(),

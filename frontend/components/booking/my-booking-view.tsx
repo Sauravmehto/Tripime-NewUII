@@ -12,7 +12,7 @@ import { loginHref } from "@/lib/safe-redirect";
 import { useCustomerSession } from "@/context/customer-session-provider";
 import { Container } from "@/components/layout/container";
 import { Badge, Card, Skeleton } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { buttonClasses } from "@/components/ui/button";
 import type { Booking } from "@/types";
 
 /** Signed-in customer's bookings. Bookings are private: no lookup by reference alone. */
@@ -49,9 +49,9 @@ export function MyBookingView() {
         <Card className="text-center">
           <Lock className="mx-auto size-8 text-primary-600" aria-hidden />
           <p className="mt-3 font-semibold text-ink">Sign in to see your bookings</p>
-          <p className="mt-1 text-sm text-ink-muted">Use the email you booked with — we&apos;ll send you a one-time code.</p>
-          <Link href={loginHref("/my-booking")} className="mt-4 inline-block">
-            <Button variant="accent">Sign in</Button>
+          <p className="mt-1 text-sm text-ink-muted">Sign in with your email and password to see your booking requests.</p>
+          <Link href={loginHref("/my-booking")} className={buttonClasses({ variant: "accent", className: "mt-4" })}>
+            Sign in
           </Link>
         </Card>
       )}
@@ -74,8 +74,8 @@ export function MyBookingView() {
           <Plane className="mx-auto size-8 text-ink-subtle" aria-hidden />
           <p className="mt-3 font-semibold text-ink">No bookings yet</p>
           <p className="mt-1 text-sm text-ink-muted">Search flights to start a booking request.</p>
-          <Link href="/flights" className="mt-4 inline-block">
-            <Button>Search flights</Button>
+          <Link href="/flights" className={buttonClasses({ className: "mt-4" })}>
+            Search flights
           </Link>
         </Card>
       )}
