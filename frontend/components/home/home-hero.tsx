@@ -74,7 +74,7 @@ export function HomeHero() {
           <div className="max-w-xl lg:max-w-2xl">
             <motion.p
               {...fade(0.05)}
-              className="text-[11px] font-semibold uppercase tracking-[0.16em] text-white/70"
+              className="hidden text-[11px] font-semibold uppercase tracking-[0.16em] text-white/70 lg:block"
             >
               Tripime
             </motion.p>
@@ -82,12 +82,15 @@ export function HomeHero() {
               {...fade(0.1)}
               className="mt-2 text-2xl font-bold tracking-tight text-white sm:text-3xl lg:text-4xl lg:leading-[1.1]"
             >
-              Discover and plan travel that feels{" "}
-              <span className="text-accent">premium</span> — in minutes.
+              <span className="lg:hidden">Search flights in minutes.</span>
+              <span className="hidden lg:inline">
+                Discover and plan travel that feels <span className="text-accent">premium</span> — in
+                minutes.
+              </span>
             </motion.h1>
             <motion.p
               {...fade(0.16)}
-              className="mt-3 max-w-lg text-sm leading-relaxed text-white/80 sm:text-[0.9375rem]"
+              className="mt-3 hidden max-w-lg text-sm leading-relaxed text-white/80 sm:text-[0.9375rem] lg:block"
             >
               Search domestic flights from Delhi, explore curated holiday packages, or talk to a
               real travel expert. No chatbots. No hidden fees.
@@ -122,7 +125,7 @@ export function HomeHero() {
           <motion.a
             href="#explore"
             {...fade(0.4)}
-            className="mt-8 inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-white/60 transition hover:text-white"
+            className="mt-8 hidden items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-white/60 transition hover:text-white lg:inline-flex"
           >
             Explore destinations
             <ArrowDown className="size-3.5 animate-bounce-soft" aria-hidden />

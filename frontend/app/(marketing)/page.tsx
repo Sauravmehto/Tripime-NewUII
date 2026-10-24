@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { PageTransition } from "@/components/motion/page-transition";
 import { HomeHero } from "@/components/home/home-hero";
+import { HomePackageRow } from "@/components/home/home-package-row";
 import { TrustStrip } from "@/components/home/trust-strip";
 import { DestinationExplorer } from "@/components/home/destination-explorer";
 import { TrendingTrips } from "@/components/home/trending-trips";
@@ -25,6 +26,7 @@ export default function HomePage() {
   return (
     <PageTransition>
       <HomeHero />
+      <HomePackageRow />
       <TrustStrip />
       <DestinationExplorer />
       <TrendingTrips />
