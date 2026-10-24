@@ -155,7 +155,7 @@ export function DestinationExplorer() {
         <SectionHeading
           eyebrow="Destinations"
           title="Find your next escape"
-          subtitle="Filter by mood — beach, mountains, city breaks, and more. Illustrative starting prices; enquire for live quotes."
+          subtitle="Filter by mood — beach, mountains, city breaks and more. Starting prices per person; enquire for a quote for your dates."
         />
       </Reveal>
 

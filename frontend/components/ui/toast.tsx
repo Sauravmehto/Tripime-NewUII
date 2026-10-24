@@ -39,6 +39,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       {children}
       <div
         aria-live="polite"
+        data-toast-region
         className="pointer-events-none fixed bottom-4 right-4 z-[100] flex flex-col gap-2"
       >
         {items.map((item) => (

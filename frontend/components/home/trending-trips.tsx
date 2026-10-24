@@ -36,10 +36,12 @@ function SupportingTripCard({ trip }: { trip: TrendingTrip }) {
               <p className="text-sm font-bold">{trip.destination}</p>
               <p className="text-[10px] text-white/80">{trip.country}</p>
             </div>
-            <span className="inline-flex items-center gap-0.5 rounded-md bg-white/15 px-1.5 py-0.5 text-[10px] font-semibold backdrop-blur-sm">
-              <Star className="size-3 fill-warning-500 text-warning-500" aria-hidden />
-              {trip.rating}
-            </span>
+            {trip.rating != null && (
+              <span className="inline-flex items-center gap-0.5 rounded-md bg-white/15 px-1.5 py-0.5 text-[10px] font-semibold backdrop-blur-sm">
+                <Star className="size-3 fill-warning-500 text-warning-500" aria-hidden />
+                {trip.rating}
+              </span>
+            )}
           </div>
         </div>
       </Link>
@@ -72,7 +74,7 @@ export function TrendingTrips() {
         <SectionHeading
           eyebrow="Trending now"
           title="Trips travellers are booking"
-          subtitle="Curated picks with illustrative prices — enquire for a live quote from a travel expert."
+          subtitle="Our most-loved holidays right now. Prices are per person — your travel expert confirms the final quote for your dates."
         />
       </Reveal>
 
@@ -99,11 +101,15 @@ export function TrendingTrips() {
             <p className="mt-1 text-sm text-ink-muted">{FEATURED.country}</p>
             <div className="mt-4 flex flex-wrap items-center gap-3 text-sm">
               <span className="font-medium text-ink">{FEATURED.duration}</span>
-              <span className="text-ink-subtle">·</span>
-              <span className="inline-flex items-center gap-1 text-ink-muted">
-                <Star className="size-3.5 fill-warning-500 text-warning-500" aria-hidden />
-                {FEATURED.rating}
-              </span>
+              {FEATURED.rating != null && (
+                <>
+                  <span className="text-ink-subtle">·</span>
+                  <span className="inline-flex items-center gap-1 text-ink-muted">
+                    <Star className="size-3.5 fill-warning-500 text-warning-500" aria-hidden />
+                    {FEATURED.rating}
+                  </span>
+                </>
+              )}
             </div>
             <p className="mt-3 text-xl font-bold text-ink">
               {FEATURED.price}

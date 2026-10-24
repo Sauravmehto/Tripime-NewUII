@@ -24,7 +24,8 @@ export interface TrendingTrip {
   destination: string;
   country: string;
   duration: string;
-  rating: number;
+  /** Only set from real, verifiable review data; the star badge is hidden without it. */
+  rating?: number;
   price: string;
   priceNote: string;
   image: string;
@@ -49,6 +50,8 @@ export interface Testimonial {
   name: string;
   location: string;
   trip: string;
+  /** True only for real customer feedback shared with the customer's consent. */
+  verified?: boolean;
 }
 
 export interface ComingSoonService {
@@ -147,7 +150,7 @@ export const EXPLORER_DESTINATIONS: ExplorerDestination[] = [
     country: "Maldives",
     category: "luxury",
     image:
-      "https://images.pexels.com/photos/1285625/pexels-photo-1285625.jpeg?auto=compress&cs=tinysrgb&w=800",
+      "https://images.pexels.com/photos/3601425/pexels-photo-3601425.jpeg?auto=compress&cs=tinysrgb&w=800",
     startingPrice: "₹89,999",
     experiences: ["Overwater villas", "Snorkelling", "Sunset cruise"],
     href: "/packages",
@@ -158,7 +161,7 @@ export const EXPLORER_DESTINATIONS: ExplorerDestination[] = [
     country: "India",
     category: "nature",
     image:
-      "https://images.pexels.com/photos/3601425/pexels-photo-3601425.jpeg?auto=compress&cs=tinysrgb&w=800",
+      "https://images.pexels.com/photos/962464/pexels-photo-962464.jpeg?auto=compress&cs=tinysrgb&w=800",
     startingPrice: "₹16,499",
     experiences: ["Backwaters", "Ayurveda", "Tea estates"],
     href: "/packages",
@@ -171,7 +174,6 @@ export const TRENDING_TRIPS: TrendingTrip[] = [
     destination: "Bali",
     country: "Indonesia",
     duration: "6N / 7D",
-    rating: 4.8,
     price: "₹52,999",
     priceNote: "per person",
     image:
@@ -183,11 +185,10 @@ export const TRENDING_TRIPS: TrendingTrip[] = [
     destination: "Maldives",
     country: "Indian Ocean",
     duration: "4N / 5D",
-    rating: 4.9,
     price: "₹89,999",
     priceNote: "per person",
     image:
-      "https://images.pexels.com/photos/1285625/pexels-photo-1285625.jpeg?auto=compress&cs=tinysrgb&w=800",
+      "https://images.pexels.com/photos/3601425/pexels-photo-3601425.jpeg?auto=compress&cs=tinysrgb&w=800",
     href: "/packages",
   },
   {
@@ -195,7 +196,6 @@ export const TRENDING_TRIPS: TrendingTrip[] = [
     destination: "Dubai",
     country: "UAE",
     duration: "5N / 6D",
-    rating: 4.7,
     price: "₹45,999",
     priceNote: "per person",
     image:
@@ -207,11 +207,10 @@ export const TRENDING_TRIPS: TrendingTrip[] = [
     destination: "Kashmir",
     country: "India",
     duration: "5N / 6D",
-    rating: 4.8,
     price: "₹18,499",
     priceNote: "per person",
     image:
-      "https://images.pexels.com/photos/2387866/pexels-photo-2387866.jpeg?auto=compress&cs=tinysrgb&w=800",
+      "https://images.pexels.com/photos/25786566/pexels-photo-25786566.jpeg?auto=compress&cs=tinysrgb&w=800",
     href: "/packages",
   },
   {
@@ -219,11 +218,10 @@ export const TRENDING_TRIPS: TrendingTrip[] = [
     destination: "Thailand",
     country: "Southeast Asia",
     duration: "6N / 7D",
-    rating: 4.6,
     price: "₹42,999",
     priceNote: "per person",
     image:
-      "https://images.pexels.com/photos/3601425/pexels-photo-3601425.jpeg?auto=compress&cs=tinysrgb&w=800",
+      "https://images.pexels.com/photos/1007657/pexels-photo-1007657.jpeg?auto=compress&cs=tinysrgb&w=800",
     href: "/packages",
   },
   {
@@ -231,7 +229,6 @@ export const TRENDING_TRIPS: TrendingTrip[] = [
     destination: "Switzerland",
     country: "Europe",
     duration: "7N / 8D",
-    rating: 4.9,
     price: "₹1,49,999",
     priceNote: "per person",
     image:
@@ -243,11 +240,10 @@ export const TRENDING_TRIPS: TrendingTrip[] = [
     destination: "Turkey",
     country: "Europe & Asia",
     duration: "6N / 7D",
-    rating: 4.7,
     price: "₹68,999",
     priceNote: "per person",
     image:
-      "https://images.pexels.com/photos/161815/pexels-photo-161815.jpeg?auto=compress&cs=tinysrgb&w=800",
+      "https://images.pexels.com/photos/9896355/pexels-photo-9896355.jpeg?auto=compress&cs=tinysrgb&w=800",
     href: "/packages",
   },
   {
@@ -255,11 +251,10 @@ export const TRENDING_TRIPS: TrendingTrip[] = [
     destination: "Vietnam",
     country: "Southeast Asia",
     duration: "5N / 6D",
-    rating: 4.5,
     price: "₹39,999",
     priceNote: "per person",
     image:
-      "https://images.pexels.com/photos/3601425/pexels-photo-3601425.jpeg?auto=compress&cs=tinysrgb&w=800",
+      "https://images.pexels.com/photos/6871169/pexels-photo-6871169.jpeg?auto=compress&cs=tinysrgb&w=800",
     href: "/packages",
   },
 ];
@@ -298,7 +293,7 @@ export const MAP_DESTINATIONS: MapDestination[] = [
     blurb: "Island beaches, street food, and buzzing night markets.",
     priceFrom: "₹42,999",
     image:
-      "https://images.pexels.com/photos/3601425/pexels-photo-3601425.jpeg?auto=compress&cs=tinysrgb&w=800",
+      "https://images.pexels.com/photos/1007657/pexels-photo-1007657.jpeg?auto=compress&cs=tinysrgb&w=800",
     flightHref: "/flights?origin=DEL&destination=BKK",
   },
   {
@@ -310,7 +305,7 @@ export const MAP_DESTINATIONS: MapDestination[] = [
     blurb: "Emerald bays, ancient towns, and vibrant street life.",
     priceFrom: "₹39,999",
     image:
-      "https://images.pexels.com/photos/2387866/pexels-photo-2387866.jpeg?auto=compress&cs=tinysrgb&w=800",
+      "https://images.pexels.com/photos/31387030/pexels-photo-31387030.jpeg?auto=compress&cs=tinysrgb&w=800",
     flightHref: "/flights?origin=DEL&destination=SGN",
   },
 ];
@@ -373,46 +368,15 @@ export const COMING_SOON_SERVICES: ComingSoonService[] = [
   {
     id: "experiences",
     title: "Local experiences",
-    description: "Tours, activities, and curated day trips — future-ready.",
+    description: "Tours, activities, and curated day trips — launching soon.",
     href: "/packages",
     eta: "Preview",
   },
 ];
 
-export const TESTIMONIALS: Testimonial[] = [
-  {
-    id: "1",
-    quote:
-      "Booked Delhi to Mumbai in under five minutes. E-ticket landed in my inbox instantly — and when I had a date question, a real person picked up.",
-    name: "Priya Sharma",
-    location: "Delhi",
-    trip: "Flight · DEL → BOM",
-  },
-  {
-    id: "2",
-    quote:
-      "We enquired about a Kashmir package and got a custom itinerary the same day. No pushy upsells — just honest pricing from a travel expert.",
-    name: "Rahul & Meera",
-    location: "Bangalore",
-    trip: "Package · Kashmir",
-  },
-  {
-    id: "3",
-    quote:
-      "Transparent fare breakdown at checkout. I appreciated that hotels and visa were clearly marked 'Soon' instead of pretending everything was live.",
-    name: "Arjun Mehta",
-    location: "Mumbai",
-    trip: "Flight · DEL → BLR",
-  },
-  {
-    id: "4",
-    quote:
-      "WhatsApp support actually worked. Sent my PNR, got my invoice re-sent in minutes. Felt like a premium agency, not a generic booking site.",
-    name: "Sneha Patel",
-    location: "Ahmedabad",
-    trip: "Support · My Booking",
-  },
-];
+// Add real customer feedback here, with their consent, and set verified: true.
+// The Testimonials section stays hidden until at least one verified entry exists.
+export const TESTIMONIALS: Testimonial[] = [];
 
 export const TRUST_POINTS = [
   {
@@ -534,7 +498,7 @@ export const INSPIRATION_STORIES = [
     title: "Honeymoon picks under ₹1L",
     subtitle: "Romantic getaways with expert planning",
     image:
-      "https://images.pexels.com/photos/1285625/pexels-photo-1285625.jpeg?auto=compress&cs=tinysrgb&w=800",
+      "https://images.pexels.com/photos/3601425/pexels-photo-3601425.jpeg?auto=compress&cs=tinysrgb&w=800",
     href: "/packages",
   },
   {

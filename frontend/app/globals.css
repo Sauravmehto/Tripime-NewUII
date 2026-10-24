@@ -416,6 +416,23 @@ h4 {
   body:has([data-mobile-bottom-bar]) [data-marketing-shell] {
     padding-bottom: calc(5.5rem + env(safe-area-inset-bottom));
   }
+
+  /* Toasts sit above whichever control is fixed at the bottom, and never run
+     wider than the screen. Desktop keeps bottom-right. */
+  [data-toast-region] {
+    left: 1rem;
+    align-items: flex-end;
+    bottom: calc(4.5rem + env(safe-area-inset-bottom));
+  }
+
+  body:has([data-mobile-bottom-bar]) [data-toast-region] {
+    bottom: calc(5.5rem + env(safe-area-inset-bottom));
+  }
+
+  /* Flight results: clear the floating Sort / Filter pill above the tab bar. */
+  body:has([data-mobile-floating-actions]) [data-toast-region] {
+    bottom: calc(8.25rem + env(safe-area-inset-bottom));
+  }
 }
 
 /* Two-handle range slider (components/ui/range-slider.tsx): only the thumbs take input. */

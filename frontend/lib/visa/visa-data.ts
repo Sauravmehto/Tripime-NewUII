@@ -54,7 +54,7 @@ export const VISA_DESTINATIONS: VisaDestination[] = [
     country: "Thailand",
     type: "Tourist",
     image:
-      "https://images.pexels.com/photos/1659438/pexels-photo-1659438.jpeg?auto=compress&cs=tinysrgb&w=800",
+      "https://images.pexels.com/photos/1007657/pexels-photo-1007657.jpeg?auto=compress&cs=tinysrgb&w=800",
     timeline: "Typically 3–7 business days",
     visaKinds: ["Tourist"],
   },

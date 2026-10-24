@@ -13,7 +13,7 @@ export function InspirationGrid() {
         <SectionHeading
           eyebrow="Travel inspiration"
           title="Stories to spark your next trip"
-          subtitle="Editorial picks — static content today, CMS-ready tomorrow."
+          subtitle="Ideas and short guides to help you plan your next escape."
         />
       </Reveal>
 

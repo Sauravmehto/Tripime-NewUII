@@ -84,7 +84,7 @@ export function BuildYourTrip() {
           <SectionHeading
             eyebrow="Build your trip"
             title="Four taps to a trip idea"
-            subtitle="A frontend recommendation experience — not AI. Structured so real APIs can plug in later."
+            subtitle="Pick a vibe, a place, a budget and a trip length — we'll suggest holidays that fit."
           />
         </Reveal>
 

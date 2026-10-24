@@ -1,13 +1,21 @@
 "use client";
 
-import { memo, useEffect, useRef, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useReducedMotion } from "motion/react";
 import { ArrowUpRight, BadgeCheck, ChevronLeft, ChevronRight, Play, X } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { formatINR } from "@/lib/format";
-import type { InfluencerTrip } from "@/lib/packages/influencer-trips";
+import type { InfluencerTrip, TripCreator } from "@/lib/packages/influencer-trips";
+
+/** A trip that can show a reel: a real creator and their video are both set. */
+type ReelTrip = InfluencerTrip & { creator: TripCreator; video: string; reelTitle: string };
+
+function toReel(trip: InfluencerTrip): ReelTrip[] {
+  if (!trip.creator || !trip.video) return [];
+  return [{ ...trip, creator: trip.creator, video: trip.video, reelTitle: trip.reelTitle ?? `${trip.destination} with ${trip.creator.name}` }];
+}
 
 const FRAME_MS = 3500;
 
@@ -43,7 +51,12 @@ function firstName(name: string) {
 }
 
 // Memoized so the carousel autoplay above does not re-render an open reel.
-export const InfluencerReels = memo(function InfluencerReels({ trips }: { trips: InfluencerTrip[] }) {
+export const InfluencerReels = memo(function InfluencerReels({
+  trips: allTrips,
+}: {
+  trips: InfluencerTrip[];
+}) {
+  const trips = useMemo(() => allTrips.flatMap(toReel), [allTrips]);
   const [open, setOpen] = useState<number | null>(null);
   const triggerRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
@@ -52,6 +65,9 @@ export const InfluencerReels = memo(function InfluencerReels({ trips }: { trips:
     setOpen(null);
     if (index !== null) triggerRefs.current[index]?.focus();
   }
+
+  // No approved creator videos yet: show nothing rather than empty reel cards.
+  if (trips.length === 0) return null;
 
   return (
     <div className="mt-8">
@@ -99,9 +115,9 @@ export const InfluencerReels = memo(function InfluencerReels({ trips }: { trips:
                     aria-hidden
                     className="flex size-6 shrink-0 items-center justify-center rounded-full bg-accent text-[9px] font-bold text-white ring-2 ring-white/80"
                   >
-                    {initials(trip.creator)}
+                    {initials(trip.creator.name)}
                   </span>
-                  <span className="truncate text-[11px] font-semibold text-white">{trip.handle}</span>
+                  <span className="truncate text-[11px] font-semibold text-white">{trip.creator.handle}</span>
                 </div>
               </div>
               <p className="mt-2 line-clamp-1 text-sm font-semibold text-ink group-hover:text-primary-700">
@@ -129,7 +145,7 @@ export const InfluencerReels = memo(function InfluencerReels({ trips }: { trips:
 });
 
 interface ReelViewerProps {
-  trip: InfluencerTrip;
+  trip: ReelTrip;
   onClose: () => void;
   onPrev?: () => void;
   onNext?: () => void;
@@ -289,12 +305,14 @@ function ReelViewer({ trip, onClose, onPrev, onNext }: ReelViewerProps) {
                   aria-hidden
                   className="flex size-8 shrink-0 items-center justify-center rounded-full bg-accent text-[10px] font-bold text-white ring-2 ring-white/80"
                 >
-                  {initials(trip.creator)}
+                  {initials(trip.creator.name)}
                 </span>
                 <div className="min-w-0">
                   <p className="flex items-center gap-1 text-xs font-semibold text-white">
-                    <span className="truncate">{trip.handle}</span>
-                    <BadgeCheck className="size-3.5 shrink-0 fill-primary-500 text-white" aria-hidden />
+                    <span className="truncate">{trip.creator.handle}</span>
+                    {trip.creator.verified && (
+                      <BadgeCheck className="size-3.5 shrink-0 fill-primary-500 text-white" aria-label="Verified creator" />
+                    )}
                   </p>
                   <p className="text-[10px] text-white/75">Sponsored by Tripime</p>
                 </div>
@@ -314,7 +332,7 @@ function ReelViewer({ trip, onClose, onPrev, onNext }: ReelViewerProps) {
             href={trip.href}
             className="inline-flex h-9 shrink-0 items-center gap-1 rounded-md bg-accent px-3.5 text-xs font-semibold text-white shadow-xs transition hover:bg-accent-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-ink"
           >
-            Travel with {firstName(trip.creator)}
+            Travel with {firstName(trip.creator.name)}
             <ArrowUpRight className="size-3.5" aria-hidden />
           </Link>
         </div>

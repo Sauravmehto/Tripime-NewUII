@@ -32,16 +32,18 @@ function initials(name: string) {
     .toUpperCase();
 }
 
-function CreatorAvatar({ trip, className }: { trip: InfluencerTrip; className?: string }) {
+/** Creator initials, or a map pin for a Tripime group trip without a creator. */
+function TripAvatar({ trip, className }: { trip: InfluencerTrip; className?: string }) {
   return (
     <span
       aria-hidden
       className={cn(
-        "flex shrink-0 items-center justify-center rounded-full bg-accent font-bold text-white ring-2 ring-white/80",
+        "flex shrink-0 items-center justify-center rounded-full font-bold text-white ring-2 ring-white/80",
+        trip.creator ? "bg-accent" : "bg-primary-700",
         className,
       )}
     >
-      {initials(trip.creator)}
+      {trip.creator ? initials(trip.creator.name) : <MapPin className="size-1/2" />}
     </span>
   );
 }
@@ -53,6 +55,9 @@ export function InfluencerTrips() {
   const [active, setActive] = useState(0);
   const [paused, setPaused] = useState(false);
   const autoplay = !reduceMotion && !paused && count > 1;
+  // Creator wording only once a real, approved creator partnership exists.
+  const hasCreators = trips.some((trip) => trip.creator);
+  const sectionTitle = hasCreators ? "Upcoming influencer trips" : "Upcoming group trips";
 
   // Advance every AUTOPLAY_MS. Depending on `active` and `autoplay` restarts
   // the timer after any manual change or when the pointer/focus leaves.
@@ -80,19 +85,20 @@ export function InfluencerTrips() {
   }
 
   return (
-    <section aria-label="Upcoming influencer trips" className="border-t border-neutral-200 py-8">
+    <section aria-label={sectionTitle} className="border-t border-neutral-200 py-8">
       <div className="flex items-end justify-between gap-3">
         <div>
           <span className="inline-flex items-center gap-1 rounded-full bg-accent-soft px-2.5 py-1 text-[11px] font-semibold text-accent-dark">
             <Sparkles className="size-3" aria-hidden />
-            Tripime × creators
+            {hasCreators ? "Tripime × creators" : "Small-group departures"}
           </span>
           <h2 className="mt-2 text-lg font-bold tracking-tight text-ink sm:text-xl">
-            Upcoming influencer trips
+            {sectionTitle}
           </h2>
           <p className="mt-1 max-w-xl text-sm text-ink-muted">
-            Creators we sponsor travel on Tripime packages and share the whole journey. Join
-            their next departure: same stays, same route, planned end to end by Tripime.
+            {hasCreators
+              ? "Creators we partner with travel on Tripime packages and share the whole journey. Join their next departure: same stays, same route, planned end to end by Tripime."
+              : "Small-group holidays with stays, transfers and experiences planned end to end by Tripime. Ask about dates and seats for any trip."}
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
@@ -118,7 +124,7 @@ export function InfluencerTrips() {
       <div
         role="region"
         aria-roledescription="carousel"
-        aria-label="Upcoming influencer trips"
+        aria-label={sectionTitle}
         onKeyDown={handleKeyDown}
         onMouseEnter={() => setPaused(true)}
         onMouseLeave={() => setPaused(false)}
@@ -134,7 +140,7 @@ export function InfluencerTrips() {
             <article
               key={trip.id}
               tabIndex={0}
-              aria-label={`${i + 1} of ${count}: ${trip.destination} with ${trip.creator}`}
+              aria-label={`${i + 1} of ${count}: ${trip.destination}${trip.creator ? ` with ${trip.creator.name}` : ""}`}
               aria-current={isActive}
               onClick={() => setActive(i)}
               onFocus={() => setActive(i)}
@@ -168,10 +174,10 @@ export function InfluencerTrips() {
                   isActive ? "pointer-events-none opacity-0" : "opacity-100 delay-300",
                 )}
               >
-                <CreatorAvatar trip={trip} className="size-6 text-[9px] md:size-8 md:text-[10px]" />
+                <TripAvatar trip={trip} className="size-6 text-[9px] md:size-8 md:text-[10px]" />
                 <span className="truncate text-xs font-semibold tracking-wide md:rotate-180 md:text-sm md:[writing-mode:vertical-rl]">
                   {trip.destination}
-                  <span className="font-normal text-white/70"> · {trip.creator}</span>
+                  {trip.creator && <span className="font-normal text-white/70"> · {trip.creator.name}</span>}
                 </span>
                 <span className="ml-auto shrink-0 text-[10px] font-medium text-white/70 md:hidden">
                   {trip.dates}
@@ -191,7 +197,7 @@ export function InfluencerTrips() {
                   <div className="flex min-w-0 flex-col items-start gap-1.5">
                     <span className="inline-flex items-center gap-1 rounded-full bg-white/90 px-2.5 py-1 text-[10px] font-semibold text-ink shadow-xs backdrop-blur-sm sm:text-[11px]">
                       <BadgeCheck className="size-3.5 text-accent" aria-hidden />
-                      Sponsored by Tripime
+                      {trip.creator ? "Sponsored by Tripime" : "Tripime group trip"}
                     </span>
                     <span className="inline-flex items-center gap-1 rounded-full bg-ink/50 px-2.5 py-1 text-[10px] font-semibold text-white backdrop-blur-sm sm:text-[11px]">
                       <CalendarDays className="size-3" aria-hidden />
@@ -199,7 +205,7 @@ export function InfluencerTrips() {
                     </span>
                   </div>
 
-                  {/* Moments from the creator's trip */}
+                  {/* Destination photos */}
                   <div className="hidden shrink-0 flex-col items-end gap-1.5 sm:flex">
                     <span className="text-[10px] font-semibold uppercase tracking-wider text-white/80">
                       Trip moments
@@ -224,30 +230,49 @@ export function InfluencerTrips() {
                 </div>
 
                 <div className="min-w-0">
-                  <div className="flex min-w-0 items-center gap-2">
-                    <CreatorAvatar trip={trip} className="size-9 text-[11px]" />
-                    <div className="min-w-0">
-                      <p className="flex min-w-0 items-center gap-1 text-sm font-semibold text-white">
-                        <span className="truncate">{trip.creator}</span>
-                        <BadgeCheck
-                          className="size-3.5 shrink-0 fill-primary-500 text-white"
-                          aria-label="Verified creator"
-                        />
-                      </p>
-                      <p className="truncate text-[11px] text-white/70">
-                        {trip.handle} · {trip.followers} followers
-                      </p>
+                  {trip.creator && (
+                    <div className="mb-3 flex min-w-0 items-center gap-2">
+                      <TripAvatar trip={trip} className="size-9 text-[11px]" />
+                      <div className="min-w-0">
+                        <p className="flex min-w-0 items-center gap-1 text-sm font-semibold text-white">
+                          <span className="truncate">{trip.creator.name}</span>
+                          {trip.creator.verified && (
+                            <BadgeCheck
+                              className="size-3.5 shrink-0 fill-primary-500 text-white"
+                              aria-label="Verified creator"
+                            />
+                          )}
+                        </p>
+                        <p className="truncate text-[11px] text-white/70">
+                          {trip.creator.profileUrl ? (
+                            <a
+                              href={trip.creator.profileUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              tabIndex={isActive ? 0 : -1}
+                              className="underline-offset-2 hover:underline"
+                            >
+                              {trip.creator.handle}
+                            </a>
+                          ) : (
+                            trip.creator.handle
+                          )}
+                          {trip.creator.followers && ` · ${trip.creator.followers} followers`}
+                        </p>
+                      </div>
                     </div>
-                  </div>
+                  )}
 
-                  <h3 className="mt-3 line-clamp-2 text-base font-bold leading-snug text-white sm:text-xl md:max-w-lg">
+                  <h3 className="line-clamp-2 text-base font-bold leading-snug text-white sm:text-xl md:max-w-lg">
                     {trip.title}
                   </h3>
 
-                  <blockquote className="mt-2 hidden max-w-lg gap-1.5 text-sm italic leading-snug text-white/85 sm:flex">
-                    <Quote className="mt-0.5 size-3.5 shrink-0 rotate-180 text-accent" aria-hidden />
-                    <span className="line-clamp-2">{trip.quote}</span>
-                  </blockquote>
+                  {trip.creator?.quote && (
+                    <blockquote className="mt-2 hidden max-w-lg gap-1.5 text-sm italic leading-snug text-white/85 sm:flex">
+                      <Quote className="mt-0.5 size-3.5 shrink-0 rotate-180 text-accent" aria-hidden />
+                      <span className="line-clamp-2">{trip.creator.quote}</span>
+                    </blockquote>
+                  )}
 
                   <p className="mt-2 flex min-w-0 items-center gap-1 text-[11px] font-medium text-white/80 sm:text-xs">
                     <MapPin className="size-3 shrink-0" aria-hidden />
@@ -283,7 +308,7 @@ export function InfluencerTrips() {
                       tabIndex={isActive ? 0 : -1}
                       className="inline-flex h-9 shrink-0 items-center gap-1 rounded-md bg-accent px-3.5 text-xs font-semibold text-white shadow-xs transition hover:bg-accent-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-ink"
                     >
-                      Travel with {trip.creator.split(" ")[0]}
+                      {trip.creator ? `Travel with ${trip.creator.name.split(" ")[0]}` : "Ask about this trip"}
                       <ArrowUpRight className="size-3.5" aria-hidden />
                     </Link>
                   </div>

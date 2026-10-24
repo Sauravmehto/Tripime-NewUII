@@ -9,9 +9,12 @@ import { Button } from "@/components/ui/button";
 import { whatsappLink } from "@/lib/contact";
 import { TESTIMONIALS } from "@/lib/home/home-data";
 
-const HIGHLIGHTS = TESTIMONIALS.slice(0, 3);
+// Only real, consented customer feedback is shown.
+const HIGHLIGHTS = TESTIMONIALS.filter((item) => item.verified).slice(0, 3);
 
 export function Testimonials() {
+  if (HIGHLIGHTS.length === 0) return null;
+
   return (
     <Section className="bg-canvas">
       <Reveal>

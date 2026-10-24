@@ -19,7 +19,7 @@ export function PopularRoutes({ compact = false }: { compact?: boolean }) {
       <div>
         <p className="text-sm font-semibold text-ink">Popular flights from Delhi</p>
         <p className="mt-0.5 text-xs text-ink-muted">
-          Illustrative fares — tap to search live prices.
+          Typical one-way fares — tap a route for today&apos;s prices.
         </p>
         <div className="mt-3 grid gap-2 sm:grid-cols-2">
           {POPULAR_ROUTES.map((route) => (
@@ -37,10 +37,8 @@ export function PopularRoutes({ compact = false }: { compact?: boolean }) {
                 </p>
               </div>
               <p className="shrink-0 text-sm font-bold text-primary-700">
+                <span className="mr-1 text-[10px] font-medium text-ink-subtle">from</span>
                 {route.price}
-                <span className="ml-1 text-[9px] font-medium uppercase tracking-wide text-ink-subtle">
-                  illus.
-                </span>
               </p>
               <Plane
                 className="size-3.5 shrink-0 text-primary-400 transition group-hover:translate-x-0.5"
@@ -58,7 +56,7 @@ export function PopularRoutes({ compact = false }: { compact?: boolean }) {
       <Reveal>
         <SectionHeading
           title="Popular routes"
-          subtitle="Illustrative starting fares — tap a route to search live prices for your dates."
+          subtitle="Typical one-way fares from Delhi. Fares change with dates — tap a route to see live prices for yours."
         />
       </Reveal>
       <div className="mt-6 grid gap-3 sm:grid-cols-2">
@@ -91,9 +89,6 @@ export function PopularRoutes({ compact = false }: { compact?: boolean }) {
                   <span className="text-sm text-ink-muted">
                     from{" "}
                     <span className="text-base font-bold text-primary-700">{route.price}</span>
-                    <span className="ml-1 text-[10px] font-medium uppercase tracking-wide text-ink-subtle">
-                      illus.
-                    </span>
                   </span>
                 </div>
               </Card>
