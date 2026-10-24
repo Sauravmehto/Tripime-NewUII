@@ -184,7 +184,7 @@ export function PassengersView() {
   const firstTravel = selectedFlight.departureDate;
 
   return (
-    <Container className="pb-24 pt-6 lg:pb-8">
+    <Container className="pb-8 pt-6">
       <Stepper current="passengers" variant="compact" className="lg:hidden" />
       <Stepper current="passengers" className="hidden lg:block" />
       <FlightRouteBar

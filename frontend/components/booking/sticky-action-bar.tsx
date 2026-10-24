@@ -21,7 +21,10 @@ export function StickyActionBar({
   extra,
 }: StickyActionBarProps) {
   return (
-    <div className="fixed inset-x-0 bottom-0 z-40 border-t border-neutral-200 bg-white/95 pb-[env(safe-area-inset-bottom)] shadow-elevated backdrop-blur lg:hidden">
+    <div
+      data-mobile-bottom-bar
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-neutral-200 bg-white/95 pb-[env(safe-area-inset-bottom)] shadow-elevated backdrop-blur lg:hidden"
+    >
       <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3">
         <div className="min-w-0 flex-1">
           <p className="text-xs text-ink-muted">{totalLabel}</p>

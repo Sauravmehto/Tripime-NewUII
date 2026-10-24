@@ -5,7 +5,10 @@ import { telLink, whatsappLink } from "@/lib/contact";
 
 export function VisaStickyHelp() {
   return (
-    <div className="fixed inset-x-0 bottom-0 z-40 border-t border-neutral-200 bg-white/95 p-2 shadow-elevated backdrop-blur-sm md:hidden pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+    <div
+      data-mobile-bottom-bar
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-neutral-200 bg-white/95 p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] shadow-elevated backdrop-blur-sm lg:hidden"
+    >
       <div className="mx-auto flex max-w-lg gap-2">
         <a
           href={whatsappLink("Hi Tripime, I need help with a visa.")}

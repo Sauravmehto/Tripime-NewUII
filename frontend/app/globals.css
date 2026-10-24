@@ -401,6 +401,21 @@ h4 {
   body:has([data-mobile-bottom-bar]) [data-floating-help] {
     bottom: calc(5.5rem + env(safe-area-inset-bottom));
   }
+
+  /* Tab bar is the phone nav. Hide it when a page already has its own bottom action bar. */
+  body:has([data-mobile-bottom-bar]) [data-mobile-tab-bar] {
+    display: none;
+  }
+
+  /* Keep everything, footer included, clear of whichever bar is fixed at the
+     bottom: the tab bar, or a page's own (taller) action bar that replaces it. */
+  [data-marketing-shell] {
+    padding-bottom: calc(4.5rem + env(safe-area-inset-bottom));
+  }
+
+  body:has([data-mobile-bottom-bar]) [data-marketing-shell] {
+    padding-bottom: calc(5.5rem + env(safe-area-inset-bottom));
+  }
 }
 
 /* Two-handle range slider (components/ui/range-slider.tsx): only the thumbs take input. */

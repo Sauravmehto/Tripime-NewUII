@@ -6,6 +6,8 @@ import { useCustomerProfile } from "@/context/customer-profile-provider";
 import { LeadProfileModal } from "@/components/profile/lead-profile-modal";
 
 const DELAY_MS = 10_000;
+const PHONE_QUERY = "(max-width: 1023.98px)";
+const SCROLL_OPEN_PX = 320;
 
 function pathAllowed(pathname: string) {
   return pathname === "/" || pathname === "/packages";
@@ -60,7 +62,25 @@ export function LeadProfileGate() {
       openProfileModal();
     }
 
-    const timer = window.setTimeout(tryOpen, DELAY_MS);
+    const phone = window.matchMedia(PHONE_QUERY).matches;
+
+    // Phones: wait until the visitor scrolls the home page, or until they open Packages.
+    // Desktop keeps the 10-second timer.
+    if (phone && pathname === "/") {
+      function onScroll() {
+        if (window.scrollY < SCROLL_OPEN_PX) return;
+        window.removeEventListener("scroll", onScroll);
+        tryOpen();
+      }
+      window.addEventListener("scroll", onScroll, { passive: true });
+      return () => {
+        cancelled = true;
+        window.removeEventListener("scroll", onScroll);
+        if (retry) window.clearTimeout(retry);
+      };
+    }
+
+    const timer = window.setTimeout(tryOpen, phone ? 600 : DELAY_MS);
 
     return () => {
       cancelled = true;

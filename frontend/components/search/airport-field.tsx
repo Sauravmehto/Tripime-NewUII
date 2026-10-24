@@ -156,7 +156,7 @@ export function AirportField({
                 setActiveIndex(0);
               }}
               onKeyDown={onInputKeyDown}
-              className="h-11 w-full bg-transparent text-sm font-medium text-ink outline-none placeholder:text-ink-subtle"
+              className="h-11 w-full bg-transparent text-base font-medium text-ink outline-none placeholder:text-ink-subtle lg:text-sm"
             />
           </label>
         </div>

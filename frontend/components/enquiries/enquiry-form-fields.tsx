@@ -81,6 +81,7 @@ export function EnquiryFormFields({
       <Field label="Full name">
         <Input
           required
+          autoComplete="name"
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="Your name"
@@ -91,6 +92,7 @@ export function EnquiryFormFields({
           <Input
             required
             type="tel"
+            autoComplete="tel"
             minLength={6}
             maxLength={20}
             value={phone}
@@ -102,6 +104,7 @@ export function EnquiryFormFields({
           <Input
             required
             type="email"
+            autoComplete="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="you@example.com"

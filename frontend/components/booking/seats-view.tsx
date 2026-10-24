@@ -38,7 +38,7 @@ export function SeatsView() {
   }
 
   return (
-    <Container className="pb-24 pt-6 lg:pb-8">
+    <Container className="pb-8 pt-6">
       <Stepper current="seats" variant="compact" className="lg:hidden" />
       <Stepper current="seats" className="hidden lg:block" />
       <FlightRouteBar flight={booking.flight} returnFlight={booking.returnFlight} counts={booking} className="mb-4 mt-4" />

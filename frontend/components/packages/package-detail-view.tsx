@@ -58,7 +58,7 @@ export function PackageDetailView() {
   }, [packageId]);
 
   return (
-    <Container className="py-8 pb-24 lg:pb-8">
+    <Container className="py-8">
       <div className="mb-6">
         <Link
           href="/packages"

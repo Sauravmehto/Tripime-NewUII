@@ -430,8 +430,6 @@ export function VisaPageView() {
       </Section>
 
       <VisaStickyHelp />
-      {/* Spacer so sticky bar doesn't cover final content on mobile */}
-      <div className="h-16 md:hidden" aria-hidden />
     </>
   );
 }

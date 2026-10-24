@@ -76,7 +76,7 @@ export function ReviewView() {
   const legs = [booking.flight, ...(booking.returnFlight ? [booking.returnFlight] : [])];
 
   return (
-    <Container className="pb-24 pt-6 lg:pb-8">
+    <Container className="pb-8 pt-6">
       <Stepper current="review" variant="compact" className="lg:hidden" />
       <Stepper current="review" className="hidden lg:block" />
       <FlightRouteBar

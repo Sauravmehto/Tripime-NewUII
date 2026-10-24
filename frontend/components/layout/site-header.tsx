@@ -134,14 +134,14 @@ export function SiteHeader() {
           ) : (
             <Link
               href={loginHref(pathname || "/")}
-              className="rounded-lg border border-neutral-200 bg-white px-2.5 py-1.5 text-[11px] font-semibold text-primary-700"
+              className="inline-flex min-h-11 items-center rounded-lg border border-neutral-200 bg-white px-3 text-sm font-semibold text-primary-700"
             >
               Login
             </Link>
           )}
           <button
             type="button"
-            className="flex size-9 items-center justify-center rounded-lg border border-neutral-200 bg-white"
+            className="flex size-11 items-center justify-center rounded-lg border border-neutral-200 bg-white"
             aria-label={mobileOpen ? "Close menu" : "Open menu"}
             aria-expanded={mobileOpen}
             onClick={() => setMobileOpen((v) => !v)}
@@ -152,7 +152,7 @@ export function SiteHeader() {
 
         <button
           type="button"
-          className="hidden size-9 items-center justify-center rounded-lg border border-neutral-200 bg-white sm:flex lg:hidden"
+          className="hidden size-11 items-center justify-center rounded-lg border border-neutral-200 bg-white sm:flex lg:hidden"
           aria-label={mobileOpen ? "Close menu" : "Open menu"}
           aria-expanded={mobileOpen}
           onClick={() => setMobileOpen((v) => !v)}
