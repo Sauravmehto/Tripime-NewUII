@@ -1,7 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useId, useRef, useState, type FormEvent } from "react";
+import {
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type FocusEvent,
+  type FormEvent,
+  type ReactNode,
+} from "react";
 import { X } from "lucide-react";
 import { useCustomerProfile } from "@/context/customer-profile-provider";
 import { Logo } from "@/components/brand/logo";
@@ -12,11 +20,73 @@ import {
   normalizeNationalNumber,
 } from "@/lib/phone-countries";
 import { Button } from "@/components/ui/button";
-import { Field } from "@/components/ui/field";
 import { Input, Select } from "@/components/ui/input";
 import { cn } from "@/lib/cn";
 
 type Tab = "register" | "login";
+
+/**
+ * Compact field sizing for this sheet. Text stays 16px below `sm` because
+ * iOS Safari zooms the page when a focused field's text is smaller.
+ */
+const FIELD = "h-10 min-h-10 rounded-lg text-base sm:text-sm lg:h-10 lg:min-h-10 lg:text-sm";
+
+/** Treat the keyboard as open once the visible viewport loses this much height. */
+const KEYBOARD_THRESHOLD = 0.75;
+
+/**
+ * The part of the screen not covered by the on-screen keyboard. Mobile Safari
+ * and Chrome on Android shrink only the visual viewport when the keyboard
+ * opens, so a fixed overlay sized to the layout viewport would sit behind it.
+ */
+function useVisibleViewport(active: boolean) {
+  const [box, setBox] = useState<{ top: number; height: number; keyboard: boolean } | null>(null);
+
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!active || !vv) return;
+    let frame = 0;
+    const update = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        setBox({
+          top: vv.offsetTop,
+          height: vv.height,
+          keyboard: vv.height < window.innerHeight * KEYBOARD_THRESHOLD,
+        });
+      });
+    };
+    update();
+    vv.addEventListener("resize", update);
+    vv.addEventListener("scroll", update);
+    return () => {
+      cancelAnimationFrame(frame);
+      vv.removeEventListener("resize", update);
+      vv.removeEventListener("scroll", update);
+      setBox(null);
+    };
+  }, [active]);
+
+  return box;
+}
+
+/** Scroll `el` into view inside `container`, clear of the pinned footer. */
+function revealInside(container: HTMLElement, el: HTMLElement, footer: HTMLElement | null) {
+  const box = container.getBoundingClientRect();
+  const target = el.getBoundingClientRect();
+  const bottomEdge = box.bottom - (footer?.offsetHeight ?? 0) - 8;
+  if (target.bottom > bottomEdge) container.scrollTop += target.bottom - bottomEdge;
+  else if (target.top < box.top + 8) container.scrollTop -= box.top + 8 - target.top;
+}
+
+function CompactField({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <label className="block">
+      <span className="mb-1 block text-[11px] font-medium text-ink-muted">{label}</span>
+      {children}
+    </label>
+  );
+}
 
 export function LeadProfileModal({
   open,
@@ -32,6 +102,9 @@ export function LeadProfileModal({
   const { register, login } = useCustomerProfile();
   const titleId = useId();
   const honeypotRef = useRef<HTMLInputElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const footerRef = useRef<HTMLDivElement>(null);
+  const errorRef = useRef<HTMLParagraphElement>(null);
   const [tab, setTab] = useState<Tab>(initialTab);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -40,6 +113,8 @@ export function LeadProfileModal({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [loginHint, setLoginHint] = useState(false);
+  const viewport = useVisibleViewport(open);
+  const keyboardOpen = viewport?.keyboard ?? false;
 
   // Reset to the requested tab each time the modal opens (adjusted during render, not in an effect).
   const [lastOpen, setLastOpen] = useState({ open, initialTab });
@@ -61,7 +136,30 @@ export function LeadProfileModal({
     };
   }, [open, onDismiss]);
 
+  // Keep a new error message on screen, above the pinned Continue button.
+  useEffect(() => {
+    if (error && scrollRef.current && errorRef.current) {
+      revealInside(scrollRef.current, errorRef.current, footerRef.current);
+    }
+  }, [error]);
+
+  // When the keyboard finishes opening, the sheet has shrunk; bring the focused
+  // field back into view.
+  useEffect(() => {
+    const field = document.activeElement;
+    if (!keyboardOpen || !(field instanceof HTMLElement) || !scrollRef.current?.contains(field)) return;
+    revealInside(scrollRef.current, field, footerRef.current);
+  }, [keyboardOpen, viewport?.height]);
+
   if (!open) return null;
+
+  function handleFocus(e: FocusEvent<HTMLDivElement>) {
+    const field = e.target;
+    const container = scrollRef.current;
+    if (!container || !(field instanceof HTMLElement)) return;
+    // Wait for the keyboard animation before measuring.
+    window.setTimeout(() => revealInside(container, field, footerRef.current), 320);
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -107,9 +205,13 @@ export function LeadProfileModal({
   }
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-end justify-center sm:items-center sm:p-4">
+    <div
+      className="fixed inset-x-0 top-0 z-[60] flex h-dvh items-end justify-center sm:items-center sm:p-4"
+      // Follow the visible viewport so the sheet sits above the on-screen keyboard.
+      style={viewport ? { top: viewport.top, height: viewport.height } : undefined}
+    >
       <div
-        className="absolute inset-0 bg-ink/55 animate-overlay-in"
+        className="absolute inset-0 touch-none bg-ink/55 animate-overlay-in"
         onClick={onDismiss}
         aria-hidden
       />
@@ -118,33 +220,36 @@ export function LeadProfileModal({
         aria-modal="true"
         aria-labelledby={titleId}
         className={cn(
-          "relative z-[1] flex max-h-[92vh] w-full flex-col overflow-hidden bg-white shadow-elevated",
-          "rounded-t-2xl sm:max-w-md sm:rounded-2xl",
-          "animate-sheet-up",
+          "relative z-[1] flex w-[calc(100%-24px)] flex-col overflow-hidden rounded-2xl bg-white shadow-elevated ring-1 ring-ink/5 animate-sheet-up",
+          "max-h-[min(85dvh,calc(100%-24px))] mb-[max(12px,env(safe-area-inset-bottom))] sm:mb-0 sm:max-w-[372px]",
         )}
       >
-        <div className="relative border-b border-neutral-100 px-5 pb-4 pt-5">
-          <button
-            type="button"
-            onClick={onDismiss}
-            aria-label="Close"
-            className="absolute right-3 top-3 flex size-10 items-center justify-center rounded-lg text-ink-muted transition hover:bg-neutral-100 hover:text-ink sm:size-9"
+        <button
+          type="button"
+          onClick={onDismiss}
+          aria-label="Close"
+          className="absolute right-1.5 top-1.5 z-10 flex size-10 items-center justify-center rounded-lg text-ink-muted transition hover:bg-neutral-100 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+        >
+          <X className="size-4" />
+        </button>
+
+        {/* Header: logo + copy, collapsed to a single line while the keyboard is up. */}
+        <div className={cn("shrink-0 px-4 text-center", keyboardOpen ? "py-2.5 pr-12 text-left" : "pb-2.5 pt-3.5")}>
+          {!keyboardOpen && <Logo className="mx-auto h-7" priority />}
+          <h2
+            id={titleId}
+            className={cn("font-semibold tracking-tight text-ink", keyboardOpen ? "text-[15px]" : "mt-2 text-[17px]")}
           >
-            <X className="size-5" />
-          </button>
-          <div className="flex flex-col items-center text-center">
-            <Logo className="h-9" priority />
-            <h2 id={titleId} className="mt-3 text-lg font-bold tracking-tight text-ink">
-              {tab === "register" ? "Welcome to Tripime" : "Welcome back"}
-            </h2>
-            <p className="mt-1 max-w-xs text-xs leading-relaxed text-ink-muted">
-              Save your details once — we&apos;ll greet you and prefill enquiry forms. This is
-              not used to access bookings or invoices.
+            {tab === "register" ? "Welcome to Tripime" : "Welcome back"}
+          </h2>
+          {!keyboardOpen && (
+            <p className="mx-auto mt-0.5 max-w-[17rem] text-[11px] leading-snug text-ink-muted">
+              Save your details once to prefill enquiry forms. Not used for bookings or invoices.
             </p>
-          </div>
+          )}
         </div>
 
-        <div className="flex gap-1 border-b border-neutral-100 px-4 pt-2">
+        <div className="flex shrink-0 border-b border-neutral-100 px-4" role="tablist" aria-label="Account">
           {(
             [
               { id: "register", label: "Register" },
@@ -154,13 +259,15 @@ export function LeadProfileModal({
             <button
               key={item.id}
               type="button"
+              role="tab"
+              aria-selected={tab === item.id}
               onClick={() => {
                 setTab(item.id);
                 setError("");
                 setLoginHint(false);
               }}
               className={cn(
-                "flex-1 border-b-2 px-2 py-2.5 text-sm font-semibold transition",
+                "min-h-10 flex-1 border-b-2 px-2 text-[13px] font-semibold transition",
                 tab === item.id
                   ? "border-primary-600 text-primary-700"
                   : "border-transparent text-ink-muted hover:text-ink",
@@ -171,21 +278,27 @@ export function LeadProfileModal({
           ))}
         </div>
 
-        <form className="overflow-y-auto px-5 py-4" onSubmit={handleSubmit}>
-          {tab === "register" && (
-            <Field label="Full name">
-              <Input
-                required
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Your name"
-                autoComplete="name"
-              />
-            </Field>
-          )}
+        <form className="flex min-h-0 flex-1 flex-col" onSubmit={handleSubmit}>
+          <div
+            ref={scrollRef}
+            onFocus={handleFocus}
+            className="min-h-0 flex-1 space-y-2.5 overflow-y-auto overscroll-contain px-4 pb-2 pt-3"
+          >
+            {tab === "register" && (
+              <CompactField label="Full name">
+                <Input
+                  required
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Your name"
+                  autoComplete="name"
+                  enterKeyHint="next"
+                  className={FIELD}
+                />
+              </CompactField>
+            )}
 
-          <div className={cn(tab === "register" && "mt-3")}>
-            <Field label="Email">
+            <CompactField label="Email">
               <Input
                 required
                 type="email"
@@ -193,18 +306,18 @@ export function LeadProfileModal({
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
                 autoComplete="email"
+                enterKeyHint="next"
+                className={FIELD}
               />
-            </Field>
-          </div>
+            </CompactField>
 
-          <div className="mt-3">
-            <Field label="Phone">
+            <CompactField label="Phone">
               <div className="flex gap-2">
                 <Select
                   aria-label="Country code"
                   value={countryCode}
                   onChange={(e) => setCountryCode(e.target.value)}
-                  className="w-[7.5rem] shrink-0"
+                  className={cn(FIELD, "w-[6.75rem] shrink-0 px-2")}
                 >
                   {PHONE_COUNTRIES.map((c) => (
                     <option key={`${c.code}-${c.dial}`} value={c.dial}>
@@ -220,75 +333,80 @@ export function LeadProfileModal({
                   onChange={(e) => setMobile(e.target.value)}
                   placeholder="10-digit mobile"
                   autoComplete="tel-national"
-                  className="flex-1"
+                  enterKeyHint="done"
+                  className={cn(FIELD, "min-w-0 flex-1")}
                 />
               </div>
-            </Field>
-          </div>
+            </CompactField>
 
-          {/* Honeypot — obscure name/id so browsers do not autofill company data */}
-          <div
-            className="pointer-events-none absolute -left-[9999px] top-0 h-0 w-0 overflow-hidden opacity-0"
-            aria-hidden
-          >
-            <input
-              ref={honeypotRef}
-              id="tp_hp_field"
-              name="tp_hp_field"
-              type="text"
-              tabIndex={-1}
-              autoComplete="off"
-              defaultValue=""
-            />
-          </div>
-
-          {error && (
-            <p
-              role="alert"
-              className="mt-3 rounded-lg bg-danger-50 px-3 py-2 text-xs font-medium text-danger-700"
+            {/* Honeypot — obscure name/id so browsers do not autofill company data */}
+            <div
+              className="pointer-events-none absolute -left-[9999px] top-0 h-0 w-0 overflow-hidden opacity-0"
+              aria-hidden
             >
-              {error}
-            </p>
-          )}
+              <input
+                ref={honeypotRef}
+                id="tp_hp_field"
+                name="tp_hp_field"
+                type="text"
+                tabIndex={-1}
+                autoComplete="off"
+                defaultValue=""
+              />
+            </div>
 
-          {loginHint && tab === "login" && (
-            <p className="mt-2 text-xs text-ink-muted">
-              New here?{" "}
-              <button
-                type="button"
-                className="font-semibold text-primary-700 hover:text-primary-800"
-                onClick={() => {
-                  setTab("register");
-                  setError("");
-                  setLoginHint(false);
-                }}
+            {error && (
+              <p
+                ref={errorRef}
+                role="alert"
+                className="rounded-lg bg-danger-50 px-3 py-2 text-[11px] font-medium leading-snug text-danger-700"
               >
-                Register instead
-              </button>
-            </p>
-          )}
+                {error}
+              </p>
+            )}
 
-          <p className="mt-4 text-[11px] leading-relaxed text-ink-subtle">
-            By continuing you agree to be contacted by Tripime about your trip.{" "}
-            <Link href="/privacy" className="font-semibold text-primary-700 hover:underline">
-              Privacy policy
-            </Link>
-            .
-          </p>
+            {loginHint && tab === "login" && (
+              <p className="text-[11px] text-ink-muted">
+                New here?{" "}
+                <button
+                  type="button"
+                  className="font-semibold text-primary-700 hover:text-primary-800"
+                  onClick={() => {
+                    setTab("register");
+                    setError("");
+                    setLoginHint(false);
+                  }}
+                >
+                  Register instead
+                </button>
+              </p>
+            )}
+          </div>
 
-          <Button
-            type="submit"
-            variant="accent"
-            size="lg"
-            className="mt-4 w-full"
-            disabled={submitting}
+          {/* Pinned so Continue stays reachable while the fields scroll. */}
+          <div
+            ref={footerRef}
+            className="shrink-0 border-t border-neutral-100 bg-white px-4 pb-3 pt-2.5"
           >
-            {submitting
-              ? "Please wait…"
-              : tab === "register"
-                ? "Continue"
-                : "Log in"}
-          </Button>
+            <Button
+              type="submit"
+              variant="accent"
+              className="h-10 w-full rounded-lg text-[13px]"
+              disabled={submitting}
+            >
+              {submitting
+                ? "Please wait…"
+                : tab === "register"
+                  ? "Continue"
+                  : "Log in"}
+            </Button>
+            <p className="mt-2 text-center text-[10px] leading-snug text-ink-subtle">
+              By continuing you agree to be contacted by Tripime about your trip.{" "}
+              <Link href="/privacy" className="font-semibold text-primary-700 hover:underline">
+                Privacy policy
+              </Link>
+            </p>
+          </div>
         </form>
       </div>
     </div>
