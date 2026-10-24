@@ -284,7 +284,7 @@ export function FlightsResultsView() {
   const otherCabins = CABIN_CLASSES.filter((c) => c !== search.cabin);
 
   return (
-    <Container className="space-y-3 py-3 pb-6 sm:pt-4">
+    <Container className="space-y-3 py-3 pb-20 sm:pt-4 lg:pb-6">
       <FlightSearchModifyBar search={search} onSearch={go} />
 
       {result && <InventoryNotice compact className="px-0.5" minDate={result.minDate} maxDate={result.maxDate} />}
@@ -436,34 +436,35 @@ export function FlightsResultsView() {
         </div>
       </div>
 
+      {/* Phones: Sort / Filter float above the tab bar, so the app navigation
+          (Home, Flights, …) stays reachable while browsing results. */}
       <div
-        data-mobile-bottom-bar
-        className="fixed inset-x-0 bottom-0 z-40 border-t border-neutral-200/80 bg-white/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_24px_-12px_rgb(16_16_16/0.15)] backdrop-blur-md lg:hidden"
+        data-mobile-floating-actions
+        className="fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom))] left-1/2 z-40 -translate-x-1/2 lg:hidden"
       >
-        <div className="mx-auto flex max-w-3xl items-center gap-2 px-3 py-2">
-          <div className="min-w-0 flex-1 pl-1">
-            <p className="truncate text-[13px] font-semibold text-ink">
-              {legFrom} → {legTo}
-            </p>
-            <p className="truncate text-[11px] text-ink-muted">
-              {loading ? "Searching…" : `${visible.length} flight${visible.length === 1 ? "" : "s"}`}
-              {!loading && cheapestFlight ? ` · from ${formatINR(cheapestFlight.fare.totalFare)}` : ""}
-              {roundTrip ? ` · step ${step === "outbound" ? 1 : 2} of 2` : ""}
-            </p>
-          </div>
-          <BarButton onClick={() => setSortSheetOpen(true)} disabled={loading || flights.length === 0} label={`Sort: ${sortLabel}`}>
+        <div className="flex items-stretch overflow-hidden rounded-full bg-ink text-white shadow-elevated ring-1 ring-white/10">
+          <PillButton
+            onClick={() => setSortSheetOpen(true)}
+            disabled={loading || flights.length === 0}
+            label={`Sort: ${sortLabel}`}
+          >
             <ArrowUpDown className="size-4" aria-hidden />
             Sort
-          </BarButton>
-          <BarButton onClick={() => setDrawerOpen(true)} disabled={loading || flights.length === 0} primary label="Filters">
+          </PillButton>
+          <span aria-hidden className="my-3 w-px bg-white/20" />
+          <PillButton
+            onClick={() => setDrawerOpen(true)}
+            disabled={loading || flights.length === 0}
+            label={activeCount > 0 ? `Filters, ${activeCount} active` : "Filters"}
+          >
             <SlidersHorizontal className="size-4" aria-hidden />
             Filter
             {activeCount > 0 && (
-              <span className="flex size-5 items-center justify-center rounded-full bg-white text-[10px] font-bold text-primary-700">
+              <span className="flex size-5 items-center justify-center rounded-full bg-accent text-[11px] font-bold text-white">
                 {activeCount}
               </span>
             )}
-          </BarButton>
+          </PillButton>
         </div>
       </div>
 
@@ -627,17 +628,15 @@ function StepNumber({ n, active }: { n: number; active: boolean }) {
   );
 }
 
-function BarButton({
+function PillButton({
   children,
   onClick,
   disabled,
-  primary,
   label,
 }: {
   children: ReactNode;
   onClick: () => void;
   disabled?: boolean;
-  primary?: boolean;
   label: string;
 }) {
   return (
@@ -646,13 +645,7 @@ function BarButton({
       onClick={onClick}
       disabled={disabled}
       aria-label={label}
-      className={cn(
-        "inline-flex h-10 shrink-0 items-center gap-1.5 rounded-lg px-3 text-[13px] font-semibold transition active:scale-[0.98]",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 disabled:opacity-50",
-        primary
-          ? "bg-primary-600 text-white hover:bg-primary-700"
-          : "border border-neutral-200 bg-white text-ink hover:bg-neutral-50",
-      )}
+      className="inline-flex min-h-12 items-center gap-1.5 px-5 text-sm font-semibold transition hover:bg-white/10 active:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white disabled:opacity-50"
     >
       {children}
     </button>

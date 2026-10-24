@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { ArrowLeftRight, CalendarDays, Pencil, Plane, Users, X } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { ArrowLeft, ArrowLeftRight, CalendarDays, Pencil, Plane, Users, X } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { FlightSearchForm } from "@/components/search/flight-search-form";
 import { friendlyDate } from "@/lib/flights/calendar";
@@ -16,10 +17,17 @@ interface FlightSearchModifyBarProps {
 
 export function FlightSearchModifyBar({ search, onSearch }: FlightSearchModifyBarProps) {
   const [open, setOpen] = useState(false);
+  const router = useRouter();
   const { airportByCode } = useFlightCatalog();
   const from = airportByCode(search.origin);
   const to = airportByCode(search.destination);
   const roundTrip = search.tripType === "round_trip";
+
+  // Back to the previous screen, or Home when results were opened directly.
+  function goBack() {
+    if (window.history.length > 1) router.back();
+    else router.push("/");
+  }
 
   return (
     <section
@@ -28,6 +36,14 @@ export function FlightSearchModifyBar({ search, onSearch }: FlightSearchModifyBa
     >
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2.5 px-3 py-2.5 sm:px-4">
         <div className="flex min-w-0 flex-1 items-center gap-3 sm:flex-none sm:gap-4">
+          <button
+            type="button"
+            onClick={goBack}
+            aria-label="Back"
+            className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-white/10 ring-1 ring-inset ring-white/15 transition hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white lg:hidden"
+          >
+            <ArrowLeft className="size-5" aria-hidden />
+          </button>
           <Place code={search.origin} city={from?.city} />
           <div className="flex min-w-16 flex-1 flex-col items-center gap-0.5 sm:w-28 sm:flex-none" aria-hidden>
             <span className="text-[10px] font-medium uppercase tracking-wider text-white/60">
