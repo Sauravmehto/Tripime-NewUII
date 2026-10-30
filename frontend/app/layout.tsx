@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import { GoogleTagManager } from "@/components/analytics/google-tag-manager";
 import { WhatsAppClickTracker } from "@/components/analytics/whatsapp-click-tracker";
+import { LaunchLoader } from "@/components/brand/launch-loader";
 import "./globals.css";
 
 const inter = Inter({
@@ -32,6 +33,7 @@ export default function RootLayout({
     <html lang="en" className={`${inter.variable} h-full`} data-scroll-behavior="smooth">
       {/* Browser extensions (e.g. Grammarly) add attributes to <body> before React loads. */}
       <body suppressHydrationWarning className="min-h-full flex flex-col bg-canvas text-ink antialiased">
+        <LaunchLoader />
         <GoogleTagManager />
         <WhatsAppClickTracker />
         <a

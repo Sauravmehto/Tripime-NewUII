@@ -46,9 +46,9 @@ export function PackagesCta() {
                   WhatsApp
                 </Button>
               </a>
-              <Link href="/flights?origin=DEL&destination=BOM">
+              <Link href="/packages">
                 <Button variant="accent" size="lg">
-                  Search flights
+                  Explore packages
                 </Button>
               </Link>
             </div>

@@ -6,7 +6,7 @@ import { useEffect, useState, type ComponentType } from "react";
 import {
   Home,
   MessageCircle,
-  Package,
+  Palmtree,
   Phone,
   Plane,
   Ticket,
@@ -14,13 +14,14 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { telLink, whatsappLink } from "@/lib/contact";
+import { FLIGHTS_ENABLED } from "@/lib/features";
 
 type TabIcon = ComponentType<LucideProps>;
 
-const TABS: { href: string; label: string; icon: TabIcon }[] = [
+const TABS: { href: string; label: string; icon: TabIcon; disabled?: boolean }[] = [
   { href: "/", label: "Home", icon: Home },
-  { href: "/flights", label: "Flights", icon: Plane },
-  { href: "/packages", label: "Packages", icon: Package },
+  { href: "/packages", label: "Holidays", icon: Palmtree },
+  { href: "/flights", label: "Flights", icon: Plane, disabled: !FLIGHTS_ENABLED },
   { href: "/my-booking", label: "Trips", icon: Ticket },
 ];
 
@@ -64,8 +65,22 @@ export function MobileTabBar() {
         </div>
       )}
       <nav aria-label="Primary" className="mx-auto grid max-w-lg grid-cols-5">
-        {TABS.map(({ href, label, icon: Icon }) => {
+        {TABS.map(({ href, label, icon: Icon, disabled }) => {
           const active = isActive(pathname, href);
+          if (disabled) {
+            return (
+              <button
+                key={href}
+                type="button"
+                aria-disabled="true"
+                title="Flights coming soon"
+                className="flex min-h-12 cursor-not-allowed flex-col items-center justify-center gap-0.5 px-1 text-xs font-semibold text-ink-muted opacity-60"
+              >
+                <Icon className="size-5" aria-hidden />
+                {label}
+              </button>
+            );
+          }
           return (
             <Link
               key={href}

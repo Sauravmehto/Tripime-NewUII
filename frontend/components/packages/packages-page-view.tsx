@@ -93,6 +93,13 @@ export function PackagesPageView() {
     }, 60);
   }, []);
 
+  // Searches from the home page and destination cards arrive as /packages?q=Goa.
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search).get("q")?.trim();
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time sync from the URL on arrival
+    if (q) explore(q);
+  }, [explore]);
+
   const handleSearch = useCallback(
     ({ to }: { to: string; month?: string }) => {
       explore(to);
@@ -136,15 +143,16 @@ export function PackagesPageView() {
     <>
       <PackagesHero onSearch={handleSearch} />
 
+      {/* Phones go straight from search to the package list; offers stay one tap away in the Offers filter. */}
       {!loading && !error && (
-        <>
+        <div className="hidden lg:block">
           <PackagesSpecialOffers
             packages={packages}
             onViewAllOffers={handleViewAllOffers}
             onExploreRajasthan={handleExploreRajasthan}
           />
           <PackagesPromoBanner onExploreState={handleExploreState} />
-        </>
+        </div>
       )}
 
       <Container>

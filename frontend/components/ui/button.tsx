@@ -2,7 +2,7 @@ import { forwardRef, type ButtonHTMLAttributes } from "react";
 import { cn } from "@/lib/cn";
 
 type Variant = "primary" | "secondary" | "accent" | "outline" | "ghost" | "admin";
-type Size = "xs" | "sm" | "md" | "lg";
+type Size = "xs" | "sm" | "md" | "lg" | "xl";
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: Variant;
@@ -28,6 +28,8 @@ const sizes: Record<Size, string> = {
   sm: "h-8 px-2.5 text-xs rounded-md gap-1.5",
   md: "h-9 px-3.5 text-sm rounded-lg gap-2",
   lg: "h-10 px-4 text-sm rounded-xl gap-2",
+  /** Thumb-sized primary action for phones (48px). */
+  xl: "h-12 px-5 text-base rounded-xl gap-2",
 };
 
 /** Button styling for elements that must stay links (`<a>`, `<Link>`), so no button is nested in a link. */

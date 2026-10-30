@@ -14,6 +14,7 @@ import {
   Undo2,
 } from "lucide-react";
 import { HELPLINE_DISPLAY, SUPPORT_EMAIL, mailLink, telLink, whatsappLink } from "@/lib/contact";
+import { FLIGHTS_ENABLED } from "@/lib/features";
 import { Logo } from "@/components/brand/logo";
 import { Container } from "./container";
 
@@ -46,14 +47,28 @@ function FooterColumn({ title, items }: { title: string; items: FooterLinkItem[]
     <div>
       <p className="text-xs font-bold uppercase tracking-wide text-ink-subtle">{title}</p>
       <ul className="mt-3 space-y-2 text-xs">
-        {items.map(({ href, label, icon: Icon }) => (
-          <li key={href}>
-            <Link href={href} className={LINK_CLASS}>
-              <Icon className={ICON_CLASS} aria-hidden />
-              {label}
-            </Link>
-          </li>
-        ))}
+        {items.map(({ href, label, icon: Icon }) => {
+          const disabled = href === "/flights" && !FLIGHTS_ENABLED;
+          return (
+            <li key={href}>
+              {disabled ? (
+                <span
+                  aria-disabled="true"
+                  title="Flights coming soon"
+                  className="group inline-flex cursor-not-allowed items-center gap-2 text-ink-muted opacity-60"
+                >
+                  <Icon className={ICON_CLASS} aria-hidden />
+                  {label}
+                </span>
+              ) : (
+                <Link href={href} className={LINK_CLASS}>
+                  <Icon className={ICON_CLASS} aria-hidden />
+                  {label}
+                </Link>
+              )}
+            </li>
+          );
+        })}
       </ul>
     </div>
   );
@@ -105,7 +120,7 @@ export function SiteFooter() {
           </div>
         </div>
         <p className="mt-8 border-t border-neutral-100 pt-6 text-center text-[11px] text-ink-subtle">
-          © {new Date().getFullYear()} Tripime. All rights reserved.
+          © Tripime. All rights reserved.
         </p>
       </Container>
     </footer>

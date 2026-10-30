@@ -29,10 +29,15 @@ export default function HomePage() {
       <HomePackageRow />
       <TrustStrip />
       <DestinationExplorer />
-      <TrendingTrips />
+      {/* Phones get live packages from HomePackageRow instead, and a shorter page. */}
+      <div className="hidden lg:block">
+        <TrendingTrips />
+      </div>
       <WhyTripime />
-      <TravelMap />
-      <ComingSoonServices />
+      <div className="hidden lg:block">
+        <TravelMap />
+        <ComingSoonServices />
+      </div>
       <Testimonials />
       <HomeFaqs />
       <FinalCta />

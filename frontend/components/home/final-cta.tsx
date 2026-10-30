@@ -48,13 +48,13 @@ export function FinalCta() {
                 Call expert
               </Button>
             </a>
-            <Link href="/flights?origin=DEL&destination=BOM">
+            <Link href="/packages">
               <Button
                 variant="ghost"
                 size="lg"
                 className="text-white/90 hover:bg-white/10"
               >
-                Search flights
+                Explore packages
               </Button>
             </Link>
           </div>

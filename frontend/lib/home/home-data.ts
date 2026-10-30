@@ -87,7 +87,7 @@ export const EXPLORER_DESTINATIONS: ExplorerDestination[] = [
       "https://images.pexels.com/photos/457882/pexels-photo-457882.jpeg?auto=compress&cs=tinysrgb&w=800",
     startingPrice: "₹12,999",
     experiences: ["Beach clubs", "Heritage walks", "Water sports"],
-    href: "/packages",
+    href: "/packages?q=Goa",
   },
   {
     id: "kashmir",
@@ -98,7 +98,7 @@ export const EXPLORER_DESTINATIONS: ExplorerDestination[] = [
       "https://images.pexels.com/photos/30750205/pexels-photo-30750205.jpeg?auto=compress&cs=tinysrgb&w=800",
     startingPrice: "₹18,499",
     experiences: ["Shikara rides", "Gulmarg", "Snow peaks"],
-    href: "/packages",
+    href: "/packages?q=Kashmir",
   },
   {
     id: "dubai",
@@ -109,7 +109,7 @@ export const EXPLORER_DESTINATIONS: ExplorerDestination[] = [
       "https://images.pexels.com/photos/325193/pexels-photo-325193.jpeg?auto=compress&cs=tinysrgb&w=800",
     startingPrice: "₹45,999",
     experiences: ["Desert safari", "Burj Khalifa", "Marina"],
-    href: "/packages",
+    href: "/packages?q=Dubai",
   },
   {
     id: "bali",
@@ -120,7 +120,7 @@ export const EXPLORER_DESTINATIONS: ExplorerDestination[] = [
       "https://images.pexels.com/photos/2166553/pexels-photo-2166553.jpeg?auto=compress&cs=tinysrgb&w=800",
     startingPrice: "₹52,999",
     experiences: ["Rice terraces", "Temples", "Private villas"],
-    href: "/packages",
+    href: "/packages?q=Bali",
   },
   {
     id: "manali",
@@ -131,7 +131,7 @@ export const EXPLORER_DESTINATIONS: ExplorerDestination[] = [
       "https://images.pexels.com/photos/1366919/pexels-photo-1366919.jpeg?auto=compress&cs=tinysrgb&w=800",
     startingPrice: "₹14,999",
     experiences: ["Trekking", "River rafting", "Solang Valley"],
-    href: "/packages",
+    href: "/packages?q=Manali",
   },
   {
     id: "singapore",
@@ -142,7 +142,7 @@ export const EXPLORER_DESTINATIONS: ExplorerDestination[] = [
       "https://images.pexels.com/photos/777059/pexels-photo-777059.jpeg?auto=compress&cs=tinysrgb&w=800",
     startingPrice: "₹38,999",
     experiences: ["Sentosa", "Gardens by the Bay", "Night safari"],
-    href: "/packages",
+    href: "/packages?q=Singapore",
   },
   {
     id: "maldives",
@@ -153,7 +153,7 @@ export const EXPLORER_DESTINATIONS: ExplorerDestination[] = [
       "https://images.pexels.com/photos/3601425/pexels-photo-3601425.jpeg?auto=compress&cs=tinysrgb&w=800",
     startingPrice: "₹89,999",
     experiences: ["Overwater villas", "Snorkelling", "Sunset cruise"],
-    href: "/packages",
+    href: "/packages?q=Maldives",
   },
   {
     id: "kerala",
@@ -164,7 +164,7 @@ export const EXPLORER_DESTINATIONS: ExplorerDestination[] = [
       "https://images.pexels.com/photos/962464/pexels-photo-962464.jpeg?auto=compress&cs=tinysrgb&w=800",
     startingPrice: "₹16,499",
     experiences: ["Backwaters", "Ayurveda", "Tea estates"],
-    href: "/packages",
+    href: "/packages?q=Kerala",
   },
 ];
 
@@ -380,8 +380,8 @@ export const TESTIMONIALS: Testimonial[] = [];
 
 export const TRUST_POINTS = [
   {
-    title: "Instant e-ticket & invoice",
-    body: "Download your PDF ticket right after payment — no waiting.",
+    title: "Nothing charged upfront",
+    body: "Booking requests are free. You pay only after an expert confirms availability and price.",
   },
   {
     title: "Transparent pricing",
@@ -393,7 +393,7 @@ export const TRUST_POINTS = [
   },
   {
     title: "Your data stays safe",
-    body: "Card number and CVV are never sent to or stored on our servers.",
+    body: "Your details are used only for your booking — never for marketing.",
   },
 ] as const;
 
@@ -460,12 +460,12 @@ export const HOME_FAQS = [
   {
     question: "Is Tripime live for real bookings?",
     answer:
-      "Yes — flights are bookable end-to-end today with instant e-tickets. Holiday packages are enquiry-based: you tell us what you want and a travel expert confirms pricing and payment directly. Hotels, buses and visas are launching soon.",
+      "Yes. Search flights or holiday packages and send a booking request online. Our team confirms availability and the final price with you before you pay, and your booking is confirmed after that. Hotels, buses and visas are launching soon.",
   },
   {
     question: "Is my payment information safe?",
     answer:
-      "Your card number and CVV are validated in your browser only and are never sent to or stored on our servers. See our Privacy Policy for details.",
+      "We never ask for card details on this website. You pay only after our team confirms your booking and the amount. Never share your UPI PIN or OTP with anyone, including us. See our Privacy Policy for details.",
   },
   {
     question: "Can I get a refund if my plans change?",
@@ -475,7 +475,7 @@ export const HOME_FAQS = [
   {
     question: "How do I find my booking later?",
     answer:
-      "Head to the My Booking page and enter your booking ID or PNR along with the email or phone you booked with.",
+      "Sign in to your Tripime account and open My Bookings to see every flight request and its status. For holiday packages, your travel expert keeps you updated by call or WhatsApp.",
   },
   {
     question: "What about hotels, buses or a visa?",

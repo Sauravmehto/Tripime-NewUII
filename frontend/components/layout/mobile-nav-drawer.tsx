@@ -12,7 +12,7 @@ type NavIcon = ComponentType<LucideProps>;
 interface MobileNavDrawerProps {
   open: boolean;
   onClose: () => void;
-  items: { href: string; label: string; icon: NavIcon }[];
+  items: { href: string; label: string; icon: NavIcon; disabled?: boolean }[];
   isActive: (href: string) => boolean;
 }
 
@@ -92,22 +92,33 @@ export function MobileNavDrawer({ open, onClose, items, isActive }: MobileNavDra
 
         <nav className="flex-1 overflow-y-auto px-3 py-3" aria-label="Primary">
           <ul className="flex flex-col gap-1 text-sm font-semibold">
-            {items.map(({ href, label, icon: Icon }) => {
-              const active = isActive(href);
+            {items.map(({ href, label, icon: Icon, disabled }) => {
+              const active = !disabled && isActive(href);
               return (
                 <li key={href}>
-                  <Link
-                    href={href}
-                    className={cn(
-                      "flex items-center gap-3 rounded-lg px-3 py-3 transition",
-                      active
-                        ? "bg-primary-50 text-primary-700"
-                        : "text-ink-muted hover:bg-neutral-50 hover:text-ink",
-                    )}
-                  >
-                    <Icon className={cn("size-4", active && "text-primary-600")} aria-hidden />
-                    {label}
-                  </Link>
+                  {disabled ? (
+                    <span
+                      aria-disabled="true"
+                      title="Flights coming soon"
+                      className="flex cursor-not-allowed items-center gap-3 rounded-lg px-3 py-3 text-ink-muted opacity-60"
+                    >
+                      <Icon className="size-4" aria-hidden />
+                      {label}
+                    </span>
+                  ) : (
+                    <Link
+                      href={href}
+                      className={cn(
+                        "flex items-center gap-3 rounded-lg px-3 py-3 transition",
+                        active
+                          ? "bg-primary-50 text-primary-700"
+                          : "text-ink-muted hover:bg-neutral-50 hover:text-ink",
+                      )}
+                    >
+                      <Icon className={cn("size-4", active && "text-primary-600")} aria-hidden />
+                      {label}
+                    </Link>
+                  )}
                 </li>
               );
             })}

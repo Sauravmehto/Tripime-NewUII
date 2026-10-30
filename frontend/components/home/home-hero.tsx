@@ -3,13 +3,22 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { ArrowDown, MessageCircle, ShieldCheck } from "lucide-react";
+import { ArrowDown, MessageCircle, Palmtree, Plane, ShieldCheck } from "lucide-react";
 import { FlightSearchForm } from "@/components/search/flight-search-form";
 import { Container } from "@/components/layout/container";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/cn";
 import { whatsappLink } from "@/lib/contact";
 import { TRENDING_TRIPS } from "@/lib/home/home-data";
 import { HeroVoyageSlider } from "./hero-voyage-slider";
+import { HolidaySearch } from "./holiday-search";
+
+type SearchMode = "holidays" | "flights";
+
+const MODES: { id: SearchMode; label: string; icon: typeof Plane }[] = [
+  { id: "holidays", label: "Holidays", icon: Palmtree },
+  { id: "flights", label: "Flights", icon: Plane },
+];
 
 const HERO_SLIDES = TRENDING_TRIPS.slice(0, 5);
 const ROTATE_MS = 5500;
@@ -18,6 +27,8 @@ export function HomeHero() {
   const reduceMotion = useReducedMotion();
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
+  // Phones choose what to search; desktop always shows the flight form beside the slider.
+  const [mode, setMode] = useState<SearchMode>("holidays");
   const active = HERO_SLIDES[index] ?? HERO_SLIDES[0]!;
 
   // Depending on `index` restarts the timer after a manual slide change.
@@ -82,7 +93,7 @@ export function HomeHero() {
               {...fade(0.1)}
               className="mt-2 text-2xl font-bold tracking-tight text-white sm:text-3xl lg:text-4xl lg:leading-[1.1]"
             >
-              <span className="lg:hidden">Search flights in minutes.</span>
+              <span className="lg:hidden">Where to next?</span>
               <span className="hidden lg:inline">
                 Discover and plan travel that feels <span className="text-accent">premium</span> — in
                 minutes.
@@ -95,10 +106,51 @@ export function HomeHero() {
               Search domestic flights from Delhi, explore curated holiday packages, or talk to a
               real travel expert. No chatbots. No hidden fees.
             </motion.p>
+            <motion.p {...fade(0.16)} className="mt-1.5 text-sm text-white/80 lg:hidden">
+              Holiday packages and flights, planned with a real travel expert.
+            </motion.p>
           </div>
 
-          <motion.div {...fade(0.24)} className="relative z-30 mt-5 w-full max-w-xl lg:max-w-2xl">
-            <FlightSearchForm />
+          <motion.div {...fade(0.2)} className="mt-4 lg:hidden">
+            <div role="tablist" aria-label="What do you want to search?" className="inline-grid grid-cols-2 gap-1 rounded-xl bg-white/15 p-1 ring-1 ring-white/20">
+              {MODES.map(({ id, label, icon: Icon }) => (
+                <button
+                  key={id}
+                  type="button"
+                  role="tab"
+                  id={`hero-tab-${id}`}
+                  aria-selected={mode === id}
+                  aria-controls={`hero-panel-${id}`}
+                  onClick={() => setMode(id)}
+                  className={cn(
+                    "inline-flex min-h-11 items-center justify-center gap-1.5 rounded-lg px-4 text-sm font-semibold transition",
+                    mode === id ? "bg-white text-primary-800 shadow-xs" : "text-white/85",
+                  )}
+                >
+                  <Icon className="size-4" aria-hidden />
+                  {label}
+                </button>
+              ))}
+            </div>
+          </motion.div>
+
+          <motion.div {...fade(0.24)} className="relative z-30 mt-3 w-full max-w-xl lg:mt-5 lg:max-w-2xl">
+            <div
+              id="hero-panel-holidays"
+              role="tabpanel"
+              aria-labelledby="hero-tab-holidays"
+              className={cn("lg:hidden", mode !== "holidays" && "hidden")}
+            >
+              <HolidaySearch />
+            </div>
+            <div
+              id="hero-panel-flights"
+              role="tabpanel"
+              aria-labelledby="hero-tab-flights"
+              className={cn("lg:block", mode !== "flights" && "hidden")}
+            >
+              <FlightSearchForm />
+            </div>
           </motion.div>
 
           <motion.div
@@ -109,9 +161,9 @@ export function HomeHero() {
               href={whatsappLink("Hi Tripime, help me plan a trip.")}
               target="_blank"
               rel="noreferrer"
-              className="w-full sm:w-auto"
+              className="hidden lg:block"
             >
-              <Button variant="accent" size="lg" className="w-full sm:w-auto">
+              <Button variant="accent" size="lg">
                 <MessageCircle className="size-4" aria-hidden />
                 WhatsApp an expert
               </Button>

@@ -334,6 +334,19 @@ h4 {
   animation: tp-orb-pulse 10s ease-in-out infinite;
 }
 
+@keyframes tp-loader-orbit {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.tp-loader-orbit {
+  animation: tp-loader-orbit 5.2s linear infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
@@ -348,6 +361,7 @@ h4 {
   .animate-orb-float,
   .animate-orb-float-delayed,
   .animate-orb-pulse,
+  .tp-loader-orbit,
   .animate-overlay-in,
   .animate-sheet-up,
   .animate-nav-slide-in {

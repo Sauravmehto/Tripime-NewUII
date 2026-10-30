@@ -86,6 +86,8 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // Dev only: lets http://127.0.0.1:3000 load dev scripts too (otherwise pages never hydrate there).
+  allowedDevOrigins: ["127.0.0.1"],
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "images.pexels.com" },

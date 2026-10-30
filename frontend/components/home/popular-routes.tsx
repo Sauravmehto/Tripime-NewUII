@@ -9,9 +9,11 @@ import { Card } from "@/components/ui/card";
 import { POPULAR_ROUTES } from "@/lib/home/home-data";
 
 export function PopularRoutes({ compact = false }: { compact?: boolean }) {
-  // No date: the results page defaults to a week from today within the live window.
+  // Flights are temporarily disabled, so route users to packages for now.
   function routeHref(fromCode: string, toCode: string) {
-    return `/flights?origin=${fromCode}&destination=${toCode}`;
+    void fromCode;
+    void toCode;
+    return "/packages";
   }
 
   if (compact) {

@@ -36,10 +36,10 @@ const SERVICE_CHIPS: Partial<
   Record<OfferChip, { href: string; title: string; body: string; cta: string }>
 > = {
   flight: {
-    href: "/flights",
-    title: "Flight deals live on search",
-    body: "Compare domestic and international fares, then enquire with a Tripime expert.",
-    cta: "Search flights",
+    href: "/packages",
+    title: "Flights launching soon",
+    body: "For now, explore curated holiday packages while we complete flight integrations.",
+    cta: "Explore packages",
   },
   hotel: {
     href: "/hotels",

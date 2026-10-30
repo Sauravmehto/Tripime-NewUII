@@ -284,15 +284,17 @@ export function InfluencerTrips() {
                       <Clock className="size-3" aria-hidden />
                       {trip.duration}
                     </span>
-                    <span
-                      className={cn(
-                        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 backdrop-blur-sm",
-                        trip.seatsLeft <= 5 ? "bg-accent/90" : "bg-white/15",
-                      )}
-                    >
-                      <Users className="size-3" aria-hidden />
-                      {trip.seatsLeft <= 5 ? `Only ${trip.seatsLeft} seats left` : `${trip.seatsLeft} seats left`}
-                    </span>
+                    {trip.seatsLeft != null && (
+                      <span
+                        className={cn(
+                          "inline-flex items-center gap-1 rounded-full px-2 py-0.5 backdrop-blur-sm",
+                          trip.seatsLeft <= 5 ? "bg-accent/90" : "bg-white/15",
+                        )}
+                      >
+                        <Users className="size-3" aria-hidden />
+                        {trip.seatsLeft <= 5 ? `Only ${trip.seatsLeft} seats left` : `${trip.seatsLeft} seats left`}
+                      </span>
+                    )}
                   </div>
 
                   <div className="mt-3 flex items-center justify-between gap-3 border-t border-white/15 pt-3">
@@ -328,7 +330,7 @@ export function InfluencerTrips() {
             aria-label={`Show ${trip.destination} trip`}
             aria-current={i === active}
             onClick={() => setActive(i)}
-            className="group/bar flex-1 py-1.5 focus-visible:outline-none"
+            className="group/bar flex-1 py-3 focus-visible:outline-none"
           >
             <span className="block h-1 overflow-hidden rounded-full bg-neutral-200 transition group-hover/bar:bg-neutral-300 group-focus-visible/bar:ring-2 group-focus-visible/bar:ring-primary-500">
               {i < active || (i === active && !autoplay) ? (

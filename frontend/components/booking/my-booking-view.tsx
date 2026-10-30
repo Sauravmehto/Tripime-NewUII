@@ -73,9 +73,9 @@ export function MyBookingView() {
         <Card className="text-center">
           <Plane className="mx-auto size-8 text-ink-subtle" aria-hidden />
           <p className="mt-3 font-semibold text-ink">No bookings yet</p>
-          <p className="mt-1 text-sm text-ink-muted">Search flights to start a booking request.</p>
-          <Link href="/flights" className={buttonClasses({ className: "mt-4" })}>
-            Search flights
+          <p className="mt-1 text-sm text-ink-muted">Explore packages to start a booking request.</p>
+          <Link href="/packages" className={buttonClasses({ className: "mt-4" })}>
+            Explore packages
           </Link>
         </Card>
       )}

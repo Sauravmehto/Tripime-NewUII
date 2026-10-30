@@ -31,21 +31,21 @@ export function Modal({ open, onClose, title, children, className }: ModalProps)
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-4">
-      <div className="absolute inset-0 bg-ink/50" onClick={onClose} aria-hidden />
+      <div className="animate-overlay-in absolute inset-0 bg-ink/45 backdrop-blur-[2px]" onClick={onClose} aria-hidden />
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="modal-title"
         className={cn(
-          "relative flex max-h-[92vh] w-full flex-col overflow-hidden rounded-t-2xl bg-white shadow-elevated sm:max-w-md sm:rounded-2xl",
+          "animate-sheet-up relative flex max-h-[92vh] w-full flex-col overflow-hidden rounded-t-[1.35rem] bg-white shadow-elevated sm:max-w-md sm:rounded-2xl",
           className,
         )}
       >
         <div className="flex items-center justify-between border-b border-neutral-100 px-4 py-3">
-          <h2 id="modal-title" className="text-sm font-bold text-ink">
+          <h2 id="modal-title" className="text-base font-bold text-ink sm:text-sm">
             {title}
           </h2>
-          <Button variant="ghost" size="sm" onClick={onClose} aria-label="Close">
+          <Button variant="ghost" size="sm" onClick={onClose} aria-label="Close" className="-mr-2 size-11 p-0 lg:size-8">
             <X className="size-4" />
           </Button>
         </div>

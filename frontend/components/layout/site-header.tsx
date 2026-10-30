@@ -22,12 +22,14 @@ import { MobileNavDrawer } from "@/components/layout/mobile-nav-drawer";
 import { UserMenu } from "@/components/layout/user-menu";
 import { useCustomerProfileOptional } from "@/context/customer-profile-provider";
 import { useCustomerSession } from "@/context/customer-session-provider";
+import { FLIGHTS_ENABLED } from "@/lib/features";
 import { loginHref } from "@/lib/safe-redirect";
 
 type NavIcon = ComponentType<LucideProps>;
+type NavItem = { href: string; label: string; icon: NavIcon; disabled?: boolean };
 
-const NAV: { href: string; label: string; icon: NavIcon }[] = [
-  { href: "/", label: "Flights", icon: Plane },
+const NAV: NavItem[] = [
+  { href: "/", label: "Flights", icon: Plane, disabled: !FLIGHTS_ENABLED },
   { href: "/packages", label: "Packages", icon: Package },
   { href: "/hotels", label: "Hotels", icon: Hotel },
   { href: "/buses", label: "Buses", icon: Bus },
@@ -91,8 +93,21 @@ export function SiteHeader() {
         </Link>
 
         <nav className="hidden items-center gap-0.5 lg:flex" aria-label="Main">
-          {NAV.map(({ href, label, icon: Icon }) => {
-            const active = isActive(pathname, href);
+          {NAV.map(({ href, label, icon: Icon, disabled }) => {
+            const active = !disabled && isActive(pathname, href);
+            if (disabled) {
+              return (
+                <span
+                  key={href}
+                  aria-disabled="true"
+                  title="Flights coming soon"
+                  className="group inline-flex cursor-not-allowed items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-ink-muted opacity-60"
+                >
+                  <Icon className="size-3.5" aria-hidden />
+                  {label}
+                </span>
+              );
+            }
             return (
               <Link
                 key={href}

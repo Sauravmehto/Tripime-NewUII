@@ -5,7 +5,7 @@ import { useState, type FormEvent } from "react";
 import { motion, useReducedMotion } from "motion/react";
 import { MessageCircle, Phone, Search, ShieldCheck } from "lucide-react";
 import { Container } from "@/components/layout/container";
-import { Button } from "@/components/ui/button";
+import { Button, buttonClasses } from "@/components/ui/button";
 import { Input, Select } from "@/components/ui/input";
 import { Field } from "@/components/ui/field";
 import { Badge } from "@/components/ui/card";
@@ -61,12 +61,15 @@ export function PackagesHero({ onSearch }: PackagesHeroProps) {
             {...fade(0.1)}
             className="mt-3 text-2xl font-bold tracking-tight text-white sm:text-3xl lg:text-4xl lg:leading-[1.1]"
           >
-            Tell us where. Tell us your budget.{" "}
-            <span className="text-accent">We&apos;ll make it unforgettable.</span>
+            <span className="lg:hidden">Find your next holiday</span>
+            <span className="hidden lg:inline">
+              Tell us where. Tell us your budget.{" "}
+              <span className="text-accent">We&apos;ll make it unforgettable.</span>
+            </span>
           </motion.h1>
           <motion.p
             {...fade(0.16)}
-            className="mt-2.5 max-w-lg text-sm leading-relaxed text-white/80"
+            className="mt-2.5 hidden max-w-lg text-sm leading-relaxed text-white/80 lg:block"
           >
             No endless searching. No confusing packages. Just tell us what you want from your
             holiday, and we&apos;ll find the right stays, experiences and transfers to create a
@@ -109,7 +112,7 @@ export function PackagesHero({ onSearch }: PackagesHeroProps) {
                 ))}
               </datalist>
             </Field>
-            <Field label="Month (optional)">
+            <Field label="Month (optional)" className="hidden sm:block">
               <Select value={month} onChange={(e) => setMonth(e.target.value)}>
                 <option value="">Not decided yet</option>
                 {TRAVEL_MONTHS.map((m) => (
@@ -119,14 +122,14 @@ export function PackagesHero({ onSearch }: PackagesHeroProps) {
                 ))}
               </Select>
             </Field>
-            <Button type="submit" size="lg" variant="accent" className="sm:min-w-[132px]">
+            <Button type="submit" size="lg" variant="accent" className="h-12 text-base sm:h-10 sm:min-w-[132px] sm:text-sm">
               <Search className="size-4" aria-hidden />
               Find holidays
             </Button>
           </form>
 
-          <div className="mt-3 flex flex-wrap items-center gap-1.5 border-t border-neutral-100 pt-3">
-            <span className="mr-1 text-[11px] font-semibold text-ink-subtle">Popular:</span>
+          <div className="no-scrollbar -mx-3.5 mt-3 flex items-center gap-1.5 overflow-x-auto border-t border-neutral-100 px-3.5 pt-3 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0">
+            <span className="mr-1 hidden text-[11px] font-semibold text-ink-subtle sm:inline">Popular:</span>
             {HERO_QUICK_PICKS.map(({ label, icon: Icon, term }) => (
               <button
                 key={label}
@@ -135,7 +138,7 @@ export function PackagesHero({ onSearch }: PackagesHeroProps) {
                   setTo(term);
                   onSearch({ to: term, month });
                 }}
-                className="group inline-flex items-center gap-1 rounded-full border border-neutral-200 bg-neutral-50 px-2.5 py-1 text-[11px] font-semibold text-ink-muted transition hover:border-accent hover:bg-accent-soft hover:text-accent"
+                className="group inline-flex min-h-10 shrink-0 items-center gap-1 rounded-full border border-neutral-200 bg-neutral-50 px-3 text-sm font-semibold text-ink-muted transition hover:border-accent hover:bg-accent-soft hover:text-accent sm:min-h-0 sm:px-2.5 sm:py-1 sm:text-[11px]"
               >
                 <Icon
                   className="size-3 transition group-hover:scale-110"
@@ -147,30 +150,30 @@ export function PackagesHero({ onSearch }: PackagesHeroProps) {
           </div>
         </motion.div>
 
-        <motion.div {...fade(0.34)} className="mt-4 flex flex-wrap gap-2">
-          <a href={telLink()}>
-            <Button
-              variant="outline"
-              size="sm"
-              className="border-white/30 bg-white/10 text-white hover:bg-white/20"
-            >
-              <Phone className="size-3.5" aria-hidden />
-              Talk to an expert
-            </Button>
+        <motion.div {...fade(0.34)} className="mt-4 hidden flex-wrap gap-2 lg:flex">
+          <a
+            href={telLink()}
+            className={buttonClasses({
+              variant: "outline",
+              size: "sm",
+              className: "border-white/30 bg-white/10 text-white hover:bg-white/20",
+            })}
+          >
+            <Phone className="size-3.5" aria-hidden />
+            Talk to an expert
           </a>
           <a
             href={whatsappLink("Hi Tripime, I'd like help planning a holiday package.")}
             target="_blank"
             rel="noreferrer"
+            className={buttonClasses({
+              variant: "outline",
+              size: "sm",
+              className: "border-white/30 bg-white/10 text-white hover:bg-white/20",
+            })}
           >
-            <Button
-              variant="outline"
-              size="sm"
-              className="border-white/30 bg-white/10 text-white hover:bg-white/20"
-            >
-              <MessageCircle className="size-3.5" aria-hidden />
-              WhatsApp us
-            </Button>
+            <MessageCircle className="size-3.5" aria-hidden />
+            WhatsApp us
           </a>
         </motion.div>
       </Container>

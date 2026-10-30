@@ -15,10 +15,10 @@ export function Field({ label, children, className, hint, error }: FieldProps) {
       <span className="mb-1 block text-xs font-medium text-ink-muted">{label}</span>
       {children}
       {hint && !error && (
-        <span className="mt-1 block text-[11px] text-ink-subtle">{hint}</span>
+        <span className="mt-1 block text-xs text-ink-subtle">{hint}</span>
       )}
       {error && (
-        <span role="alert" className="mt-1 block text-[11px] font-medium text-danger-700">
+        <span role="alert" className="mt-1 block text-xs font-medium text-danger-700">
           {error}
         </span>
       )}

@@ -22,7 +22,8 @@ export interface InfluencerTrip {
   route: string[];
   dates: string;
   duration: string;
-  seatsLeft: number;
+  /** Live seat availability only; leave unset rather than guess (no invented urgency). */
+  seatsLeft?: number;
   price: number;
   /** Main card photo. */
   image: string;
@@ -56,7 +57,6 @@ export const INFLUENCER_TRIPS: InfluencerTrip[] = [
     route: ["Ubud", "Handara", "Uluwatu"],
     dates: "12–19 Nov 2026",
     duration: "6N / 7D",
-    seatsLeft: 6,
     price: 64999,
     image: pexels(2499699),
     imageAlt: "Traveller walking towards the Handara gate in Bali at sunrise",
@@ -73,7 +73,6 @@ export const INFLUENCER_TRIPS: InfluencerTrip[] = [
     route: ["Malé", "Overwater villa", "Sandbank"],
     dates: "5–9 Dec 2026",
     duration: "4N / 5D",
-    seatsLeft: 4,
     price: 98999,
     image: pexels(29359915),
     imageAlt: "Traveller on a wooden pier over a Maldives lagoon",
@@ -90,7 +89,6 @@ export const INFLUENCER_TRIPS: InfluencerTrip[] = [
     route: ["Srinagar", "Gulmarg", "Pahalgam"],
     dates: "20–26 Dec 2026",
     duration: "6N / 7D",
-    seatsLeft: 8,
     price: 32999,
     image: pexels(16060681),
     imageAlt: "Traveller looking out over snowy Pahalgam",
@@ -107,7 +105,6 @@ export const INFLUENCER_TRIPS: InfluencerTrip[] = [
     route: ["Panaji", "Morjim", "Arambol"],
     dates: "30 Dec – 2 Jan",
     duration: "3N / 4D",
-    seatsLeft: 10,
     price: 21999,
     image: pexels(29785336),
     imageAlt: "Handstand on a Goa beach at sunset",
@@ -124,7 +121,6 @@ export const INFLUENCER_TRIPS: InfluencerTrip[] = [
     route: ["Manali", "Solang Valley", "Old Manali"],
     dates: "14–18 Jan 2027",
     duration: "4N / 5D",
-    seatsLeft: 7,
     price: 18999,
     image: pexels(3881095),
     imageAlt: "Traveller smiling in the snow in Manali",
@@ -141,7 +137,6 @@ export const INFLUENCER_TRIPS: InfluencerTrip[] = [
     route: ["Kochi", "Munnar", "Alleppey"],
     dates: "6–11 Feb 2027",
     duration: "5N / 6D",
-    seatsLeft: 9,
     price: 26999,
     image: pexels(32262515),
     imageAlt: "Walking through the Munnar tea plantations",

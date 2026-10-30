@@ -340,14 +340,14 @@ export function TravelMap() {
                             Browse packages
                           </Button>
                         </Link>
-                        <Link href={active.flightHref}>
+                        <Link href="/packages">
                           <Button
                             size="sm"
                             variant="outline"
                             className="border-white/30 bg-white/10 text-white hover:bg-white/20 hover:text-white"
                           >
                             <Plane className="size-3.5" aria-hidden />
-                            Search flights
+                            Explore packages
                           </Button>
                         </Link>
                       </div>
