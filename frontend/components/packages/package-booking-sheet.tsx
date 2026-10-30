@@ -17,7 +17,6 @@ import { useCustomerProfileOptional } from "@/context/customer-profile-provider"
 import type { Enquiry, TravelPackage } from "@/types";
 
 const MAX_TRAVELLERS = 20; // backend limit for an enquiry
-const FLEXIBLE = "Flexible dates";
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 interface Draft {
@@ -47,17 +46,26 @@ function readDraft(packageId: string): Draft | null {
   }
 }
 
-/** The next 12 calendar months: value "November 2026", label "Nov 2026". */
-function upcomingMonths(): { value: string; label: string }[] {
-  const now = new Date();
-  const months = Array.from({ length: 12 }, (_, i) => {
-    const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
-    return {
-      value: d.toLocaleDateString("en-IN", { month: "long", year: "numeric" }),
-      label: d.toLocaleDateString("en-IN", { month: "short", year: "numeric" }),
-    };
+function dateValueToLabel(value: string): string {
+  const [year, month, day] = value.split("-").map(Number);
+  if (!year || !month || !day) return value;
+  return new Date(year, month - 1, day).toLocaleDateString("en-IN", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
   });
-  return [...months, { value: FLEXIBLE, label: "I'm flexible" }];
+}
+
+function normalizeStoredDate(value: string): string {
+  return /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : "";
+}
+
+function currentDateValue() {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, "0");
+  const d = String(now.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
 }
 
 function nationalFromE164(mobile: string, countryCode?: string): string {
@@ -68,7 +76,7 @@ function nationalFromE164(mobile: string, countryCode?: string): string {
 
 function validate(d: Draft): Errors {
   const errors: Errors = {};
-  if (!d.month) errors.month = "Pick a month, or choose flexible dates";
+  if (!d.month) errors.month = "Pick a preferred travel date";
   if (d.name.trim().length < 2) errors.name = "Enter your full name";
   const digits = d.phone.replace(/\D/g, "");
   if (digits.length < 7 || digits.length > 15) errors.phone = "Enter a valid mobile number";
@@ -88,7 +96,7 @@ interface PackageBookingSheetProps {
 export function PackageBookingSheet({ pkg, onClose }: PackageBookingSheetProps) {
   const profile = useCustomerProfileOptional();
   const formRef = useRef<HTMLFormElement>(null);
-  const months = useMemo(() => upcomingMonths(), []);
+  const dateMin = useMemo(() => currentDateValue(), []);
   const [draft, setDraft] = useState<Draft>(EMPTY);
   const canPersistRef = useRef(false);
   const [errors, setErrors] = useState<Errors>({});
@@ -106,6 +114,7 @@ export function PackageBookingSheet({ pkg, onClose }: PackageBookingSheetProps) 
       const base = saved ?? prev;
       return {
         ...base,
+        month: normalizeStoredDate(base.month),
         name: base.name || customer?.name || "",
         email: base.email || customer?.email || "",
         phone: base.phone || (customer ? nationalFromE164(customer.mobile, customer.countryCode) : ""),
@@ -157,7 +166,7 @@ export function PackageBookingSheet({ pkg, onClose }: PackageBookingSheetProps) 
         name: draft.name.trim(),
         email: draft.email.trim(),
         phone: draft.phone.trim(),
-        travelMonth: draft.month,
+        travelMonth: dateValueToLabel(draft.month),
         travelers: draft.adults + draft.children,
         message: draft.note.trim() ? `${party}\n${draft.note.trim()}` : party,
       });
@@ -180,23 +189,28 @@ export function PackageBookingSheet({ pkg, onClose }: PackageBookingSheetProps) 
   }
 
   if (sent) {
+    const travelWhen = dateValueToLabel(draft.month);
     const message = [
       `Hi Tripime, I just sent a booking request (ref ${sent.id}).`,
       `*Package:* ${pkg.title}`,
-      `*When:* ${draft.month}`,
+      `*When:* ${travelWhen}`,
       `*Travellers:* ${draft.adults} adult${draft.adults === 1 ? "" : "s"}${draft.children ? `, ${draft.children} child${draft.children === 1 ? "" : "ren"}` : ""}`,
     ].join("\n");
     return (
-      <Modal open onClose={onClose} title="Booking request sent">
-        <div className="flex flex-col items-center pb-2 pt-4 text-center" role="status">
-          <CheckCircle2 className="size-12 text-success-500" aria-hidden />
-          <p className="mt-3 text-lg font-bold text-ink">Thanks, {draft.name.trim().split(" ")[0]}!</p>
+      <Modal open onClose={onClose} title="Booking request sent" className="sm:max-w-lg">
+        <div className="flex flex-col items-center pb-1 pt-2 text-center" role="status">
+          <CheckCircle2 className="size-10 text-success-500" aria-hidden />
+          <p className="mt-2.5 text-base font-semibold text-ink sm:text-lg">
+            Thanks, {draft.name.trim().split(" ")[0]}!
+          </p>
           <p className="mt-1 text-sm text-ink-muted">
             We&apos;ve received your request for <strong className="text-ink">{pkg.title}</strong>.
           </p>
-          <p className="mt-3 rounded-lg bg-neutral-100 px-3 py-1.5 font-mono text-sm text-ink">Ref: {sent.id}</p>
+          <p className="mt-3 rounded-lg bg-neutral-100 px-3 py-1.5 font-mono text-xs text-ink sm:text-sm">
+            Ref: {sent.id}
+          </p>
         </div>
-        <div className="mt-4 rounded-xl border border-primary-100 bg-primary-50/60 p-4 text-sm">
+        <div className="mt-4 rounded-xl border border-primary-100 bg-primary-50/60 p-3.5 text-[13px] sm:text-sm">
           <p className="font-semibold text-ink">Your trip isn&apos;t confirmed yet. Here&apos;s what happens next:</p>
           <ol className="mt-2 list-decimal space-y-1 pl-5 text-ink-muted">
             <li>A Tripime travel expert calls or WhatsApps you to check dates and availability.</li>
@@ -214,7 +228,7 @@ export function PackageBookingSheet({ pkg, onClose }: PackageBookingSheetProps) 
             <MessageCircle className="size-4" aria-hidden />
             Chat with us on WhatsApp
           </a>
-          <Button size="xl" variant="outline" className="w-full" onClick={onClose}>
+          <Button size="lg" variant="outline" className="w-full" onClick={onClose}>
             Done
           </Button>
         </div>
@@ -225,53 +239,36 @@ export function PackageBookingSheet({ pkg, onClose }: PackageBookingSheetProps) 
   const total = draft.adults + draft.children;
 
   return (
-    <Modal open onClose={onClose} title="Request to book" className="sm:max-w-lg">
-      <div className="flex gap-3 rounded-xl border border-neutral-200 bg-neutral-50 p-2.5">
+    <Modal open onClose={onClose} title="Request to book" className="sm:max-w-xl">
+      <div className="flex gap-3 rounded-xl border border-neutral-200 bg-neutral-50 p-3.5">
         {pkg.imageUrl && (
           <div className="relative size-16 shrink-0 overflow-hidden rounded-lg">
             <Image src={pkg.imageUrl} alt="" fill sizes="64px" className="object-cover" />
           </div>
         )}
         <div className="min-w-0">
-          <p className="truncate text-sm font-bold text-ink">{pkg.title}</p>
+          <p className="truncate text-[15px] font-semibold text-ink sm:text-sm">{pkg.title}</p>
           <p className="text-xs text-ink-muted">{durationLabel(pkg.duration)}</p>
-          <p className="mt-0.5 text-sm">
+          <p className="mt-0.5 text-sm sm:text-[13px]">
             <span className="font-bold text-primary-800">{formatINR(pkg.price)}</span>{" "}
             <span className="text-xs text-ink-muted">{pkg.priceNote}</span>
           </p>
         </div>
       </div>
 
-      <form ref={formRef} onSubmit={handleSubmit} noValidate className="mt-4 space-y-5">
+      <form ref={formRef} onSubmit={handleSubmit} noValidate className="mt-4 space-y-4">
         <Step icon={<CalendarDays className="size-4" aria-hidden />} title="When do you want to go?">
-          <div
-            role="radiogroup"
-            aria-label="Travel month"
-            aria-invalid={errors.month ? true : undefined}
-            tabIndex={errors.month ? -1 : undefined}
-            className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 pb-1 focus:outline-none"
-          >
-            {months.map(({ value, label }) => {
-              const selected = draft.month === value;
-              return (
-                <button
-                  key={value}
-                  type="button"
-                  role="radio"
-                  aria-checked={selected}
-                  aria-label={value}
-                  onClick={() => update({ month: value })}
-                  className={cn(
-                    "min-h-11 shrink-0 rounded-xl border px-3.5 text-sm font-semibold transition",
-                    selected
-                      ? "border-primary-600 bg-primary-600 text-white"
-                      : "border-neutral-200 bg-white text-ink hover:border-primary-300",
-                  )}
-                >
-                  {label}
-                </button>
-              );
-            })}
+          <div className="space-y-2.5">
+            <Field label="Preferred travel date">
+              <Input
+                type="date"
+                min={dateMin}
+                value={draft.month}
+                aria-invalid={errors.month ? true : undefined}
+                onChange={(e) => update({ month: e.target.value })}
+                className={cn("h-10 min-h-10 text-sm", errors.month ? "border-danger-500" : "")}
+              />
+            </Field>
           </div>
           {errors.month && <FieldError msg={errors.month} />}
         </Step>
@@ -308,7 +305,7 @@ export function PackageBookingSheet({ pkg, onClose }: PackageBookingSheetProps) 
                 value={draft.name}
                 aria-invalid={errors.name ? true : undefined}
                 onChange={(e) => update({ name: e.target.value })}
-                className={errors.name ? "border-danger-500" : ""}
+                className={cn("h-10 min-h-10 text-sm", errors.name ? "border-danger-500" : "")}
               />
             </Field>
             <Field label="Mobile number" error={errors.phone} hint="We'll call or WhatsApp you on this number.">
@@ -321,7 +318,7 @@ export function PackageBookingSheet({ pkg, onClose }: PackageBookingSheetProps) 
                 value={draft.phone}
                 aria-invalid={errors.phone ? true : undefined}
                 onChange={(e) => update({ phone: e.target.value })}
-                className={errors.phone ? "border-danger-500" : ""}
+                className={cn("h-10 min-h-10 text-sm", errors.phone ? "border-danger-500" : "")}
               />
             </Field>
             <Field label="Email" error={errors.email}>
@@ -333,7 +330,7 @@ export function PackageBookingSheet({ pkg, onClose }: PackageBookingSheetProps) 
                 value={draft.email}
                 aria-invalid={errors.email ? true : undefined}
                 onChange={(e) => update({ email: e.target.value })}
-                className={errors.email ? "border-danger-500" : ""}
+                className={cn("h-10 min-h-10 text-sm", errors.email ? "border-danger-500" : "")}
               />
             </Field>
             <Field label="Anything we should know? (optional)">
@@ -343,6 +340,7 @@ export function PackageBookingSheet({ pkg, onClose }: PackageBookingSheetProps) 
                 value={draft.note}
                 onChange={(e) => update({ note: e.target.value })}
                 placeholder="Exact dates, hotel preference, budget…"
+                className="min-h-[72px] text-sm"
               />
             </Field>
           </div>
@@ -354,7 +352,7 @@ export function PackageBookingSheet({ pkg, onClose }: PackageBookingSheetProps) 
           </p>
         )}
 
-        <div className="sticky bottom-0 -mx-4 -mb-4 border-t border-neutral-200 bg-white px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3">
+        <div className="sticky bottom-0 -mx-5 -mb-5 border-t border-neutral-200 bg-white/95 px-5 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur-sm sm:-mx-6 sm:-mb-6 sm:px-6">
           <Button type="submit" size="xl" variant="accent" className="w-full" disabled={submitting}>
             {submitting ? (
               <>
@@ -365,7 +363,7 @@ export function PackageBookingSheet({ pkg, onClose }: PackageBookingSheetProps) 
               "Send booking request"
             )}
           </Button>
-          <p className="mt-2 text-center text-xs text-ink-muted">
+          <p className="mt-2 text-center text-[11px] text-ink-muted sm:text-xs">
             No payment now. An expert confirms availability and the final price first.
           </p>
         </div>
@@ -377,7 +375,7 @@ export function PackageBookingSheet({ pkg, onClose }: PackageBookingSheetProps) 
 function Step({ icon, title, children }: { icon?: ReactNode; title: string; children: ReactNode }) {
   return (
     <fieldset>
-      <legend className="mb-2 flex items-center gap-2 text-sm font-bold text-ink">
+      <legend className="mb-2 flex items-center gap-2 text-xs font-semibold text-ink sm:text-sm">
         {icon && <span className="text-primary-600">{icon}</span>}
         {title}
       </legend>
@@ -402,7 +400,7 @@ function Counter({
   onChange: (value: number) => void;
 }) {
   return (
-    <div className="flex items-center justify-between gap-3 px-3 py-2">
+    <div className="flex items-center justify-between gap-3 px-3 py-2.5">
       <div>
         <p className="text-sm font-semibold text-ink">{label}</p>
         <p className="text-xs text-ink-muted">{hint}</p>
@@ -413,11 +411,11 @@ function Counter({
           aria-label={`Fewer ${label.toLowerCase()}`}
           disabled={value <= min}
           onClick={() => onChange(value - 1)}
-          className="flex size-11 items-center justify-center rounded-xl border border-neutral-200 text-ink transition hover:bg-neutral-50 disabled:opacity-40"
+          className="flex size-10 items-center justify-center rounded-xl border border-neutral-200 text-ink transition hover:bg-neutral-50 disabled:opacity-40"
         >
           <Minus className="size-4" aria-hidden />
         </button>
-        <span className="w-8 text-center text-base font-bold tabular-nums text-ink" aria-live="polite">
+        <span className="w-8 text-center text-sm font-bold tabular-nums text-ink" aria-live="polite">
           {value}
         </span>
         <button
@@ -425,7 +423,7 @@ function Counter({
           aria-label={`More ${label.toLowerCase()}`}
           disabled={value >= max}
           onClick={() => onChange(value + 1)}
-          className="flex size-11 items-center justify-center rounded-xl border border-neutral-200 text-ink transition hover:bg-neutral-50 disabled:opacity-40"
+          className="flex size-10 items-center justify-center rounded-xl border border-neutral-200 text-ink transition hover:bg-neutral-50 disabled:opacity-40"
         >
           <Plus className="size-4" aria-hidden />
         </button>

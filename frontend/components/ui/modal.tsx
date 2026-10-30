@@ -30,26 +30,26 @@ export function Modal({ open, onClose, title, children, className }: ModalProps)
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-4">
+    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-6">
       <div className="animate-overlay-in absolute inset-0 bg-ink/45 backdrop-blur-[2px]" onClick={onClose} aria-hidden />
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="modal-title"
         className={cn(
-          "animate-sheet-up relative flex max-h-[92vh] w-full flex-col overflow-hidden rounded-t-[1.35rem] bg-white shadow-elevated sm:max-w-md sm:rounded-2xl",
+          "animate-sheet-up relative flex max-h-[92vh] w-full flex-col overflow-hidden rounded-t-[1.35rem] bg-white shadow-[0_24px_80px_-20px_rgb(15_23_42/0.35)] ring-1 ring-black/5 sm:max-w-md sm:rounded-2xl",
           className,
         )}
       >
         <div className="flex items-center justify-between border-b border-neutral-100 px-4 py-3">
-          <h2 id="modal-title" className="text-base font-bold text-ink sm:text-sm">
+          <h2 id="modal-title" className="text-sm font-semibold text-ink sm:text-base">
             {title}
           </h2>
           <Button variant="ghost" size="sm" onClick={onClose} aria-label="Close" className="-mr-2 size-11 p-0 lg:size-8">
             <X className="size-4" />
           </Button>
         </div>
-        <div className="overflow-y-auto p-4">{children}</div>
+        <div className="overflow-y-auto p-5 sm:p-6">{children}</div>
       </div>
     </div>
   );
