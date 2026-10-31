@@ -299,7 +299,7 @@
         "imageUrl": "https://images.pexels.com/photos/457882/pexels-photo-457882.jpeg?auto=compress&cs=tinysrgb&w=1200",
         "linkUrl": "/flights",
         "title": "Zero convenience fee \u2014 UPI",
-        "active": true
+        "active": false
       },
       {
         "id": "deal_flight_2",
@@ -307,7 +307,7 @@
         "imageUrl": "https://images.pexels.com/photos/2387866/pexels-photo-2387866.jpeg?auto=compress&cs=tinysrgb&w=1200",
         "linkUrl": "/flights",
         "title": "Airline fare offers",
-        "active": true
+        "active": false
       },
       {
         "id": "deal_hotel_1",
