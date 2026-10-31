@@ -143,16 +143,17 @@ export function PackagesPageView() {
     <>
       <PackagesHero onSearch={handleSearch} />
 
-      {/* Phones go straight from search to the package list; offers stay one tap away in the Offers filter. */}
       {!loading && !error && (
-        <div className="hidden lg:block">
+        <>
           <PackagesSpecialOffers
             packages={packages}
             onViewAllOffers={handleViewAllOffers}
             onExploreRajasthan={handleExploreRajasthan}
           />
-          <PackagesPromoBanner onExploreState={handleExploreState} />
-        </div>
+          <div className="hidden lg:block">
+            <PackagesPromoBanner onExploreState={handleExploreState} />
+          </div>
+        </>
       )}
 
       <Container>

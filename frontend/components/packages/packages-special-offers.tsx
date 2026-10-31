@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useReducedMotion } from "motion/react";
 import { ArrowUpRight, ChevronLeft, ChevronRight } from "lucide-react";
 import { Container } from "@/components/layout/container";
+import { Chip } from "@/components/ui/pill";
 import { cn } from "@/lib/cn";
 import { formatINR } from "@/lib/format";
 import type { PackageCategory, TravelPackage } from "@/types";
@@ -217,27 +218,16 @@ export function PackagesSpecialOffers({
           </h2>
         </div>
 
-        <div className="mt-3 flex flex-wrap gap-2" role="tablist" aria-label="Offer categories">
-          {CHIP_META.map(({ id, label }) => {
-            const active = chip === id;
-            return (
-              <button
-                key={id}
-                type="button"
-                role="tab"
-                aria-selected={active}
-                onClick={() => selectChip(id)}
-                className={cn(
-                  "rounded-full px-3 py-1.5 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2",
-                  active
-                    ? "bg-primary-700 text-white shadow-xs"
-                    : "border border-neutral-200 bg-white text-ink-muted hover:border-primary-200 hover:text-ink",
-                )}
-              >
-                {label}
-              </button>
-            );
-          })}
+        <div
+          className="no-scrollbar mt-3 flex gap-2 overflow-x-auto sm:flex-wrap sm:overflow-visible"
+          role="tablist"
+          aria-label="Offer categories"
+        >
+          {CHIP_META.map(({ id, label }) => (
+            <Chip key={id} role="tab" active={chip === id} scroll onClick={() => selectChip(id)}>
+              {label}
+            </Chip>
+          ))}
         </div>
 
         <div

@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { ArrowDownUp, SlidersHorizontal, X } from "lucide-react";
-import { motion } from "motion/react";
 import { cn } from "@/lib/cn";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
+import { Chip } from "@/components/ui/pill";
 import type { PackageCategory } from "@/types";
 
 export type CatalogFilter = "all" | PackageCategory;
@@ -148,27 +148,11 @@ function FilterChips({
 }) {
   return (
     <>
-      {PACKAGE_FILTERS.map(({ id, label }) => {
-        const active = filter === id;
-        return (
-          <motion.button
-            key={id}
-            type="button"
-            aria-pressed={active}
-            onClick={() => onFilterChange(id)}
-            whileTap={{ scale: 0.96 }}
-            className={cn(
-              "inline-flex items-center rounded-full px-3 text-xs font-semibold transition",
-              scroll ? "min-h-11 shrink-0" : "py-1.5",
-              active
-                ? "bg-primary-700 text-white shadow-xs"
-                : "border border-neutral-200 bg-white text-ink-muted hover:border-primary-200 hover:text-ink",
-            )}
-          >
-            {label}
-          </motion.button>
-        );
-      })}
+      {PACKAGE_FILTERS.map(({ id, label }) => (
+        <Chip key={id} active={filter === id} scroll={scroll} onClick={() => onFilterChange(id)}>
+          {label}
+        </Chip>
+      ))}
     </>
   );
 }
