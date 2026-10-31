@@ -1,0 +1,3 @@
+# Only needed when DATABASE_URL is set (PostgreSQL storage for the website CMS).
+# The Render build installs this automatically when DATABASE_URL is present.
+psycopg[binary]==3.2.13

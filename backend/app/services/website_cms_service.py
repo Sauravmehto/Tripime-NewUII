@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 import json
+import logging
+import os
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from threading import Lock
@@ -34,7 +37,12 @@ from app.models.website_cms import (
 )
 
 from app.paths import DATA_DIR  # noqa: E402  (honours the DATA_DIR environment variable)
+from app.storage.cms_store import JsonFileCmsStore, build_cms_store  # noqa: E402
+
 CMS_PATH = DATA_DIR / "website_cms.json"
+# With a shared (database) store, how long this process may serve its in-memory copy before re-reading.
+CMS_CACHE_SECONDS = float(os.getenv("CMS_CACHE_SECONDS", "5"))
+log = logging.getLogger(__name__)
 
 DEFAULT_CMS = WebsiteCms(
     general=WebsiteGeneral(
@@ -89,17 +97,47 @@ def _merge_promo_items(
 
 
 class WebsiteCmsService:
-    def __init__(self, path: Path = CMS_PATH) -> None:
-        self._path = path
+    """``path`` keeps the JSON file behaviour (used by tests and local runs); with no arguments the
+    configured store is used: the database when DATABASE_URL is set, otherwise ``CMS_PATH``."""
+
+    def __init__(self, path: Path | None = None, store=None) -> None:
+        if store is None:
+            store = JsonFileCmsStore(path) if path is not None else build_cms_store(CMS_PATH)
+        self._store = store
         self._lock = Lock()
-        self._cms = self._load()
+        self._cms_value = self._load()
+        self._loaded_at = time.monotonic()
+
+    @property
+    def _cms(self) -> WebsiteCms:
+        if self._store.shared and time.monotonic() - self._loaded_at > CMS_CACHE_SECONDS:
+            self._refresh()
+        return self._cms_value
+
+    @_cms.setter
+    def _cms(self, value: WebsiteCms) -> None:
+        self._cms_value = value
+        self._loaded_at = time.monotonic()
+
+    def _refresh(self) -> None:
+        """Pick up changes another instance saved. On a read failure keep serving the last good copy."""
+        self._loaded_at = time.monotonic()
+        try:
+            raw = self._store.read()
+            if raw is not None:
+                self._cms_value = WebsiteCms.model_validate(raw)
+        except Exception:
+            log.exception("Could not refresh CMS content from storage; serving the previous copy")
 
     def _load(self) -> WebsiteCms:
-        if not self._path.exists():
-            self._path.parent.mkdir(parents=True, exist_ok=True)
-            self._save(DEFAULT_CMS)
-            return DEFAULT_CMS.model_copy(deep=True)
-        raw = json.loads(self._path.read_text(encoding="utf-8-sig"))
+        raw = self._store.read()
+        if raw is None:
+            # Nothing stored yet. A database starts from the JSON file that ships with the app so
+            # existing content is imported rather than replaced by defaults.
+            seed = self._store.seed()
+            cms = WebsiteCms.model_validate(seed) if seed is not None else DEFAULT_CMS.model_copy(deep=True)
+            self._save(cms)
+            return cms.model_copy(deep=True)
         cms = WebsiteCms.model_validate(raw)
         missing = [
             key
@@ -131,7 +169,7 @@ class WebsiteCmsService:
         return cms
 
     def _save(self, cms: WebsiteCms) -> None:
-        self._path.write_text(json.dumps(cms.model_dump(), indent=2), encoding="utf-8")
+        self._store.write(cms.model_dump())
 
     def get_cms(self) -> WebsiteCms:
         return self._cms.model_copy(deep=True)

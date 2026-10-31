@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import os
 import subprocess
 import sys
 
@@ -26,6 +27,9 @@ def main() -> int:
 
     subprocess.check_call([sys.executable, "-m", "pip", "install", "--upgrade", "pip"])
     subprocess.check_call([sys.executable, "-m", "pip", "install", "-r", "requirements.txt"])
+    if os.getenv("DATABASE_URL", "").strip():
+        print("==> DATABASE_URL is set: installing the PostgreSQL driver")
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "-r", "requirements-postgres.txt"])
     print("==> Build complete")
     return 0
 

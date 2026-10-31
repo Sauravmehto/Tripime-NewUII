@@ -12,3 +12,8 @@ data/flight_seat_sales.json
 # Customer accounts (emails + password hashes).
 data/customer_accounts.json
 data/.accounts-*.tmp
+
+# CMS migration backups and local database trials: contain site content, never commit.
+data/backups/
+*.db
+
