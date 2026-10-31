@@ -605,12 +605,27 @@ export interface WebsiteAbout {
   blocks: WebsiteAboutBlock[];
 }
 
+export type PromoLinkType = "page" | "package" | "external";
+
 export interface WebsitePromoItem {
   id: string;
   category: string;
   imageUrl: string;
   linkUrl: string;
+  linkType?: PromoLinkType;
   title: string;
+  subtitle?: string;
+  description?: string;
+  discountText?: string;
+  couponCode?: string;
+  /** Strict ISO date (YYYY-MM-DD). The offer is valid through the whole of that day. */
+  validUntil?: string;
+  terms?: string;
+  minBookingValue?: number;
+  ctaLabel?: string;
+  bankName?: string;
+  bankLogoUrl?: string;
+  sortOrder?: number;
   active: boolean;
 }
 
