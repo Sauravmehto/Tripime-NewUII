@@ -9,9 +9,7 @@ import {
   MessageSquare,
   Phone,
   Plane,
-  Percent,
   ShieldCheck,
-  Sparkles,
   Ticket,
   Undo2,
 } from "lucide-react";
@@ -29,8 +27,6 @@ interface FooterLinkItem {
 const TRAVEL: FooterLinkItem[] = [
   { href: "/flights", label: "Flights", icon: Plane },
   { href: "/packages", label: "Packages", icon: Luggage },
-  { href: "/activities", label: "Activities", icon: Sparkles },
-  { href: "/offers", label: "Offers", icon: Percent },
   { href: "/my-booking", label: "My Booking", icon: Ticket },
 ];
 
