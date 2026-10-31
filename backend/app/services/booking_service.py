@@ -40,7 +40,7 @@ from app.services.booking_rules import document_requirements, validate_contact, 
 from app.services.customer_auth_service import CustomerSession
 from app.services.flight_service import get_flight_provider, validate_passenger_mix
 
-DATA_DIR = Path(__file__).resolve().parents[2] / "data"
+from app.paths import DATA_DIR  # noqa: E402  (honours the DATA_DIR environment variable)
 BOOKINGS_PATH = DATA_DIR / "bookings.json"
 
 EDITABLE_STATES = {"DRAFT", "PASSENGERS_COMPLETED", "REVIEWED"}

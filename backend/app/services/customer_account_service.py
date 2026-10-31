@@ -27,7 +27,7 @@ from app.models.admin_ops import CustomerLogin
 from app.services.admin_ops_service import get_admin_ops_service
 from app.services.customer_profile_service import new_customer_id, normalize_email, stamp_login
 
-DATA_DIR = Path(__file__).resolve().parents[2] / "data"
+from app.paths import DATA_DIR  # noqa: E402  (honours the DATA_DIR environment variable)
 ACCOUNTS_PATH = DATA_DIR / "customer_accounts.json"
 
 MIN_PASSWORD = 8

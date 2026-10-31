@@ -19,7 +19,7 @@ from app.models.admin_ops import (
     MarketingVideosPayload,
 )
 
-DATA_DIR = Path(__file__).resolve().parents[2] / "data"
+from app.paths import DATA_DIR  # noqa: E402  (honours the DATA_DIR environment variable)
 OPS_PATH = DATA_DIR / "admin_ops.json"
 
 _service: AdminOpsService | None = None

@@ -33,7 +33,7 @@ from app.models.website_cms import (
     WebsiteBusRoutes,
 )
 
-DATA_DIR = Path(__file__).resolve().parents[2] / "data"
+from app.paths import DATA_DIR  # noqa: E402  (honours the DATA_DIR environment variable)
 CMS_PATH = DATA_DIR / "website_cms.json"
 
 DEFAULT_CMS = WebsiteCms(

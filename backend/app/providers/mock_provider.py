@@ -44,7 +44,7 @@ from app.providers.flight_network import (
     terminal_for,
 )
 
-DATA_DIR = Path(__file__).resolve().parents[2] / "data"
+from app.paths import DATA_DIR  # noqa: E402  (honours the DATA_DIR environment variable)
 SEAT_SALES_PATH = DATA_DIR / "flight_seat_sales.json"
 
 IST = timezone(timedelta(hours=5, minutes=30))

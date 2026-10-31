@@ -8,7 +8,7 @@ from threading import Lock
 from app import config
 from app.models.agency_profile import AgencyProfile, AgencyProfileResponse, AgencyProfileUpdate
 
-DATA_DIR = Path(__file__).resolve().parents[2] / "data"
+from app.paths import DATA_DIR  # noqa: E402  (honours the DATA_DIR environment variable)
 PROFILE_PATH = DATA_DIR / "agency_profile.json"
 
 DEFAULT_PROFILE = AgencyProfile(

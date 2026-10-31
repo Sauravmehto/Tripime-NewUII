@@ -10,7 +10,7 @@ from fastapi import HTTPException
 
 from app.models.package_theme import PackageTheme, PackageThemeCreate, PackageThemeUpdate
 
-DATA_DIR = Path(__file__).resolve().parents[2] / "data"
+from app.paths import DATA_DIR  # noqa: E402  (honours the DATA_DIR environment variable)
 THEMES_PATH = DATA_DIR / "package_themes.json"
 
 _service: PackageThemeService | None = None

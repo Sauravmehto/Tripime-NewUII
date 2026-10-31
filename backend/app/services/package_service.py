@@ -10,7 +10,7 @@ from fastapi import HTTPException
 
 from app.models.package import Package, PackageCreate, PackageUpdate
 
-DATA_DIR = Path(__file__).resolve().parents[2] / "data"
+from app.paths import DATA_DIR  # noqa: E402  (honours the DATA_DIR environment variable)
 PACKAGES_PATH = DATA_DIR / "packages.json"
 
 _service: PackageService | None = None

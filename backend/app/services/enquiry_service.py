@@ -14,7 +14,7 @@ from app.models.enquiry import (
     EnquiryStatus,
 )
 
-DATA_DIR = Path(__file__).resolve().parents[2] / "data"
+from app.paths import DATA_DIR  # noqa: E402  (honours the DATA_DIR environment variable)
 ENQUIRIES_PATH = DATA_DIR / "enquiries.json"
 
 
