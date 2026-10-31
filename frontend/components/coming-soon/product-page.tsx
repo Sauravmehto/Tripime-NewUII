@@ -1,6 +1,6 @@
 "use client";
 
-import { Bus, Hotel } from "lucide-react";
+import { Bus, Hotel, Sparkles } from "lucide-react";
 import { Container } from "@/components/layout/container";
 import { Reveal } from "@/components/motion/reveal";
 import { LeadEnquiryForm } from "@/components/enquiries/lead-enquiry-form";
@@ -62,6 +62,18 @@ export function HotelsPageView() {
       description="Online hotel booking is launching soon. Leave your details and our travel experts will help you book stays today."
       icon={Hotel}
       serviceType="hotel"
+    />
+  );
+}
+
+export function ActivitiesPageView() {
+  return (
+    <ComingSoonProductPage
+      product="Activities"
+      title="Activities"
+      description="Online activity booking is launching soon. Share your destination and dates and our experts will suggest the best experiences."
+      icon={Sparkles}
+      serviceType="other"
     />
   );
 }

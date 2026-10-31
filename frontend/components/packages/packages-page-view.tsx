@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { listPackageThemes, listPackages } from "@/lib/api/packages";
 import { getErrorMessage } from "@/lib/api/client";
 import { Container } from "@/components/layout/container";
@@ -47,6 +48,7 @@ function sortPackages(list: TravelPackage[], sort: SortOption): TravelPackage[] 
  * same listPackages API + filter/search/enquiry routes.
  */
 export function PackagesPageView() {
+  const router = useRouter();
   const [packages, setPackages] = useState<TravelPackage[]>([]);
   const [themes, setThemes] = useState<PackageTheme[]>([]);
   const [loading, setLoading] = useState(true);
@@ -108,13 +110,8 @@ export function PackagesPageView() {
   );
 
   const handleViewAllOffers = useCallback(() => {
-    setFilter("offer");
-    window.setTimeout(() => {
-      document
-        .getElementById("all-packages")
-        ?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, 60);
-  }, []);
+    router.push("/offers?category=holidays");
+  }, [router]);
 
   const handleExploreRajasthan = useCallback(() => {
     explore("Rajasthan");
