@@ -8,6 +8,8 @@ export function AdminPromoCard({
   title,
   badge,
   active,
+  caption,
+  expired,
   showDelete,
   onEdit,
   onToggle,
@@ -17,6 +19,9 @@ export function AdminPromoCard({
   title: string;
   badge: string;
   active: boolean;
+  /** Short summary line shown over the image (discount, coupon, validity). */
+  caption?: string;
+  expired?: boolean;
   showDelete?: boolean;
   onEdit: () => void;
   onToggle: () => void;
@@ -52,7 +57,7 @@ export function AdminPromoCard({
           )}
         >
           {active ? <CheckCircle2 className="size-3.5" /> : <Ban className="size-3.5" />}
-          {active ? "Done" : "Close"}
+          {active ? "Active" : "Inactive"}
         </button>
       </div>
       <div className="relative min-h-[112px] min-w-0 flex-1">
@@ -65,6 +70,17 @@ export function AdminPromoCard({
             No image
           </div>
         )}
+        {title || caption ? (
+          <div className="absolute inset-x-0 bottom-0 bg-linear-to-t from-black/75 to-transparent p-2 pr-24 text-white">
+            {title ? <p className="truncate text-[12px] font-semibold">{title}</p> : null}
+            {caption ? <p className="truncate text-[10px] opacity-90">{caption}</p> : null}
+          </div>
+        ) : null}
+        {expired ? (
+          <span className="absolute left-2 top-2 rounded-full bg-danger-700 px-2 py-0.5 text-[10px] font-semibold text-white">
+            Expired
+          </span>
+        ) : null}
         <span className="absolute bottom-2 right-2 rounded-full bg-admin-ink/85 px-2 py-0.5 text-[10px] font-semibold text-white">
           {badge}
         </span>
