@@ -27,3 +27,15 @@ services:
       - key: CORS_ORIGINS
         sync: false
         # Set to your Netlify site, e.g. https://tripimee.netlify.app
+      # --- Persistence: NOT enabled (both options need a paid plan). See docs/PERSISTENCE.md ---
+      # Until one is configured, admin edits and customer records are lost on every restart/redeploy.
+      # Option A - persistent disk (single instance): add a disk below and the DATA_DIR variable.
+      #   - key: DATA_DIR
+      #     value: /var/data
+      # Option B - PostgreSQL for the website CMS: add DATABASE_URL (a secret, never commit a value).
+      #   - key: DATABASE_URL
+      #     sync: false
+    # disk:
+    #   name: tripime-data
+    #   mountPath: /var/data
+    #   sizeGB: 1
