@@ -182,12 +182,18 @@ def update_website_about(payload: WebsiteAbout) -> WebsiteCms:
 
 @router.put("/website/banners", response_model=WebsiteCms, dependencies=[Depends(require_admin)])
 def update_website_banners(payload: WebsiteBanners) -> WebsiteCms:
-    return get_website_cms_service().update_banners(payload)
+    try:
+        return get_website_cms_service().update_banners(payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
 @router.put("/website/deals", response_model=WebsiteCms, dependencies=[Depends(require_admin)])
 def update_website_deals(payload: WebsiteDeals) -> WebsiteCms:
-    return get_website_cms_service().update_deals(payload)
+    try:
+        return get_website_cms_service().update_deals(payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
 @router.put("/website/visa", response_model=WebsiteCms, dependencies=[Depends(require_admin)])

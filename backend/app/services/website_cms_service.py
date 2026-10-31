@@ -13,6 +13,7 @@ from app.models.website_cms import (
     WebsiteBlogs,
     WebsiteCms,
     WebsiteDeals,
+    WebsitePromoItem,
     WebsiteDestinations,
     WebsiteFaqs,
     WebsiteFlightRoutes,
@@ -68,6 +69,23 @@ DEFAULT_CMS = WebsiteCms(
 )
 
 _service: WebsiteCmsService | None = None
+
+
+def _merge_promo_items(
+    existing: list[WebsitePromoItem], incoming: list[WebsitePromoItem]
+) -> list[WebsitePromoItem]:
+    """The admin PUT replaces the whole list, but a field the client did not send must keep its
+    stored value. Fields that are sent (even as "") win; items missing from the list are removed."""
+    previous = {item.id: item for item in existing}
+    merged: list[WebsitePromoItem] = []
+    for item in incoming:
+        old = previous.get(item.id)
+        if old is None:
+            merged.append(item)
+            continue
+        updates = {name: getattr(item, name) for name in item.model_fields_set}
+        merged.append(WebsitePromoItem.model_validate({**old.model_dump(), **updates}))
+    return merged
 
 
 class WebsiteCmsService:
@@ -175,7 +193,9 @@ class WebsiteCmsService:
     def update_banners(self, payload: WebsiteBanners) -> WebsiteCms:
         with self._lock:
             current = self._cms.model_copy(deep=True)
-            current.banners = payload
+            current.banners = WebsiteBanners(
+                items=_merge_promo_items(current.banners.items, payload.items)
+            )
             current.updatedAt = datetime.now(timezone.utc).isoformat()
             self._cms = current
             self._save(current)
@@ -184,7 +204,9 @@ class WebsiteCmsService:
     def update_deals(self, payload: WebsiteDeals) -> WebsiteCms:
         with self._lock:
             current = self._cms.model_copy(deep=True)
-            current.deals = payload
+            current.deals = WebsiteDeals(
+                items=_merge_promo_items(current.deals.items, payload.items)
+            )
             current.updatedAt = datetime.now(timezone.utc).isoformat()
             self._cms = current
             self._save(current)

@@ -1,4 +1,8 @@
-from pydantic import BaseModel, EmailStr, Field
+import re
+from datetime import date, datetime, timedelta, timezone
+from typing import Literal
+
+from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
 
 
 class WebsiteAccount(BaseModel):
@@ -247,13 +251,109 @@ class WebsiteAbout(BaseModel):
 PEXELS = "https://images.pexels.com/photos/{id}/pexels-photo-{id}.jpeg?auto=compress&cs=tinysrgb&w=1200"
 
 
+PromoLinkType = Literal["page", "package", "external"]
+
+# Categories an offer (Deals & Offers) may belong to. "popup" is the homepage popup slot, not an offer.
+DEAL_CATEGORIES = ("flight", "hotel", "bus", "holiday", "bank", "activity", "popup")
+
+_COUPON_RE = re.compile(r"^[A-Z0-9][A-Z0-9_-]{2,29}$")
+_ISO_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+_PACKAGE_ID_RE = re.compile(r"^[A-Za-z0-9_-]{1,80}$")
+_IST = timezone(timedelta(hours=5, minutes=30))
+
+
+def parse_valid_until(value: str) -> date | None:
+    """Strict YYYY-MM-DD only. Empty means the offer has no end date."""
+    value = (value or "").strip()
+    if not value:
+        return None
+    if not _ISO_DATE_RE.match(value):
+        raise ValueError("Validity date must be in YYYY-MM-DD format.")
+    try:
+        return date.fromisoformat(value)
+    except ValueError as exc:
+        raise ValueError("Validity date is not a real calendar date.") from exc
+
+
+def promo_is_expired(valid_until: str, today: date | None = None) -> bool:
+    """An offer is valid through the whole of its end date (India time)."""
+    try:
+        end = parse_valid_until(valid_until)
+    except ValueError:
+        return False
+    if end is None:
+        return False
+    return end < (today or datetime.now(_IST).date())
+
+
 class WebsitePromoItem(BaseModel):
     id: str = Field(..., min_length=1, max_length=80)
     category: str = Field(..., min_length=1, max_length=40)
     imageUrl: str = Field(..., min_length=1, max_length=500)
     linkUrl: str = Field("", max_length=500)
+    linkType: PromoLinkType = "page"
     title: str = Field("", max_length=200)
+    subtitle: str = Field("", max_length=240)
+    description: str = Field("", max_length=1000)
+    discountText: str = Field("", max_length=80)
+    couponCode: str = Field("", max_length=40)
+    validUntil: str = Field("", max_length=40)
+    terms: str = Field("", max_length=1200)
+    minBookingValue: float = Field(0, ge=0, le=10_000_000)
+    ctaLabel: str = Field("", max_length=40)
+    bankName: str = Field("", max_length=80)
+    bankLogoUrl: str = Field("", max_length=500)
+    sortOrder: int = Field(0, ge=0, le=9999)
     active: bool = True
+
+    @field_validator("imageUrl", "bankLogoUrl")
+    @classmethod
+    def _check_image_url(cls, value: str, info) -> str:
+        value = value.strip()
+        if not value:
+            if info.field_name == "imageUrl":
+                raise ValueError("Image URL is required.")
+            return value
+        if not (value.startswith(("https://", "http://")) or (value.startswith("/") and not value.startswith("//"))):
+            raise ValueError("Image URL must start with https:// or /.")
+        return value
+
+    @field_validator("couponCode")
+    @classmethod
+    def _check_coupon(cls, value: str) -> str:
+        value = value.strip().upper()
+        if value and not _COUPON_RE.match(value):
+            raise ValueError("Coupon code must be 3-30 characters: letters, numbers, - or _.")
+        return value
+
+    @field_validator("validUntil")
+    @classmethod
+    def _check_valid_until(cls, value: str) -> str:
+        value = value.strip()
+        parse_valid_until(value)
+        return value
+
+    @model_validator(mode="after")
+    def _check_link(self) -> "WebsitePromoItem":
+        url = self.linkUrl.strip()
+        if url != self.linkUrl:
+            self.linkUrl = url
+        # Older records stored external links as plain URLs without a link type.
+        if "linkType" not in self.model_fields_set and url.startswith(("https://", "http://")):
+            self.linkType = "external"
+        if not url:
+            return self
+        if any(ch.isspace() for ch in url):
+            raise ValueError("Link must not contain spaces.")
+        if self.linkType == "page":
+            if not url.startswith("/") or url.startswith("//") or "\\" in url:
+                raise ValueError("Page links must start with a single / (for example /packages).")
+        elif self.linkType == "package":
+            if not _PACKAGE_ID_RE.match(url):
+                raise ValueError("Package link must be a package ID (letters, numbers, - or _).")
+        elif not url.startswith("https://"):
+            raise ValueError("External links must start with https://.")
+        return self
 
 
 def default_banners() -> list[WebsitePromoItem]:
@@ -376,6 +476,19 @@ class WebsiteBanners(BaseModel):
 
 class WebsiteDeals(BaseModel):
     items: list[WebsitePromoItem] = Field(default_factory=default_deals)
+
+    @model_validator(mode="after")
+    def _check_items(self) -> "WebsiteDeals":
+        seen: set[str] = set()
+        for item in self.items:
+            if item.id in seen:
+                raise ValueError(f"Duplicate offer id: {item.id}")
+            seen.add(item.id)
+            if item.category not in DEAL_CATEGORIES:
+                raise ValueError(f"Unknown offer category: {item.category}")
+            if not item.title.strip():
+                raise ValueError("Every offer needs a title.")
+        return self
 
 
 class WebsiteVisaType(BaseModel):
