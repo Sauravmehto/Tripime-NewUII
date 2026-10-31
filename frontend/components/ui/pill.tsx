@@ -18,7 +18,7 @@ export function Chip({ active = false, scroll = false, className, children, role
       {...selectionProp}
       className={cn(
         "inline-flex items-center rounded-full px-3 text-xs font-semibold transition active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2",
-        scroll ? "min-h-11 shrink-0" : "py-1.5",
+        scroll ? "min-h-11 min-w-11 shrink-0 justify-center lg:min-h-0 lg:min-w-0 lg:py-1.5" : "py-1.5",
         active
           ? "bg-primary-700 text-white shadow-xs"
           : "border border-neutral-200 bg-white text-ink-muted hover:border-primary-200 hover:text-ink",
