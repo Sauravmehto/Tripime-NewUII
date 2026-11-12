@@ -106,3 +106,11 @@ B. PostgreSQL for the CMS
 3. Admin image upload needs durable object storage (Cloudinary or S3 compatible); files written to the
    web service's disk would be lost on redeploy unless a persistent disk is mounted.
 4. Replace `create_all`-style startup DDL with versioned migrations (Alembic) once the schema grows.
+
+## Inquiry CRM database
+
+Customer inquiries (admin > Inquiries) live in a SQLite file, `inquiries.db`, in `DATA_DIR` (override with `INQUIRY_DB_PATH`).
+It has its own migrations (`backend/app/storage/inquiry_db.py`) which run on start. Like the other runtime data it must sit on
+a persistent disk in production, or inquiries are lost when the service restarts. Back it up with the rest of `DATA_DIR`
+(copy `inquiries.db` together with `inquiries.db-wal` if present, or stop the service first).
+

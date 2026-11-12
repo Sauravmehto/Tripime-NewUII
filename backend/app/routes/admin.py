@@ -590,3 +590,4 @@ def admin_update_enquiry_status(enquiry_id: str, payload: EnquiryStatusUpdate) -
     if enquiry is None:
         raise HTTPException(status_code=404, detail=f"Enquiry '{enquiry_id}' not found.")
     return enquiry
+

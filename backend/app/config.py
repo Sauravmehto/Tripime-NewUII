@@ -124,6 +124,17 @@ WHATSAPP_CLOUD_PHONE_NUMBER_ID = os.getenv("WHATSAPP_CLOUD_PHONE_NUMBER_ID", "")
 WHATSAPP_CLOUD_TEMPLATE = os.getenv("WHATSAPP_CLOUD_TEMPLATE", "").strip()
 WHATSAPP_CLOUD_TEMPLATE_LANG = os.getenv("WHATSAPP_CLOUD_TEMPLATE_LANG", "en").strip()
 
+# Incoming WhatsApp messages (Meta WhatsApp Business Cloud API webhook). Both are required for the webhook to work:
+#   WHATSAPP_VERIFY_TOKEN  - any secret string you also enter in Meta's webhook setup (answers the GET handshake).
+#   WHATSAPP_APP_SECRET    - the Meta app secret, used to verify the X-Hub-Signature-256 of every delivery.
+WHATSAPP_VERIFY_TOKEN = os.getenv("WHATSAPP_VERIFY_TOKEN", "").strip()
+WHATSAPP_APP_SECRET = os.getenv("WHATSAPP_APP_SECRET", "").strip()
+
+# Comma-separated names offered when assigning an inquiry (defaults to the admin user).
+INQUIRY_TEAM_MEMBERS = [m.strip() for m in os.getenv("INQUIRY_TEAM_MEMBERS", "").split(",") if m.strip()]
+# SQLite file holding the inquiry CRM tables (defaults to DATA_DIR/inquiries.db).
+INQUIRY_DB_PATH = os.getenv("INQUIRY_DB_PATH", "").strip()
+
 
 def whatsapp_provider() -> str | None:
     """The WhatsApp provider that is fully configured, or None."""

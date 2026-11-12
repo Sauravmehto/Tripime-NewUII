@@ -4,15 +4,18 @@ from fastapi.middleware.cors import CORSMiddleware
 from app import config
 from app.routes import (
     admin,
+    admin_inquiries,
     bookings,
     customer_auth,
     customer_profile,
     enquiries,
     flights,
+    my_bookings,
     package_themes,
     packages,
     payments,
     website,
+    whatsapp_webhook,
 )
 
 config.validate_production_config()
@@ -38,6 +41,8 @@ app.include_router(payments.router, prefix="/api/payments", tags=["payments"])
 app.include_router(packages.router, prefix="/api/packages", tags=["packages"])
 app.include_router(package_themes.router, prefix="/api/package-themes", tags=["package-themes"])
 app.include_router(enquiries.router, prefix="/api/enquiries", tags=["enquiries"])
+app.include_router(my_bookings.router, prefix="/api/my-bookings", tags=["my-bookings"])
+app.include_router(whatsapp_webhook.router, prefix="/api/webhooks/whatsapp", tags=["whatsapp-webhook"])
 app.include_router(
     customer_profile.router,
     prefix="/api/customer-profile",
@@ -46,6 +51,7 @@ app.include_router(
 app.include_router(customer_auth.router, prefix="/api/auth", tags=["customer-auth"])
 app.include_router(website.router, prefix="/api/website", tags=["website"])
 app.include_router(admin.router, prefix="/api/admin", tags=["admin"])
+app.include_router(admin_inquiries.router, prefix="/api/admin/inquiries", tags=["admin-inquiries"])
 
 
 @app.get("/api/health")

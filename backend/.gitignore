@@ -8,6 +8,10 @@ __pycache__/
 # Runtime data with customer details and booking access tokens — never commit.
 data/bookings.json
 data/enquiries.json
+data/package_inquiries.json
+data/inquiries.db
+data/inquiries.db-wal
+data/inquiries.db-shm
 data/flight_seat_sales.json
 # Customer accounts (emails + password hashes).
 data/customer_accounts.json
