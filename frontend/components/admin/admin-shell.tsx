@@ -95,6 +95,7 @@ const MAIN_NAV: NavItem[] = [
       exact: true,
     })),
   },
+  { href: "/admin/inquiries", label: "Inquiries", icon: Headphones },
   {
     href: "/admin/enquiries",
     label: "Enquiries",

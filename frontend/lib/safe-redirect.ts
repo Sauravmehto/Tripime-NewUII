@@ -1,5 +1,5 @@
 /** Internal destinations we allow after sign-in. Anything else falls back to "/". */
-const ALLOWED_PREFIXES = ["/booking/", "/my-booking", "/flights", "/"];
+const ALLOWED_PREFIXES = ["/booking/", "/my-booking", "/flights", "/packages", "/"];
 
 /**
  * Returns `next` only when it's a same-site path (no scheme, no `//host`,

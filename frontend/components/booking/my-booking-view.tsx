@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, Lock, Plane } from "lucide-react";
 import { listMyBookings } from "@/lib/api/bookings";
+import { listMyInquiries, type PackageInquiry } from "@/lib/api/my-bookings";
+import { MyInquiries } from "@/components/booking/my-inquiries";
 import { getErrorMessage } from "@/lib/api/client";
 import { STATE_INFO } from "@/lib/booking-status";
 import { formatDate, formatDateTime, formatINR } from "@/lib/format";
@@ -19,7 +21,9 @@ import type { Booking } from "@/types";
 export function MyBookingView() {
   const { session } = useCustomerSession();
   const [bookings, setBookings] = useState<Booking[] | null>(null);
+  const [inquiries, setInquiries] = useState<PackageInquiry[] | null>(null);
   const [error, setError] = useState("");
+  const [inquiryError, setInquiryError] = useState("");
 
   useEffect(() => {
     if (!session?.authenticated) return;
@@ -27,6 +31,9 @@ export function MyBookingView() {
     listMyBookings()
       .then((list) => !cancelled && setBookings(list))
       .catch((err) => !cancelled && setError(getErrorMessage(err)));
+    listMyInquiries()
+      .then((list) => !cancelled && setInquiries(list))
+      .catch((err) => !cancelled && setInquiryError(getErrorMessage(err)));
     return () => {
       cancelled = true;
     };
@@ -35,11 +42,11 @@ export function MyBookingView() {
   const submitted = (bookings ?? []).filter((b) => !["DRAFT", "PASSENGERS_COMPLETED", "REVIEWED"].includes(b.state));
 
   return (
-    <Container narrow className="py-8">
+    <Container narrow className="py-6 sm:py-8">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-ink">My bookings</h1>
         <p className="mt-1 text-sm text-ink-muted">
-          Booking requests and tickets for {session?.authenticated ? <strong className="text-ink">{session.email}</strong> : "your account"}.
+          Your travel inquiries, booking requests and tickets for {session?.authenticated ? <strong className="text-ink">{session.email}</strong> : "your account"}.
         </p>
       </div>
 
@@ -62,6 +69,28 @@ export function MyBookingView() {
         </p>
       )}
 
+      {session?.authenticated && inquiries === null && !inquiryError && (
+        <div className="space-y-3" aria-busy aria-label="Loading your inquiries">
+          <Skeleton className="h-32 rounded-2xl" />
+          <Skeleton className="h-32 rounded-2xl" />
+        </div>
+      )}
+
+      {session?.authenticated && inquiryError && (
+        <p role="alert" className="mb-4 rounded-xl border border-danger-500/30 bg-danger-50 p-4 text-sm text-danger-700">
+          We couldn&apos;t load your inquiries. {inquiryError}
+        </p>
+      )}
+
+      {session?.authenticated && inquiries && <MyInquiries inquiries={inquiries} />}
+
+      {session?.authenticated && (
+        <div className="mb-3 mt-8">
+          <h2 className="text-lg font-bold text-ink">Bookings</h2>
+          <p className="mt-0.5 text-xs text-ink-muted">Booking requests and confirmed bookings. These are separate from inquiries.</p>
+        </div>
+      )}
+
       {session?.authenticated && bookings === null && !error && (
         <div className="space-y-3" aria-busy>
           <Skeleton className="h-24" />
@@ -73,7 +102,7 @@ export function MyBookingView() {
         <Card className="text-center">
           <Plane className="mx-auto size-8 text-ink-subtle" aria-hidden />
           <p className="mt-3 font-semibold text-ink">No bookings yet</p>
-          <p className="mt-1 text-sm text-ink-muted">Explore packages to start a booking request.</p>
+          <p className="mt-1 text-sm text-ink-muted">Confirmed bookings and booking requests will appear here.</p>
           <Link href="/packages" className={buttonClasses({ className: "mt-4" })}>
             Explore packages
           </Link>
