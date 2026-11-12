@@ -333,13 +333,6 @@ function RowRail({
             />
           ))}
         </div>
-        <div
-          aria-hidden
-          className={cn(
-            "pointer-events-none absolute inset-y-0 right-0 w-10 bg-linear-to-l from-white to-transparent transition-opacity duration-300",
-            edges.right ? "opacity-100" : "opacity-0",
-          )}
-        />
       </div>
     </section>
   );
