@@ -85,7 +85,7 @@ export function InfluencerTrips() {
   }
 
   return (
-    <section aria-label={sectionTitle} className="border-t border-neutral-200 py-8">
+    <section id="influencer-trips" aria-label={sectionTitle} className="scroll-mt-20 border-t border-neutral-200 py-8">
       <div className="flex items-end justify-between gap-3">
         <div>
           <span className="inline-flex items-center gap-1 rounded-full bg-accent-soft px-2.5 py-1 text-[11px] font-semibold text-accent-dark">

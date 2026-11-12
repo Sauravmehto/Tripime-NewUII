@@ -108,6 +108,7 @@ export function MobileNavDrawer({ open, onClose, items, isActive }: MobileNavDra
                   ) : (
                     <Link
                       href={href}
+                      onClick={onClose}
                       className={cn(
                         "flex items-center gap-3 rounded-lg px-3 py-3 transition",
                         active
@@ -115,7 +116,7 @@ export function MobileNavDrawer({ open, onClose, items, isActive }: MobileNavDra
                           : "text-ink-muted hover:bg-neutral-50 hover:text-ink",
                       )}
                     >
-                      <Icon className={cn("size-4", active && "text-primary-600")} aria-hidden />
+                      <Icon className="size-4 text-accent" aria-hidden />
                       {label}
                     </Link>
                   )}

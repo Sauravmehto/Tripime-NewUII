@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useCallback, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { motion, useReducedMotion } from "motion/react";
+import type { ReactNode } from "react";
 import { Container } from "@/components/layout/container";
 import { Button } from "@/components/ui/button";
 import { CopyCode } from "@/components/ui/copy-code";
@@ -23,18 +25,39 @@ import {
   categoryLabel,
   filterOffersByCategory,
   OFFER_CATEGORIES,
+  VISIBLE_OFFER_CATEGORIES,
   offersHref,
   parseOfferCategory,
   type OfferCategory,
   type OfferItem,
 } from "@/lib/offers/offers";
 import { useOffers } from "@/lib/offers/use-offers";
+import { OffersHero } from "@/components/offers/offers-hero";
+import { OffersContent } from "@/components/offers/offers-content";
+import { whatsappLink } from "@/lib/contact";
 
 const LOAD_ERROR = "We couldn’t load offers right now. Please try again.";
 
+/** Fades and lifts a card in as it scrolls into view; skipped for reduced-motion visitors. */
+function Reveal({ index, children }: { index: number; children: ReactNode }) {
+  const reduce = useReducedMotion();
+  return (
+    <motion.div
+      className="h-full"
+      initial={reduce ? false : { opacity: 0, y: 18 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-30px" }}
+      transition={{ duration: 0.4, delay: (index % 3) * 0.07 }}
+      whileHover={reduce ? undefined : { y: -4 }}
+    >
+      {children}
+    </motion.div>
+  );
+}
+
 function OfferCard({ offer }: { offer: OfferItem }) {
   return (
-    <article className="flex h-full flex-col overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-xs transition-shadow hover:shadow-medium">
+    <article className="group flex h-full flex-col overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-xs transition-shadow hover:shadow-medium">
       <OfferImage offer={offer} className="aspect-[16/9] shrink-0">
         <div className="absolute inset-0 bg-linear-to-t from-ink/50 via-transparent to-transparent" />
         <div className="absolute inset-x-3 top-3 flex items-start justify-between gap-2">
@@ -60,7 +83,7 @@ function OfferCard({ offer }: { offer: OfferItem }) {
 
 function BankOfferCard({ offer }: { offer: OfferItem }) {
   return (
-    <article className="flex h-full flex-col overflow-hidden rounded-2xl border border-primary-200 bg-linear-to-br from-primary-50 via-white to-white shadow-xs transition-shadow hover:shadow-medium">
+    <article className="group flex h-full flex-col overflow-hidden rounded-2xl border border-primary-200 bg-linear-to-br from-primary-50 via-white to-white shadow-xs transition-shadow hover:shadow-medium">
       <div className="flex items-center gap-3 border-b border-primary-100 bg-primary-50/70 px-4 py-3">
         <BankMark offer={offer} />
         <div className="min-w-0">
@@ -89,7 +112,7 @@ function BankOfferCard({ offer }: { offer: OfferItem }) {
 
 function FeaturedOffer({ offer }: { offer: OfferItem }) {
   return (
-    <article className="grid overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-soft md:grid-cols-2">
+    <article className="group grid overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-soft md:grid-cols-2">
       <OfferImage offer={offer} className="aspect-[16/10] md:aspect-auto md:min-h-[300px]">
         <div className="absolute inset-0 bg-linear-to-t from-ink/40 via-transparent to-transparent md:hidden" />
         <div className="absolute left-3 top-3 flex flex-wrap items-center gap-2">
@@ -138,6 +161,14 @@ function EmptyState({ category }: { category: OfferCategory }) {
       >
         Explore packages
       </Link>
+      <a
+        href={whatsappLink("Hi Tripime, which travel offers are live right now? I'd like the best current price.")}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="ml-2 mt-4 inline-flex min-h-11 items-center justify-center rounded-lg border border-neutral-300 bg-white px-4 text-sm font-semibold text-ink transition hover:bg-neutral-50"
+      >
+        Ask an expert on WhatsApp
+      </a>
     </div>
   );
 }
@@ -169,18 +200,7 @@ export function OffersPageView() {
 
   return (
     <div className="bg-canvas">
-      <section className="border-b border-neutral-200 bg-linear-to-br from-primary-900 via-primary-800 to-primary-700 text-white">
-        <Container className="py-8 sm:py-10">
-          <p className="inline-flex w-fit rounded-full bg-white/15 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide ring-1 ring-white/25">
-            Offers Zone
-          </p>
-          <h1 className="mt-3 text-2xl font-bold leading-tight sm:text-3xl">Travel offers, all in one place</h1>
-          <p className="mt-2 max-w-2xl text-sm text-white/85 sm:text-base">
-            Browse current offers across holidays, hotels, flights, buses, bank deals and activities. Check what is
-            included, how long it is valid, and copy the coupon code if one applies.
-          </p>
-        </Container>
-      </section>
+      <OffersHero offers={offers} category={category} counts={counts} onSelect={selectCategory} />
 
       <div className="sticky top-14 z-30 border-b border-neutral-200 bg-canvas/95 backdrop-blur supports-[backdrop-filter]:bg-canvas/85">
         <Container>
@@ -189,7 +209,7 @@ export function OffersPageView() {
             aria-label="Offer categories"
             className="no-scrollbar flex gap-2 overflow-x-auto py-2.5 sm:flex-wrap sm:overflow-visible"
           >
-            {OFFER_CATEGORIES.map((item) => {
+            {VISIBLE_OFFER_CATEGORIES.map((item) => {
               const count = counts.get(item.id) ?? 0;
               return (
                 <Chip key={item.id} scroll active={category === item.id} onClick={() => selectCategory(item.id)}>
@@ -224,23 +244,27 @@ export function OffersPageView() {
 
         {offers && filtered.length === 0 ? <EmptyState category={category} /> : null}
 
-        {featured ? <FeaturedOffer offer={featured} /> : null}
+        {featured ? (
+          <Reveal key={`${category}-featured`} index={0}>
+            <FeaturedOffer offer={featured} />
+          </Reveal>
+        ) : null}
 
         {rest.length > 0 ? (
-          <section className={featured ? "mt-8" : undefined} aria-label={`${categoryLabel(category)} list`}>
+          <section key={category} className={featured ? "mt-8" : undefined} aria-label={`${categoryLabel(category)} list`}>
             {featured ? <h2 className="mb-3 text-lg font-bold text-ink">More offers</h2> : null}
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {rest.map((offer) =>
-                offer.category === "bank-offers" ? (
-                  <BankOfferCard key={offer.id} offer={offer} />
-                ) : (
-                  <OfferCard key={offer.id} offer={offer} />
-                ),
-              )}
+              {rest.map((offer, i) => (
+                <Reveal key={offer.id} index={i}>
+                  {offer.category === "bank-offers" ? <BankOfferCard offer={offer} /> : <OfferCard offer={offer} />}
+                </Reveal>
+              ))}
             </div>
           </section>
         ) : null}
       </Container>
+
+      <OffersContent />
     </div>
   );
 }

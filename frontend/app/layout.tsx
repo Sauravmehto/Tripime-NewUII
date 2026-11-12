@@ -13,11 +13,11 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: {
-    default: "Tripime — Flights, Holidays & Travel",
+    default: "Tripime — Holiday Packages & Travel",
     template: "%s | Tripime",
   },
   description:
-    "Book flights and holiday packages with Tripime — a premium travel platform with real experts on call.",
+    "Book curated holiday packages with Tripime — a premium travel platform with real experts on call.",
   metadataBase: new URL("https://tripime.com"),
 };
 

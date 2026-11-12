@@ -8,20 +8,21 @@ import {
   MessageCircle,
   Palmtree,
   Phone,
-  Plane,
+  // Plane,
   Ticket,
   type LucideProps,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { telLink, whatsappLink } from "@/lib/contact";
-import { FLIGHTS_ENABLED } from "@/lib/features";
+// import { FLIGHTS_ENABLED } from "@/lib/features";
 
 type TabIcon = ComponentType<LucideProps>;
 
 const TABS: { href: string; label: string; icon: TabIcon; disabled?: boolean }[] = [
   { href: "/", label: "Home", icon: Home },
   { href: "/packages", label: "Holidays", icon: Palmtree },
-  { href: "/flights", label: "Flights", icon: Plane, disabled: !FLIGHTS_ENABLED },
+  // Flights are hidden for now. Uncomment to bring them back (and set the grid columns below to match).
+  // { href: "/flights", label: "Flights", icon: Plane, disabled: !FLIGHTS_ENABLED },
   { href: "/my-booking", label: "Trips", icon: Ticket },
 ];
 
@@ -64,7 +65,7 @@ export function MobileTabBar() {
           </a>
         </div>
       )}
-      <nav aria-label="Primary" className="mx-auto grid max-w-lg grid-cols-5">
+      <nav aria-label="Primary" className="mx-auto grid max-w-lg grid-cols-4">
         {TABS.map(({ href, label, icon: Icon, disabled }) => {
           const active = isActive(pathname, href);
           if (disabled) {

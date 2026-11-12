@@ -16,6 +16,8 @@ interface PackageCardProps {
   index?: number;
   className?: string;
   themeName?: string;
+  /** Smaller card for "similar holidays" strips. */
+  compact?: boolean;
 }
 
 export function PackageCard({
@@ -24,9 +26,10 @@ export function PackageCard({
   index = 0,
   className,
   themeName,
+  compact = false,
 }: PackageCardProps) {
   const reduceMotion = useReducedMotion();
-  const highlights = pkg.highlights.slice(0, 3);
+  const highlights = pkg.highlights.slice(0, compact ? 2 : 3);
   const extra = pkg.highlights.length - highlights.length;
 
   return (
@@ -43,7 +46,7 @@ export function PackageCard({
         className,
       )}
     >
-      <div className="relative isolate aspect-[16/10] shrink-0 overflow-hidden bg-primary-900">
+      <div className={cn("relative isolate shrink-0 overflow-hidden bg-primary-900", compact ? "aspect-[16/7]" : "aspect-[16/10]")}>
         {pkg.imageUrl ? (
           <Image
             src={pkg.imageUrl}
@@ -80,12 +83,12 @@ export function PackageCard({
         </span>
       </div>
 
-      <div className="flex flex-1 flex-col p-4">
+      <div className={cn("flex flex-1 flex-col", compact ? "p-3" : "p-4")}>
         <p className="flex items-center gap-1 text-xs font-medium text-ink-muted">
           <MapPin className="size-3.5 shrink-0" aria-hidden />
           <span className="truncate">{pkg.destination}</span>
         </p>
-        <h3 className="mt-1 line-clamp-2 text-base font-bold leading-snug text-ink">{pkg.title}</h3>
+        <h3 className={cn("mt-1 line-clamp-2 font-bold leading-snug text-ink", compact ? "text-sm" : "text-base")}>{pkg.title}</h3>
 
         <p className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ink-muted">
           <span className="inline-flex items-center gap-1">
@@ -100,7 +103,7 @@ export function PackageCard({
           )}
         </p>
 
-        {highlights.length > 0 && (
+        {highlights.length > 0 && !compact && (
           <ul className="mt-3 space-y-1" aria-label="Highlights">
             {highlights.map((h) => (
               <li key={h} className="flex items-center gap-1.5 text-sm text-ink">
@@ -115,10 +118,10 @@ export function PackageCard({
         )}
 
         <div className="flex-1" aria-hidden />
-        <div className="mt-4 flex items-end justify-between gap-3 border-t border-neutral-100 pt-3">
+        <div className={cn("flex items-end justify-between gap-3 border-t border-neutral-100 pt-3", compact ? "mt-3" : "mt-4")}>
           <div className="min-w-0">
             <p className="text-xs text-ink-subtle">Starting from</p>
-            <p className="text-lg font-bold leading-tight tabular-nums text-primary-800">
+            <p className={cn("font-bold leading-tight tabular-nums text-primary-800", compact ? "text-base" : "text-lg")}>
               {formatINR(pkg.price)}
             </p>
             <p className="truncate text-xs text-ink-muted">
@@ -133,12 +136,12 @@ export function PackageCard({
               target="_blank"
               rel="noreferrer"
               aria-label={`Ask about ${pkg.title} on WhatsApp`}
-              className="flex size-11 items-center justify-center rounded-xl border border-neutral-200 text-success-700 transition hover:border-success-200 hover:bg-success-50 active:scale-95"
+              className={cn("flex items-center justify-center rounded-xl border border-neutral-200 text-success-700 transition hover:border-success-200 hover:bg-success-50 active:scale-95", compact ? "size-10" : "size-11")}
             >
               <MessageCircle className="size-4" aria-hidden />
             </a>
             <span
-              className="flex h-11 items-center gap-0.5 rounded-xl bg-primary-600 pl-3.5 pr-2.5 text-sm font-semibold text-white transition group-hover:bg-primary-700 group-active:scale-[0.98]"
+              className={cn("flex items-center gap-0.5 rounded-xl bg-primary-600 pl-3.5 pr-2.5 text-sm font-semibold text-white transition group-hover:bg-primary-700 group-active:scale-[0.98]", compact ? "h-10" : "h-11")}
               aria-hidden
             >
               Details

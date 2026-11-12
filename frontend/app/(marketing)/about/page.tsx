@@ -1,13 +1,17 @@
-import { RouteStub } from "@/components/layout/route-stub";
+import type { Metadata } from "next";
+import { PageTransition } from "@/components/motion/page-transition";
+import { AboutPageView } from "@/components/about/about-page-view";
 
-export const metadata = { title: "About" };
+export const metadata: Metadata = {
+  title: "About",
+  description:
+    "Tripime is a travel platform built to make holiday planning simple, transparent and affordable, with real travel experts a call or WhatsApp away.",
+};
 
 export default function AboutPage() {
   return (
-    <RouteStub
-      title="About Tripime"
-      description="Our story, trust signals, and why travellers choose human experts."
-      phase="Phase 9"
-    />
+    <PageTransition>
+      <AboutPageView />
+    </PageTransition>
   );
 }

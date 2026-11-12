@@ -21,7 +21,7 @@ export function Testimonials() {
         <SectionHeading
           eyebrow="Traveller stories"
           title="Real people. Real trips."
-          subtitle="What travellers say about booking flights and packages with Tripime."
+          subtitle="What travellers say about booking holiday packages with Tripime."
           align="center"
         />
       </Reveal>

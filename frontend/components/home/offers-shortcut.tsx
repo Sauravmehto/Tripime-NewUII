@@ -1,11 +1,11 @@
 import Link from "next/link";
 import { ArrowRight, Percent } from "lucide-react";
 import { Container } from "@/components/layout/container";
-import { OFFER_CATEGORIES, offersHref } from "@/lib/offers/offers";
+import { VISIBLE_OFFER_CATEGORIES, offersHref } from "@/lib/offers/offers";
 
 /** Homepage entry point to the Offers Zone. Static on purpose: it makes no claim about what is live. */
 export function OffersShortcut() {
-  const categories = OFFER_CATEGORIES.filter((category) => category.id !== "all");
+  const categories = VISIBLE_OFFER_CATEGORIES.filter((category) => category.id !== "all");
   return (
     <section aria-labelledby="home-offers-title" className="border-b border-neutral-200 bg-canvas py-4 sm:py-6">
       <Container>
@@ -20,7 +20,7 @@ export function OffersShortcut() {
                   Offers Zone
                 </h2>
                 <p className="mt-1 text-sm text-white/85">
-                  Current offers on holidays, hotels, flights, buses, bank deals and activities, in one place.
+                  Current offers on holidays, hotels, bank deals and activities, in one place.
                 </p>
               </div>
             </div>

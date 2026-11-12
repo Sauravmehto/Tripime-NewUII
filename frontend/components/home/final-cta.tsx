@@ -28,7 +28,7 @@ export function FinalCta() {
             Ready to plan your next trip?
           </h2>
           <p className="mx-auto mt-3 max-w-md text-sm text-white/70">
-            Tell us where you want to go — a travel expert will help with flights, packages, and
+            Tell us where you want to go — a travel expert will help with packages and
             itineraries over call or WhatsApp.
           </p>
           <div className="mt-6 flex flex-wrap justify-center gap-2">

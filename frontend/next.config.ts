@@ -82,7 +82,7 @@ const securityHeaders = [
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "X-Frame-Options", value: "DENY" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-  { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), payment=()" },
+  { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(self), payment=()" },
 ];
 
 const nextConfig: NextConfig = {
@@ -96,6 +96,7 @@ const nextConfig: NextConfig = {
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },
+  // The front page (/) now renders the packages page directly, so no redirect is needed.
   async rewrites() {
     // Production / Netlify: browser calls Render directly — no local rewrite.
     if (apiBase) return [];

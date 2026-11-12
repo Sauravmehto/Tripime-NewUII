@@ -4,13 +4,15 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState, type ComponentType } from "react";
 import {
-  Bus,
+  // Bus,
   Globe2,
-  Hotel,
+  Home,
+  // Hotel,
   Info,
   Menu,
   Package,
-  Plane,
+  // Plane,
+  Sparkles,
   Ticket,
   X,
   type LucideProps,
@@ -22,20 +24,29 @@ import { MobileNavDrawer } from "@/components/layout/mobile-nav-drawer";
 import { UserMenu } from "@/components/layout/user-menu";
 import { useCustomerProfileOptional } from "@/context/customer-profile-provider";
 import { useCustomerSession } from "@/context/customer-session-provider";
-import { FLIGHTS_ENABLED } from "@/lib/features";
+// import { FLIGHTS_ENABLED } from "@/lib/features";
 import { loginHref } from "@/lib/safe-redirect";
 
 type NavIcon = ComponentType<LucideProps>;
 type NavItem = { href: string; label: string; icon: NavIcon; disabled?: boolean };
 
 const NAV: NavItem[] = [
-  { href: "/", label: "Flights", icon: Plane, disabled: !FLIGHTS_ENABLED },
+  // Hidden for now (flights, hotels and buses are not offered yet). Uncomment to bring them back.
+  { href: "/", label: "Home", icon: Home },
+  // { href: "/flights", label: "Flights", icon: Plane, disabled: !FLIGHTS_ENABLED },
   { href: "/packages", label: "Packages", icon: Package },
-  { href: "/hotels", label: "Hotels", icon: Hotel },
-  { href: "/buses", label: "Buses", icon: Bus },
+  // { href: "/hotels", label: "Hotels", icon: Hotel },
+  // { href: "/buses", label: "Buses", icon: Bus },
   { href: "/visa", label: "Visa", icon: Globe2 },
   { href: "/about", label: "About", icon: Info },
   { href: "/my-booking", label: "My Booking", icon: Ticket },
+];
+
+/** Mobile menu: the same links plus shortcuts to sections that have no top-bar tab. */
+const DRAWER_NAV: NavItem[] = [
+  ...NAV.slice(0, 2),
+  { href: "/packages#influencer-trips", label: "Upcoming influencer trips", icon: Sparkles },
+  ...NAV.slice(2),
 ];
 
 function isActive(pathname: string, href: string) {
@@ -112,6 +123,7 @@ export function SiteHeader() {
               <Link
                 key={href}
                 href={href}
+                aria-current={active ? "page" : undefined}
                 className={cn(
                   "group inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition hover:bg-neutral-100",
                   active ? "text-primary-700" : "text-ink-muted hover:text-ink",
@@ -179,7 +191,7 @@ export function SiteHeader() {
       <MobileNavDrawer
         open={mobileOpen}
         onClose={() => setMobileOpen(false)}
-        items={NAV}
+        items={DRAWER_NAV}
         isActive={(href) => isActive(pathname, href)}
       />
     </header>

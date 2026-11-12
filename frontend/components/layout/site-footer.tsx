@@ -8,7 +8,7 @@ import {
   MessageCircle,
   MessageSquare,
   Phone,
-  Plane,
+  // Plane,
   ShieldCheck,
   Ticket,
   Undo2,
@@ -25,7 +25,8 @@ interface FooterLinkItem {
 }
 
 const TRAVEL: FooterLinkItem[] = [
-  { href: "/flights", label: "Flights", icon: Plane },
+  // Hidden for now (flights are not offered yet).
+  // { href: "/flights", label: "Flights", icon: Plane },
   { href: "/packages", label: "Packages", icon: Luggage },
   { href: "/my-booking", label: "My Booking", icon: Ticket },
 ];
@@ -84,7 +85,7 @@ export function SiteFooter() {
               <Logo className="h-8" />
             </Link>
             <p className="mt-3 max-w-xs text-xs leading-relaxed text-ink-muted">
-              Flights and holiday packages planned by real travel experts — not a booking
+              Holiday packages planned by real travel experts — not a booking
               engine.
             </p>
           </div>

@@ -406,7 +406,7 @@ export const HOME_FEATURES = [
   {
     id: "deals",
     title: "Exciting Deals",
-    body: "Exclusive offers on flights across trusted airlines, domestic and international routes.",
+    body: "Current offers on holidays and trips, with the validity and terms shown clearly.",
   },
   {
     id: "support",
@@ -441,11 +441,11 @@ export const WHY_CHOOSE_US = [
   },
   {
     title: "You talk to a real person",
-    body: "Need help with a fare, a date change, or a package? Call or WhatsApp and get a real travel expert, every time.",
+    body: "Need help with a date change or a package? Call or WhatsApp and get a real travel expert, every time.",
   },
   {
     title: "We tell you what's not live yet",
-    body: 'Flights and holiday packages are bookable today. Hotels, buses and visas are marked "Soon" — we\'d rather be upfront than overpromise.',
+    body: 'Holiday packages are bookable today. Hotels, buses and visas are marked "Soon" — we\'d rather be upfront than overpromise.',
   },
 ] as const;
 
@@ -460,7 +460,7 @@ export const HOME_FAQS = [
   {
     question: "Is Tripime live for real bookings?",
     answer:
-      "Yes. Search flights or holiday packages and send a booking request online. Our team confirms availability and the final price with you before you pay, and your booking is confirmed after that. Hotels, buses and visas are launching soon.",
+      "Yes. Browse holiday packages and send a booking request online. Our team confirms availability and the final price with you before you pay, and your booking is confirmed after that. Hotels, buses and visas are launching soon.",
   },
   {
     question: "Is my payment information safe?",
@@ -475,7 +475,7 @@ export const HOME_FAQS = [
   {
     question: "How do I find my booking later?",
     answer:
-      "Sign in to your Tripime account and open My Bookings to see every flight request and its status. For holiday packages, your travel expert keeps you updated by call or WhatsApp.",
+      "Sign in to your Tripime account and open My Bookings to see every booking request and its status. Your travel expert keeps you updated by call or WhatsApp.",
   },
   {
     question: "What about hotels, buses or a visa?",

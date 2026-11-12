@@ -3,22 +3,22 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { ArrowDown, MessageCircle, Palmtree, Plane, ShieldCheck } from "lucide-react";
-import { FlightSearchForm } from "@/components/search/flight-search-form";
+import { ArrowDown, MessageCircle, ShieldCheck } from "lucide-react";
+// Flights are hidden for now. To bring the flight search back, restore Palmtree/Plane, the MODES tabs and this import.
+// import { FlightSearchForm } from "@/components/search/flight-search-form";
 import { Container } from "@/components/layout/container";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/cn";
 import { whatsappLink } from "@/lib/contact";
 import { TRENDING_TRIPS } from "@/lib/home/home-data";
 import { HeroVoyageSlider } from "./hero-voyage-slider";
 import { HolidaySearch } from "./holiday-search";
 
-type SearchMode = "holidays" | "flights";
-
-const MODES: { id: SearchMode; label: string; icon: typeof Plane }[] = [
-  { id: "holidays", label: "Holidays", icon: Palmtree },
-  { id: "flights", label: "Flights", icon: Plane },
-];
+// type SearchMode = "holidays" | "flights";
+//
+// const MODES: { id: SearchMode; label: string; icon: typeof Plane }[] = [
+//   { id: "holidays", label: "Holidays", icon: Palmtree },
+//   { id: "flights", label: "Flights", icon: Plane },
+// ];
 
 const HERO_SLIDES = TRENDING_TRIPS.slice(0, 5);
 const ROTATE_MS = 5500;
@@ -27,8 +27,6 @@ export function HomeHero() {
   const reduceMotion = useReducedMotion();
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
-  // Phones choose what to search; desktop always shows the flight form beside the slider.
-  const [mode, setMode] = useState<SearchMode>("holidays");
   const active = HERO_SLIDES[index] ?? HERO_SLIDES[0]!;
 
   // Depending on `index` restarts the timer after a manual slide change.
@@ -103,54 +101,16 @@ export function HomeHero() {
               {...fade(0.16)}
               className="mt-3 hidden max-w-lg text-sm leading-relaxed text-white/80 sm:text-[0.9375rem] lg:block"
             >
-              Search domestic flights from Delhi, explore curated holiday packages, or talk to a
-              real travel expert. No chatbots. No hidden fees.
+              Explore curated holiday packages, or talk to a real travel expert. No chatbots. No hidden fees.
             </motion.p>
             <motion.p {...fade(0.16)} className="mt-1.5 text-sm text-white/80 lg:hidden">
-              Holiday packages and flights, planned with a real travel expert.
+              Holiday packages, planned with a real travel expert.
             </motion.p>
           </div>
 
-          <motion.div {...fade(0.2)} className="mt-4 lg:hidden">
-            <div role="tablist" aria-label="What do you want to search?" className="inline-grid grid-cols-2 gap-1 rounded-xl bg-white/15 p-1 ring-1 ring-white/20">
-              {MODES.map(({ id, label, icon: Icon }) => (
-                <button
-                  key={id}
-                  type="button"
-                  role="tab"
-                  id={`hero-tab-${id}`}
-                  aria-selected={mode === id}
-                  aria-controls={`hero-panel-${id}`}
-                  onClick={() => setMode(id)}
-                  className={cn(
-                    "inline-flex min-h-11 items-center justify-center gap-1.5 rounded-lg px-4 text-sm font-semibold transition",
-                    mode === id ? "bg-white text-primary-800 shadow-xs" : "text-white/85",
-                  )}
-                >
-                  <Icon className="size-4" aria-hidden />
-                  {label}
-                </button>
-              ))}
-            </div>
-          </motion.div>
-
           <motion.div {...fade(0.24)} className="relative z-30 mt-3 w-full max-w-xl lg:mt-5 lg:max-w-2xl">
-            <div
-              id="hero-panel-holidays"
-              role="tabpanel"
-              aria-labelledby="hero-tab-holidays"
-              className={cn("lg:hidden", mode !== "holidays" && "hidden")}
-            >
-              <HolidaySearch />
-            </div>
-            <div
-              id="hero-panel-flights"
-              role="tabpanel"
-              aria-labelledby="hero-tab-flights"
-              className={cn("lg:block", mode !== "flights" && "hidden")}
-            >
-              <FlightSearchForm />
-            </div>
+            <HolidaySearch />
+            {/* Flights hidden for now: the Holidays/Flights tabs and <FlightSearchForm /> are removed from this panel. */}
           </motion.div>
 
           <motion.div

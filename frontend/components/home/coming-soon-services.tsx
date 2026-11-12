@@ -17,7 +17,7 @@ export function ComingSoonServices() {
               Plan your next escape — more ways to travel coming soon
             </h2>
             <p className="mt-2 text-sm leading-relaxed text-white/70">
-              Hotels, buses, visa, and experiences are on the roadmap. Flights and holiday packages
+              Hotels, buses, visa, and experiences are on the roadmap. Holiday packages
               are live today.
             </p>
           </div>

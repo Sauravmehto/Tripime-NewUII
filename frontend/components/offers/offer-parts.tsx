@@ -26,7 +26,7 @@ export function OfferImage({
           src={offer.imageUrl}
           alt={offer.title}
           loading="lazy"
-          className="absolute inset-0 size-full object-cover"
+          className="absolute inset-0 size-full object-cover transition-transform duration-500 group-hover:scale-105 motion-reduce:transition-none motion-reduce:transform-none"
         />
       ) : null}
       {children}

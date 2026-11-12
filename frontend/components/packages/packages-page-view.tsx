@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { listPackageThemes, listPackages } from "@/lib/api/packages";
 import { getErrorMessage } from "@/lib/api/client";
 import { Container } from "@/components/layout/container";
@@ -13,10 +13,20 @@ import {
 } from "@/components/packages/packages-filters";
 import { PackagesFeatured } from "@/components/packages/packages-featured";
 import { PackagesGrid } from "@/components/packages/packages-grid";
-import { PackagesSpecialOffers } from "@/components/packages/packages-special-offers";
+import { PackagesDiscoveryRows } from "@/components/packages/packages-discovery-rows";
+import { PackagesOffersShowcase } from "@/components/packages/packages-offers-showcase";
 import { PackagesPromoBanner } from "@/components/packages/packages-promo-banner";
 import { PackagesCta } from "@/components/packages/packages-cta";
 import { InfluencerTrips } from "@/components/packages/influencer-trips";
+import { useOffers } from "@/lib/offers/use-offers";
+import { whatsappLink } from "@/lib/contact";
+import {
+  buildExpertMessage,
+  buildSearchSummary,
+  packageTrip,
+  withinBudget,
+  type HolidaySearch,
+} from "@/lib/packages/search-options";
 // import { LeadEnquiryForm } from "@/components/enquiries/lead-enquiry-form";
 // import { Card } from "@/components/ui/card";
 import type { PackageTheme, TravelPackage } from "@/types";
@@ -49,6 +59,8 @@ function sortPackages(list: TravelPackage[], sort: SortOption): TravelPackage[] 
  */
 export function PackagesPageView() {
   const router = useRouter();
+  const pathname = usePathname() || "/packages";
+  const searchParams = useSearchParams();
   const [packages, setPackages] = useState<TravelPackage[]>([]);
   const [themes, setThemes] = useState<PackageTheme[]>([]);
   const [loading, setLoading] = useState(true);
@@ -56,6 +68,8 @@ export function PackagesPageView() {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<CatalogFilter>("all");
   const [sort, setSort] = useState<SortOption>("recommended");
+  const [search, setSearch] = useState<HolidaySearch | null>(null);
+  const { offers } = useOffers("We couldn't load offers right now.");
 
   useEffect(() => {
     let cancelled = false;
@@ -97,21 +111,48 @@ export function PackagesPageView() {
 
   // Searches from the home page and destination cards arrive as /packages?q=Goa.
   useEffect(() => {
-    const q = new URLSearchParams(window.location.search).get("q")?.trim();
+    const q = searchParams.get("q")?.trim();
     // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time sync from the URL on arrival
     if (q) explore(q);
-  }, [explore]);
+  }, [explore, searchParams]);
+
+  // Links like /packages#honeymoon-row arrive before the rows exist, so re-scroll once the page has content.
+  useEffect(() => {
+    if (loading) return;
+    const id = window.location.hash.slice(1);
+    if (!id) return;
+    const timer = window.setTimeout(() => {
+      document.getElementById(id)?.scrollIntoView({ block: "start" });
+    }, 150);
+    return () => window.clearTimeout(timer);
+  }, [loading]);
 
   const handleSearch = useCallback(
-    ({ to }: { to: string; month?: string }) => {
-      explore(to);
+    (next: HolidaySearch) => {
+      setSearch(next);
+      setQuery(next.destination);
+      setFilter(next.trip ?? "all");
+      const params = new URLSearchParams(searchParams.toString());
+      const set = (key: string, value: string) => (value ? params.set(key, value) : params.delete(key));
+      set("from", next.from);
+      set("q", next.destination);
+      set("month", next.month);
+      set("travellers", `${next.adults}a${next.children}c${next.rooms}r`);
+      set("budget", next.budgetId === "any" ? "" : next.budgetId);
+      const qs = params.toString();
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+      window.setTimeout(() => {
+        document.getElementById("all-packages")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 60);
     },
-    [explore],
+    [router, searchParams, pathname],
   );
 
-  const handleViewAllOffers = useCallback(() => {
-    router.push("/offers?category=holidays");
-  }, [router]);
+  const clearSearch = useCallback(() => {
+    setSearch(null);
+    setQuery("");
+    setFilter("all");
+  }, []);
 
   const handleExploreRajasthan = useCallback(() => {
     explore("Rajasthan");
@@ -131,29 +172,76 @@ export function PackagesPageView() {
 
   const filtered = useMemo(() => {
     const matched = packages.filter(
-      (pkg) => (filter === "all" || pkg.category === filter) && matchesQuery(pkg, query),
+      (pkg) =>
+        (filter === "all" ||
+          (filter === "domestic" || filter === "international"
+            ? packageTrip(pkg) === filter
+            : pkg.category === filter)) &&
+        matchesQuery(pkg, query),
     );
-    return sortPackages(matched, sort);
-  }, [packages, filter, query, sort]);
+    const sorted = sortPackages(matched, sort);
+    if (!search || search.budgetId === "any" || sort !== "recommended") return sorted;
+    // Budget is a hint, not a filter: affordable packages go first, nothing is hidden.
+    return [
+      ...sorted.filter((pkg) => withinBudget(pkg, search.budgetId)),
+      ...sorted.filter((pkg) => !withinBudget(pkg, search.budgetId)),
+    ];
+  }, [packages, filter, query, sort, search]);
+
+  const inBudgetCount = useMemo(
+    () => (search && search.budgetId !== "any" ? filtered.filter((pkg) => withinBudget(pkg, search.budgetId)).length : 0),
+    [filtered, search],
+  );
 
   return (
-    <>
+    <div className="bg-canvas">
       <PackagesHero onSearch={handleSearch} />
 
       {!loading && !error && (
-        <>
-          <PackagesSpecialOffers
-            packages={packages}
-            onViewAllOffers={handleViewAllOffers}
-            onExploreRajasthan={handleExploreRajasthan}
-          />
-          <div className="hidden lg:block">
-            <PackagesPromoBanner onExploreState={handleExploreState} />
-          </div>
-        </>
+        <PackagesDiscoveryRows packages={packages} onExplore={handleExploreState} />
       )}
 
-      <Container>
+      <PackagesOffersShowcase offers={offers ?? []} />
+
+      <PackagesPromoBanner onExploreState={handleExploreState} />
+
+      <Container className="pb-1">
+        {search && (
+          <div
+            role="status"
+            className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-primary-200 bg-primary-50 px-4 py-3"
+          >
+            <div className="min-w-0">
+              <p className="text-xs font-semibold uppercase tracking-wide text-primary-700">Your search</p>
+              <p className="text-sm font-semibold text-ink">{buildSearchSummary(search)}</p>
+              <p className="text-xs text-ink-muted">
+                {filtered.length === 0
+                  ? "No ready-made package matches yet."
+                  : `${filtered.length} package${filtered.length === 1 ? "" : "s"} found${
+                      search.budgetId !== "any" ? `, ${inBudgetCount} within your budget (listed first)` : ""
+                    }. Final dates and prices are confirmed by an expert.`}
+              </p>
+            </div>
+            <div className="flex shrink-0 gap-2">
+              <a
+                href={whatsappLink(buildExpertMessage(search))}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex min-h-11 items-center rounded-full bg-primary-700 px-4 text-xs font-semibold text-white transition hover:bg-primary-800"
+              >
+                Ask an expert
+              </a>
+              <button
+                type="button"
+                onClick={clearSearch}
+                className="min-h-11 rounded-full border border-neutral-200 bg-white px-4 text-xs font-semibold text-ink transition hover:border-primary-300"
+              >
+                Clear
+              </button>
+            </div>
+          </div>
+        )}
+
         <PackagesFilters
           filter={filter}
           sort={sort}
@@ -179,7 +267,19 @@ export function PackagesPageView() {
           themeNames={themeNames}
         />
 
-        <InfluencerTrips />
+        {!loading && !error && (
+          <button
+            type="button"
+            onClick={handleExploreRajasthan}
+            className="mt-2 text-sm font-semibold text-primary-700 transition hover:text-primary-800"
+          >
+            Explore Rajasthan journeys
+          </button>
+        )}
+
+        <section id="honeymoon-row">
+          <InfluencerTrips />
+        </section>
 
         {/* Temporarily hidden: group trip / custom itinerary enquiry forms
         <section className="border-t border-neutral-200 py-8">
@@ -206,6 +306,6 @@ export function PackagesPageView() {
       </Container>
 
       <PackagesCta />
-    </>
+    </div>
   );
 }

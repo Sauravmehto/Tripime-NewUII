@@ -8,7 +8,8 @@ import { Section } from "@/components/layout/section";
 import { Carousel } from "@/components/travel/carousel";
 import { Reveal } from "@/components/motion/reveal";
 import { SectionHeading } from "./section-heading";
-import { PopularRoutes } from "./popular-routes";
+// Popular flight routes are hidden for now (flights are not offered yet).
+// import { PopularRoutes } from "./popular-routes";
 import { Badge } from "@/components/ui/card";
 import { cn } from "@/lib/cn";
 import {
@@ -222,9 +223,11 @@ export function DestinationExplorer() {
         <p className="mt-6 text-sm text-ink-muted">No destinations in this mood yet.</p>
       )}
 
+      {/* Hidden for now: popular flight routes.
       <Reveal className="mt-8 border-t border-neutral-200 pt-6" delayMs={80}>
         <PopularRoutes compact />
       </Reveal>
+      */}
 
       <Reveal className="mt-4" delayMs={100}>
         <p className="flex items-center gap-1.5 text-[11px] text-ink-subtle">

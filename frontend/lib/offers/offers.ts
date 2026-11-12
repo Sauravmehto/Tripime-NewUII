@@ -13,17 +13,22 @@ export type OfferCategory =
 export interface OfferCategoryMeta {
   id: OfferCategory;
   label: string;
+  /** Not offered yet: kept so existing offers and links still resolve, but not shown as a filter. */
+  hidden?: boolean;
 }
 
 export const OFFER_CATEGORIES: OfferCategoryMeta[] = [
   { id: "all", label: "All Offers" },
   { id: "holidays", label: "Holidays" },
   { id: "hotels", label: "Hotels" },
-  { id: "flights", label: "Flights" },
+  { id: "flights", label: "Flights", hidden: true }, // flights are not offered yet
   { id: "bus", label: "Bus" },
   { id: "bank-offers", label: "Bank Offers" },
   { id: "activities", label: "Activities" },
 ];
+
+/** Categories shown to visitors as filters and tiles. */
+export const VISIBLE_OFFER_CATEGORIES = OFFER_CATEGORIES.filter((category) => !category.hidden);
 
 const URL_ALIASES: Record<string, OfferCategory> = {
   holiday: "holidays",

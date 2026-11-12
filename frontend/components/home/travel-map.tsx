@@ -121,7 +121,7 @@ export function TravelMap() {
           <SectionHeading
             eyebrow="Featured route"
             title="Follow the journey"
-            subtitle="Delhi → Bali → Thailand → Vietnam — tap a stop to explore packages and flights."
+            subtitle="Delhi → Bali → Thailand → Vietnam — tap a stop to explore packages."
           />
         </Reveal>
 

@@ -5,7 +5,7 @@ import { OffersPageView } from "@/components/offers/offers-page-view";
 export const metadata: Metadata = {
   title: "Offers Zone",
   description:
-    "Discover Tripime travel offers across holidays, hotels, flights, buses, bank deals and activities.",
+    "Discover Tripime travel offers across holidays, hotels, bank deals and activities.",
 };
 
 export default function OffersPage() {
