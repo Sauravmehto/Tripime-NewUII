@@ -5,10 +5,10 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState, type ComponentType } from "react";
 import {
   Home,
+  Percent,
   MessageCircle,
   Palmtree,
   Phone,
-  // Plane,
   Ticket,
   type LucideProps,
 } from "lucide-react";
@@ -20,9 +20,8 @@ type TabIcon = ComponentType<LucideProps>;
 
 const TABS: { href: string; label: string; icon: TabIcon; disabled?: boolean }[] = [
   { href: "/", label: "Home", icon: Home },
-  { href: "/packages", label: "Holidays", icon: Palmtree },
-  // Flights are hidden for now. Uncomment to bring them back (and set the grid columns below to match).
-  // { href: "/flights", label: "Flights", icon: Plane, disabled: !FLIGHTS_ENABLED },
+  { href: "/packages", label: "Packages", icon: Palmtree },
+  { href: "/offers", label: "Offers", icon: Percent },
   { href: "/my-booking", label: "Trips", icon: Ticket },
 ];
 
@@ -65,7 +64,7 @@ export function MobileTabBar() {
           </a>
         </div>
       )}
-      <nav aria-label="Primary" className="mx-auto grid max-w-lg grid-cols-4">
+      <nav aria-label="Primary" className="mx-auto grid max-w-lg grid-cols-5">
         {TABS.map(({ href, label, icon: Icon, disabled }) => {
           const active = isActive(pathname, href);
           if (disabled) {

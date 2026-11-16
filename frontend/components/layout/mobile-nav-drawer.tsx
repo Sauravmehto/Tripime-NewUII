@@ -12,7 +12,13 @@ type NavIcon = ComponentType<LucideProps>;
 interface MobileNavDrawerProps {
   open: boolean;
   onClose: () => void;
-  items: { href: string; label: string; icon: NavIcon; disabled?: boolean }[];
+  items: {
+    href: string;
+    label: string;
+    icon: NavIcon;
+    disabled?: boolean;
+    children?: { href: string; label: string }[];
+  }[];
   isActive: (href: string) => boolean;
 }
 
@@ -92,7 +98,7 @@ export function MobileNavDrawer({ open, onClose, items, isActive }: MobileNavDra
 
         <nav className="flex-1 overflow-y-auto px-3 py-3" aria-label="Primary">
           <ul className="flex flex-col gap-1 text-sm font-semibold">
-            {items.map(({ href, label, icon: Icon, disabled }) => {
+            {items.map(({ href, label, icon: Icon, disabled, children }) => {
               const active = !disabled && isActive(href);
               return (
                 <li key={href}>
@@ -106,19 +112,35 @@ export function MobileNavDrawer({ open, onClose, items, isActive }: MobileNavDra
                       {label}
                     </span>
                   ) : (
-                    <Link
-                      href={href}
-                      onClick={onClose}
-                      className={cn(
-                        "flex items-center gap-3 rounded-lg px-3 py-3 transition",
-                        active
-                          ? "bg-primary-50 text-primary-700"
-                          : "text-ink-muted hover:bg-neutral-50 hover:text-ink",
-                      )}
-                    >
-                      <Icon className="size-4 text-accent" aria-hidden />
-                      {label}
-                    </Link>
+                    <div>
+                      <Link
+                        href={href}
+                        onClick={onClose}
+                        className={cn(
+                          "flex items-center gap-3 rounded-lg px-3 py-3 transition",
+                          active
+                            ? "bg-primary-50 text-primary-700"
+                            : "text-ink-muted hover:bg-neutral-50 hover:text-ink",
+                        )}
+                      >
+                        <Icon className="size-4 text-accent" aria-hidden />
+                        {label}
+                      </Link>
+                      {children?.length ? (
+                        <div className="ml-10 mt-1 flex flex-col gap-1">
+                          {children.map((child) => (
+                            <Link
+                              key={child.href + child.label}
+                              href={child.href}
+                              onClick={onClose}
+                              className="rounded-md px-2 py-1.5 text-xs font-medium text-ink-subtle hover:bg-neutral-50 hover:text-ink"
+                            >
+                              {child.label}
+                            </Link>
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
                   )}
                 </li>
               );

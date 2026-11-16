@@ -436,16 +436,24 @@ export const POPULAR_ROUTES = [
 
 export const WHY_CHOOSE_US = [
   {
-    title: "New platform, no shortcuts",
-    body: "We're a new booking platform built from scratch — every fare and policy shown is checked before it goes live, not scraped or guessed.",
+    title: "Travel expertise",
+    body: "Experienced travel specialists curate practical itineraries and destination advice for your dates and budget.",
   },
   {
-    title: "You talk to a real person",
-    body: "Need help with a date change or a package? Call or WhatsApp and get a real travel expert, every time.",
+    title: "Customized itineraries",
+    body: "From quick escapes to multi-country holidays, plans are tailored to your trip goals, pace, and preferences.",
   },
   {
-    title: "We tell you what's not live yet",
-    body: 'Holiday packages are bookable today. Hotels, buses and visas are marked "Soon" — we\'d rather be upfront than overpromise.',
+    title: "Dedicated support",
+    body: "Get direct support across call and WhatsApp before, during, and after your booking journey.",
+  },
+  {
+    title: "Trusted travel partners",
+    body: "Packages are designed with vetted partners and clear inclusions so you can book with confidence.",
+  },
+  {
+    title: "Hassle-free planning",
+    body: "Transparent pricing and clear communication keep your planning simple from shortlisting to confirmation.",
   },
 ] as const;
 

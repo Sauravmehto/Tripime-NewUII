@@ -1,22 +1,24 @@
-import { Eye, MessageCircle, Sparkles } from "lucide-react";
+import { Compass, Handshake, Headphones, MessageCircle, Sparkles } from "lucide-react";
 import { Section } from "@/components/layout/section";
+import { Atmosphere } from "@/components/home/section-atmosphere";
 import { Reveal } from "@/components/motion/reveal";
 import { SectionHeading } from "@/components/home/section-heading";
 import { WHY_CHOOSE_US } from "@/lib/home/home-data";
 
-const ICONS = [Sparkles, MessageCircle, Eye];
+const ICONS = [Compass, Sparkles, MessageCircle, Handshake, Headphones];
 
 export function WhyTripime() {
   return (
-    <Section>
+    <Section className="relative isolate overflow-hidden bg-white">
+      <Atmosphere variant="contour" />
       <Reveal>
         <SectionHeading
           align="center"
-          title="Why plan with Tripime"
-          subtitle="Real experts, honest pricing, and a platform that tells you what's live."
+          title="Why choose Tripime"
+          subtitle="Premium planning support backed by real experts and transparent guidance."
         />
       </Reveal>
-      <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3 lg:gap-8">
+      <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-5 lg:gap-6">
         {WHY_CHOOSE_US.map((item, i) => {
           const Icon = ICONS[i] ?? Sparkles;
           return (

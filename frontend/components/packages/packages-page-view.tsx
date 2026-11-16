@@ -116,6 +116,21 @@ export function PackagesPageView() {
     if (q) explore(q);
   }, [explore, searchParams]);
 
+  // Footer links arrive as /packages?trip=domestic or ?trip=international: show only that kind of trip.
+  useEffect(() => {
+    const trip = searchParams.get("trip");
+    if (trip !== "domestic" && trip !== "international") return;
+    /* eslint-disable react-hooks/set-state-in-effect -- one-time sync from the URL on arrival */
+    setSearch(null);
+    setQuery("");
+    setFilter(trip);
+    /* eslint-enable react-hooks/set-state-in-effect */
+    const timer = window.setTimeout(() => {
+      document.getElementById("all-packages")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 60);
+    return () => window.clearTimeout(timer);
+  }, [searchParams]);
+
   // Links like /packages#honeymoon-row arrive before the rows exist, so re-scroll once the page has content.
   useEffect(() => {
     if (loading) return;

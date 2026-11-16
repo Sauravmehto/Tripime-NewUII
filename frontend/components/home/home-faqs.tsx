@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Section } from "@/components/layout/section";
+import { Atmosphere } from "@/components/home/section-atmosphere";
 import { Reveal } from "@/components/motion/reveal";
 import { SectionHeading } from "@/components/home/section-heading";
 import { FaqList } from "@/components/marketing/faq-list";
@@ -7,7 +8,8 @@ import { HOME_FAQS } from "@/lib/home/home-data";
 
 export function HomeFaqs() {
   return (
-    <Section spacing="md" containerSize="narrow" className="border-t border-neutral-200 bg-white">
+    <Section spacing="md" containerSize="narrow" className="relative isolate overflow-hidden bg-canvas">
+      <Atmosphere variant="faq" />
       <Reveal>
         <SectionHeading
           align="center"

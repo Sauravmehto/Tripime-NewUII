@@ -147,12 +147,12 @@ export function HeroVoyageSlider({
           >
             <div className="absolute inset-0 overflow-hidden rounded-xl shadow-elevated">
               <Image
-                // Smaller variant than the full-bleed hero photo: a distinct address keeps Next from
+                // Sharper than the 800px thumbnails (cards render at 2x on retina and are scaled 1.25x); a distinct address keeps Next from
                 // mistaking this lazy card for the hero when it reports the page's main image.
-                src={slide.image.replace("w=800", "w=480")}
+                src={slide.image.replace("w=800", "w=1000")}
                 alt=""
                 fill
-                sizes="240px"
+                sizes="384px"
                 className="object-cover transition-[filter] duration-700 motion-reduce:transition-none"
                 style={{
                   filter: pos.filter,

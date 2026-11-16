@@ -2,13 +2,15 @@ import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { Section } from "@/components/layout/section";
+import { Atmosphere } from "@/components/home/section-atmosphere";
 import { Reveal } from "@/components/motion/reveal";
 import { SectionHeading } from "./section-heading";
 import { INSPIRATION_STORIES } from "@/lib/home/home-data";
 
 export function InspirationGrid() {
   return (
-    <Section className="border-t border-neutral-200 bg-white">
+    <Section className="relative isolate overflow-hidden tp-grad-inspiration">
+      <Atmosphere variant="pins" />
       <Reveal>
         <SectionHeading
           eyebrow="Travel inspiration"

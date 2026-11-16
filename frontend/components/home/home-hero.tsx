@@ -4,21 +4,12 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { ArrowDown, MessageCircle, ShieldCheck } from "lucide-react";
-// Flights are hidden for now. To bring the flight search back, restore Palmtree/Plane, the MODES tabs and this import.
-// import { FlightSearchForm } from "@/components/search/flight-search-form";
 import { Container } from "@/components/layout/container";
 import { Button } from "@/components/ui/button";
 import { whatsappLink } from "@/lib/contact";
 import { TRENDING_TRIPS } from "@/lib/home/home-data";
 import { HeroVoyageSlider } from "./hero-voyage-slider";
-import { HolidaySearch } from "./holiday-search";
-
-// type SearchMode = "holidays" | "flights";
-//
-// const MODES: { id: SearchMode; label: string; icon: typeof Plane }[] = [
-//   { id: "holidays", label: "Holidays", icon: Palmtree },
-//   { id: "flights", label: "Flights", icon: Plane },
-// ];
+import { SmartTravelSearch } from "./smart-travel-search";
 
 const HERO_SLIDES = TRENDING_TRIPS.slice(0, 5);
 const ROTATE_MS = 5500;
@@ -48,8 +39,7 @@ export function HomeHero() {
         };
 
   return (
-    // overflow-x-clip (not hidden) lets the search popovers extend below the hero
-    <section className="relative z-10 isolate overflow-x-clip border-b border-neutral-200/70">
+    <section className="relative z-10 isolate overflow-x-clip">
       <div className="absolute inset-0 overflow-hidden" aria-hidden>
         <AnimatePresence mode="sync" initial={false}>
           <motion.div
@@ -78,7 +68,7 @@ export function HomeHero() {
         <div className="absolute inset-0 bg-linear-to-t from-ink/50 via-transparent to-ink/20" />
       </div>
 
-      <Container className="relative grid items-center gap-8 py-8 sm:py-10 lg:grid-cols-[minmax(0,1fr)_auto] lg:py-14">
+      <Container className="relative grid items-center gap-8 py-9 sm:py-12 lg:grid-cols-[minmax(0,1fr)_auto] lg:py-16">
         <div className="min-w-0">
           <div className="max-w-xl lg:max-w-2xl">
             <motion.p
@@ -91,26 +81,19 @@ export function HomeHero() {
               {...fade(0.1)}
               className="mt-2 text-2xl font-bold tracking-tight text-white sm:text-3xl lg:text-4xl lg:leading-[1.1]"
             >
-              <span className="lg:hidden">Where to next?</span>
-              <span className="hidden lg:inline">
-                Discover and plan travel that feels <span className="text-accent">premium</span> — in
-                minutes.
-              </span>
+              <span>Discover More. Travel Better. Experience Everything.</span>
             </motion.h1>
             <motion.p
               {...fade(0.16)}
-              className="mt-3 hidden max-w-lg text-sm leading-relaxed text-white/80 sm:text-[0.9375rem] lg:block"
+              className="mt-3 max-w-xl text-sm leading-relaxed text-white/85 sm:text-[0.95rem]"
             >
-              Explore curated holiday packages, or talk to a real travel expert. No chatbots. No hidden fees.
-            </motion.p>
-            <motion.p {...fade(0.16)} className="mt-1.5 text-sm text-white/80 lg:hidden">
-              Holiday packages, planned with a real travel expert.
+              Explore extraordinary destinations, thoughtfully curated holidays and unforgettable travel
+              experiences.
             </motion.p>
           </div>
 
-          <motion.div {...fade(0.24)} className="relative z-30 mt-3 w-full max-w-xl lg:mt-5 lg:max-w-2xl">
-            <HolidaySearch />
-            {/* Flights hidden for now: the Holidays/Flights tabs and <FlightSearchForm /> are removed from this panel. */}
+          <motion.div {...fade(0.24)} className="relative z-30 mt-3 w-full max-w-2xl lg:mt-5">
+            <SmartTravelSearch />
           </motion.div>
 
           <motion.div
@@ -130,12 +113,12 @@ export function HomeHero() {
             </a>
             <p className="inline-flex items-center gap-1.5 text-xs font-medium text-white/75">
               <ShieldCheck className="size-3.5 shrink-0 text-accent" aria-hidden />
-              Real experts · Call or WhatsApp
+              Real experts · Transparent pricing · Call or WhatsApp
             </p>
           </motion.div>
 
           <motion.a
-            href="#explore"
+            href="#destinations"
             {...fade(0.4)}
             className="mt-8 hidden items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-white/60 transition hover:text-white lg:inline-flex"
           >

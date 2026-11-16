@@ -3,6 +3,7 @@
 import { MessageCircle } from "lucide-react";
 import { Carousel } from "@/components/travel/carousel";
 import { Section } from "@/components/layout/section";
+import { Atmosphere } from "@/components/home/section-atmosphere";
 import { Reveal } from "@/components/motion/reveal";
 import { SectionHeading } from "./section-heading";
 import { Button } from "@/components/ui/button";
@@ -13,10 +14,9 @@ import { TESTIMONIALS } from "@/lib/home/home-data";
 const HIGHLIGHTS = TESTIMONIALS.filter((item) => item.verified).slice(0, 3);
 
 export function Testimonials() {
-  if (HIGHLIGHTS.length === 0) return null;
-
   return (
-    <Section className="bg-canvas">
+    <Section className="relative isolate overflow-hidden">
+      <Atmosphere variant="dusk" />
       <Reveal>
         <SectionHeading
           eyebrow="Traveller stories"
@@ -26,24 +26,35 @@ export function Testimonials() {
         />
       </Reveal>
 
-      <Reveal className="mt-6" delayMs={80}>
-        <Carousel gapClassName="gap-4">
-          {HIGHLIGHTS.map((item) => (
-            <blockquote
-              key={item.id}
-              className="w-[85vw] shrink-0 snap-start border-l-2 border-accent pl-4 sm:w-[340px] md:w-[320px]"
-            >
-              <p className="text-sm leading-relaxed text-ink">&ldquo;{item.quote}&rdquo;</p>
-              <footer className="mt-4">
-                <p className="text-sm font-semibold text-ink">{item.name}</p>
-                <p className="text-[11px] text-ink-muted">
-                  {item.location} · {item.trip}
-                </p>
-              </footer>
-            </blockquote>
-          ))}
-        </Carousel>
-      </Reveal>
+      {HIGHLIGHTS.length === 0 ? (
+        <Reveal className="mt-6" delayMs={80}>
+          <div className="rounded-2xl border border-neutral-200 bg-white p-5 text-center">
+            <p className="text-sm font-semibold text-ink">Verified traveler stories are being curated.</p>
+            <p className="mt-1 text-xs text-ink-muted">
+              We only publish testimonials after confirmation and consent.
+            </p>
+          </div>
+        </Reveal>
+      ) : (
+        <Reveal className="mt-6" delayMs={80}>
+          <Carousel gapClassName="gap-4">
+            {HIGHLIGHTS.map((item) => (
+              <blockquote
+                key={item.id}
+                className="w-[85vw] shrink-0 snap-start border-l-2 border-accent pl-4 sm:w-[340px] md:w-[320px]"
+              >
+                <p className="text-sm leading-relaxed text-ink">&ldquo;{item.quote}&rdquo;</p>
+                <footer className="mt-4">
+                  <p className="text-sm font-semibold text-ink">{item.name}</p>
+                  <p className="text-[11px] text-ink-muted">
+                    {item.location} · {item.trip}
+                  </p>
+                </footer>
+              </blockquote>
+            ))}
+          </Carousel>
+        </Reveal>
+      )}
 
       <Reveal className="mt-8 text-center" delayMs={120}>
         <a
