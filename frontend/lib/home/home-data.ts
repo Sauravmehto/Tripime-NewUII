@@ -177,7 +177,7 @@ export const TRENDING_TRIPS: TrendingTrip[] = [
     price: "₹52,999",
     priceNote: "per person",
     image:
-      "https://images.pexels.com/photos/2166553/pexels-photo-2166553.jpeg?auto=compress&cs=tinysrgb&w=800",
+      "/destinations/bali.jpg",
     href: "/packages",
   },
   {
@@ -188,7 +188,7 @@ export const TRENDING_TRIPS: TrendingTrip[] = [
     price: "₹89,999",
     priceNote: "per person",
     image:
-      "https://images.pexels.com/photos/3601425/pexels-photo-3601425.jpeg?auto=compress&cs=tinysrgb&w=800",
+      "/destinations/maldives.jpg",
     href: "/packages",
   },
   {
@@ -199,7 +199,7 @@ export const TRENDING_TRIPS: TrendingTrip[] = [
     price: "₹45,999",
     priceNote: "per person",
     image:
-      "https://images.pexels.com/photos/325193/pexels-photo-325193.jpeg?auto=compress&cs=tinysrgb&w=800",
+      "/destinations/dubai.jpg",
     href: "/packages",
   },
   {
@@ -210,7 +210,7 @@ export const TRENDING_TRIPS: TrendingTrip[] = [
     price: "₹18,499",
     priceNote: "per person",
     image:
-      "https://images.pexels.com/photos/25786566/pexels-photo-25786566.jpeg?auto=compress&cs=tinysrgb&w=800",
+      "/destinations/kashmir.jpg",
     href: "/packages",
   },
   {
@@ -221,7 +221,7 @@ export const TRENDING_TRIPS: TrendingTrip[] = [
     price: "₹42,999",
     priceNote: "per person",
     image:
-      "https://images.pexels.com/photos/1007657/pexels-photo-1007657.jpeg?auto=compress&cs=tinysrgb&w=800",
+      "/destinations/thailand.jpg",
     href: "/packages",
   },
   {
